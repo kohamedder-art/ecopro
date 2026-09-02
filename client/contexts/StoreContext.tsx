@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
 
 interface Store {
   id: number;
@@ -25,6 +27,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>([]);
   const [activeStore, setActiveStoreState] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
   const user = userStr ? JSON.parse(userStr) : null;
@@ -52,7 +55,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setActiveStoreState(store);
     localStorage.setItem('activeStoreId', String(store.id));
     localStorage.setItem('activeStoreSlug', store.store_slug);
-  }, []);
+
+    // Clear ALL cached data so every page fetches fresh for the new store
+    queryClient.clear();
+    try {
+      localStorage.removeItem(STOREFRONT_SETTINGS_KEY);
+      localStorage.removeItem(STOREFRONT_TEMPLATE_KEY);
+      localStorage.removeItem('storeSettings');
+    } catch { /* ignore */ }
+  }, [queryClient]);
 
   const createStore = useCallback(async (name: string, sourceStoreId?: number): Promise<Store | null> => {
     try {

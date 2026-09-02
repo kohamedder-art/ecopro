@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useStore } from '@/contexts/StoreContext';
 import {
   MessageSquare, Users, CheckCircle, XCircle, Clock,
   AlertTriangle, Send, Plus, Trash2, Eye, Loader2, Sparkles,
@@ -23,6 +24,7 @@ type CustomerBotProps = { embedded?: boolean };
 
 export default function CustomerBot({ embedded = false }: CustomerBotProps) {
   const navigate = useNavigate();
+  const { activeStore } = useStore();
   const [segments, setSegments] = useState<CustomerSegment | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function CustomerBot({ embedded = false }: CustomerBotProps) {
     finally { setAiComposing(false); }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [activeStore?.id]);
 
   const fetchData = async () => {
     try {

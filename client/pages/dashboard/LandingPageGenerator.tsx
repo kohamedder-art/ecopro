@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/auth';
 import { useTranslation } from '@/lib/i18n';
+import { useStore } from '@/contexts/StoreContext';
 
 interface Product {
   id: number;
@@ -22,6 +23,7 @@ interface Product {
 export default function LandingPageGenerator() {
   const { locale } = useTranslation();
   const { toast } = useToast();
+  const { activeStore } = useStore();
   const isRtl = locale === 'ar';
   const user = getCurrentUser();
   const clientId = user?.clientId || user?.id;
@@ -32,7 +34,7 @@ export default function LandingPageGenerator() {
   const [generating, setGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
-  useEffect(() => { loadProducts(); }, []);
+  useEffect(() => { loadProducts(); }, [activeStore?.id]);
 
   const loadProducts = async () => {
     try {

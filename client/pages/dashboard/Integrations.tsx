@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { useStore } from '@/contexts/StoreContext';
 
 
 type Platform = 'facebook' | 'instagram' | 'telegram' | 'whatsapp_cloud' | 'viber';
@@ -67,6 +68,7 @@ export default function Integrations() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const { activeStore } = useStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
@@ -80,7 +82,7 @@ export default function Integrations() {
   const savedSettingsRef = useRef<BotSettings | null>(null);
   const [settings, setSettings] = useState<BotSettings>({ provider: 'telegram', autoExpireHours: 24 });
 
-  useEffect(() => { loadSettings(false); }, []);
+  useEffect(() => { loadSettings(false); }, [activeStore?.id]);
 
   const loadSettings = async (background = false) => {
     if (!background) setLoading(true); else setRefreshing(true);

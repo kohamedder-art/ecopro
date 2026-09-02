@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { Gift, Loader, Save, Key, Eye, EyeOff, BadgeCheck, Globe, CheckCircle2, AlertCircle, Sparkles, Smartphone, Download } from 'lucide-react';
+import { useStore } from '@/contexts/StoreContext';
 
 type SubscriptionRow = {
   tier?: string | null;
@@ -33,6 +34,7 @@ const inputCls = "w-full h-10 bg-muted/40 border border-border/40 rounded-lg px-
 export default function Profile() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { activeStore } = useStore();
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
@@ -209,7 +211,7 @@ export default function Profile() {
     }
   };
 
-  useEffect(() => { load(); loadAffiliateInfo(); loadAppDownload(); }, []);
+  useEffect(() => { load(); loadAffiliateInfo(); loadAppDownload(); }, [activeStore?.id]);
   const subStatus = access?.status || profile?.subscription?.status || 'unknown';
 
   const initials = form.name

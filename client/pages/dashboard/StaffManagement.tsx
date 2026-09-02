@@ -55,16 +55,22 @@ export default function StaffManagement() {
   const [showCreatedDialog, setShowCreatedDialog] = useState(false);
   const [createdStaff, setCreatedStaff] = useState<{ username: string; password: string } | null>(null);
 
-  useEffect(() => { loadStaffList(); }, [activeStore?.id]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    loadStaffList(signal);
+    return () => controller.abort();
+  }, [activeStore?.id]);
 
-  const loadStaffList = async () => {
+  const loadStaffList = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/client/staff');
+      const response = await fetch('/api/client/staff', { signal });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || data.error || t('staff.loadError'));
       setStaffList(Array.isArray(data) ? data : []);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       console.error('Error loading staff:', error);
       toast({ variant: 'destructive', title: t('common.error'), description: error instanceof Error ? error.message : t('staff.loadError') });
     } finally {

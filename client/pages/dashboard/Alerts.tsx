@@ -3,6 +3,7 @@ import { useTranslation } from "@/lib/i18n";
 import { Bell, AlertTriangle, AlertCircle, Info, CheckCheck, ExternalLink, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useStore } from '@/contexts/StoreContext';
 
 interface Alert {
   id: number;
@@ -15,6 +16,7 @@ interface Alert {
 export default function AlertsPage() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
+  const { activeStore } = useStore();
   const isRTL = locale === 'ar';
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ export default function AlertsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchAlerts(); }, []);
+  useEffect(() => { fetchAlerts(); }, [activeStore?.id]);
 
   const dismissAll = async () => {
     await fetch('/api/ai/alerts/dismiss-all', { method: 'POST', credentials: 'include' });

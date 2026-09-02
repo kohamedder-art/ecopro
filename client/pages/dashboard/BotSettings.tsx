@@ -47,13 +47,16 @@ export default function AdminBotSettings() {
   });
 
   useEffect(() => {
-    loadSettings();
+    const controller = new AbortController();
+    const { signal } = controller;
+    loadSettings(signal);
+    return () => controller.abort();
   }, [activeStore?.id]);
 
-  const loadSettings = async () => {
+  const loadSettings = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/bot/settings');
+      const response = await fetch('/api/bot/settings', { signal });
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => null);
@@ -62,7 +65,8 @@ export default function AdminBotSettings() {
 
       const data = await response.json();
       setSettings(data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       console.error('Failed to load bot settings:', error);
       toast({
         title: "Error",

@@ -23,6 +23,7 @@ import { generateStoreUrl, storeNameToSlug } from '@/utils/storeUrl';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { useStore } from '@/contexts/StoreContext';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useStoreProducts } from '@/hooks/useStoreProducts';
@@ -137,6 +138,7 @@ export default function Store() {
   const { t, locale } = useTranslation();
   const isRTL = locale === 'ar';
   const { toast } = useToast();
+  const { activeStore } = useStore();
   // Products Management was duplicated with Overview; keep a single Store page.
 
   const { data: storeSettingsData } = useStoreSettings({
@@ -203,33 +205,32 @@ export default function Store() {
 
   // Fetch remaining store data on mount (settings/products come from cached hooks)
   useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
     const fetchData = async () => {
       try {
-        // Fetch all data in PARALLEL for faster loading
         const [inventoryRes, statsRes] = await Promise.all([
-          fetch('/api/client/stock', { credentials: 'include' }),
-          fetch('/api/client/store/stats', { credentials: 'include' }),
+          fetch('/api/client/stock', { credentials: 'include', signal }),
+          fetch('/api/client/store/stats', { credentials: 'include', signal }),
         ]);
         
-        // Process inventory
         if (inventoryRes.ok) {
           const inventoryData = await inventoryRes.json();
           setInventoryProducts(inventoryData);
         }
         
-        // Process stats
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStatsServer(statsData);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
         console.error('Failed to fetch store data', err);
       }
     };
     fetchData();
-    // Silently repair Arabic store slug + bad product slugs in the background
-    fetch('/api/client/store/repair-slugs', { method: 'POST' }).catch(() => {});
-  }, []);
+    return () => controller.abort();
+  }, [activeStore?.id]);
   // Product action states
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
