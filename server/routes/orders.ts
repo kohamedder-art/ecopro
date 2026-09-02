@@ -206,13 +206,14 @@ export const createOrder: RequestHandler = async (req, res) => {
     }
     
     let resolvedClientId: number | null = null;
+    let resolvedStoreId: number | null = null;
 
     // Resolve owner from store_slug first (if given)
     if (store_slug) {
       if (!isProduction) console.log(`[Orders] Looking up store_slug in client_store_settings...`);
       // Exact slug match first (indexed, unambiguous)
       let cs = await pool.query(
-        `SELECT client_id
+        `SELECT id, client_id
          FROM client_store_settings
          WHERE store_slug = $1
          LIMIT 1`,
@@ -221,7 +222,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       // Fall back to name normalization only if exact slug match fails
       if (cs.rows.length === 0) {
         cs = await pool.query(
-          `SELECT client_id
+          `SELECT id, client_id
            FROM client_store_settings
            WHERE LOWER(REGEXP_REPLACE(store_name, '[^a-zA-Z0-9]', '', 'g')) = LOWER($1)
            LIMIT 1`,
@@ -230,6 +231,7 @@ export const createOrder: RequestHandler = async (req, res) => {
       }
       if (cs.rows.length > 0) {
         resolvedClientId = Number(cs.rows[0].client_id);
+        resolvedStoreId = Number(cs.rows[0].id);
         if (!isProduction) console.log(`[Orders] Found in client_store_settings, client_id=${resolvedClientId}`);
       } else {
         return res.status(404).json({ error: 'المتجر غير موجود' });
@@ -238,7 +240,7 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     // Resolve owner + pricing from product_id (and cross-check if store_slug was provided)
     const productRes = await pool.query(
-      'SELECT client_id, price, stock_quantity, status FROM client_store_products WHERE id = $1 LIMIT 1',
+      'SELECT client_id, store_id, price, stock_quantity, status FROM client_store_products WHERE id = $1 LIMIT 1',
       [product_id]
     );
     if (productRes.rows.length === 0) {
@@ -246,10 +248,14 @@ export const createOrder: RequestHandler = async (req, res) => {
     }
     const productRow = productRes.rows[0];
     const productClientId = Number(productRow.client_id);
+    const productStoreId = Number(productRow.store_id);
     if (!resolvedClientId) {
       resolvedClientId = productClientId;
-      if (!isProduction) console.log(`[Orders] Resolved client_id from product: ${resolvedClientId}`);
+      resolvedStoreId = productStoreId;
+      if (!isProduction) console.log(`[Orders] Resolved client_id from product: ${resolvedClientId}, store_id: ${resolvedStoreId}`);
     } else if (resolvedClientId !== productClientId) {
+      return res.status(400).json({ error: 'المنتج لا ينتمي لهذا المتجر' });
+    } else if (resolvedStoreId && productStoreId && resolvedStoreId !== productStoreId) {
       return res.status(400).json({ error: 'المنتج لا ينتمي لهذا المتجر' });
     }
 
@@ -357,6 +363,7 @@ export const createOrder: RequestHandler = async (req, res) => {
 
     addCol('product_id', product_id || null);
     addCol('client_id', resolvedClientId);
+    addCol('store_id', resolvedStoreId);
     addCol('quantity', quantity);
     addCol('total_price', expectedTotalPrice);
     addCol('delivery_fee', deliveryFee);
