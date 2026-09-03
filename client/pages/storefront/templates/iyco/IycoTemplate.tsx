@@ -503,7 +503,7 @@ export default function IycoTemplate({
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4">
 
         {/* ── canManage: empty products placeholder ── */}
         {canManage && (!products || products.length === 0) && (
@@ -515,11 +515,11 @@ export default function IycoTemplate({
 
         {/* ── PRODUCT SECTION (SPLIT LAYOUT) ── */}
         {mainProduct && (
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 pt-6 lg:pt-10">
+          <div className="flex flex-col lg:flex-row gap-3 lg:gap-8 pt-2 lg:pt-6">
 
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4 lg:mt-3" key={`gallery-${mainProduct?.id || 'none'}`}>
-              <div className="w-full rounded-xl overflow-hidden relative aspect-[4/5] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: '#ffffff', border: `1px solid ${borderColor}` }}>
+              <div className="w-full overflow-hidden relative aspect-[3/4.3] lg:aspect-auto lg:h-[95vh]" style={{ backgroundColor: '#ffffff' }}>
                 <div ref={carouselRef} className="flex h-full" style={{ overflowX: 'scroll', scrollSnapType: 'x mandatory', direction: 'ltr' }} onScroll={handleScroll}>
                   {videoEmbed && (
                     <div key="video" className="h-full shrink-0" style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}>
