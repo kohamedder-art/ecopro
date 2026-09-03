@@ -1776,10 +1776,10 @@ export const restorePresetStatus: RequestHandler = async (req, res) => {
     if (existing.rows.length) { res.status(409).json({ error: 'Status already exists' }); return; }
 
     const result = await pool.query(
-      `INSERT INTO order_statuses (${storeFilter}, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue)
-       VALUES ($1, $2, $3, $4, $5, $6, false, true, $7)
+      `INSERT INTO order_statuses (client_id, store_id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false, true, $8)
        RETURNING id, name, key, color, icon, sort_order, is_default, is_system, counts_as_revenue`,
-      [storeIdVal, preset.name, key, preset.color, preset.icon, preset.sort_order, preset.counts_as_revenue]
+      [clientId, activeStoreId || null, preset.name, key, preset.color, preset.icon, preset.sort_order, preset.counts_as_revenue]
     );
 
     res.json(result.rows[0]);
@@ -1913,10 +1913,10 @@ export const createOrderStatus: RequestHandler = async (req, res) => {
     );
 
     const result = await pool.query(
-      `INSERT INTO order_statuses (${storeFilter}, name, key, color, icon, sort_order, counts_as_revenue)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO order_statuses (client_id, store_id, name, key, color, icon, sort_order, counts_as_revenue)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, name, key, color, icon, sort_order, is_default, counts_as_revenue`,
-      [storeIdVal, trimmedName, uniqueKey, color || '#6b7280', icon || '●', (maxOrder.rows[0].max_order || 0) + 1, counts_as_revenue || false]
+      [clientId, activeStoreId || null, trimmedName, uniqueKey, color || '#6b7280', icon || '●', (maxOrder.rows[0].max_order || 0) + 1, counts_as_revenue || false]
     );
 
     res.json(result.rows[0]);

@@ -1,8 +1,12 @@
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { ensureConnection } from '../utils/database';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const NTFY_BASE = 'https://ntfy.sh';
 const FCM_PROJECT_ID = 'sahla4eco-push-b5203';
