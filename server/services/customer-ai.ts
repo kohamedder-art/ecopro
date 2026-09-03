@@ -1175,7 +1175,7 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
     } catch {}
 
     try {
-      await p.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at) VALUES ($1, $2, $3, 'telegram', $4, NOW())`, [orderId, data.clientId, data.customerPhone, `📦 طلب جديد!\nرقم: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}`]);
+      await p.query(`INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at) VALUES ($1, $2, (SELECT id FROM client_store_settings WHERE client_id = $2 LIMIT 1), $3, 'telegram', $4, NOW())`, [orderId, data.clientId, data.customerPhone, `📦 طلب جديد!\nرقم: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}`]);
     } catch {}
     notifyOrderCreated(data.clientId, orderId, data.customerName);
 

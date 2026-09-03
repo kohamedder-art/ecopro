@@ -161,11 +161,12 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
     // Notify store owner
     try {
       await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-         VALUES ($1, $2, $3, 'telegram', $4, NOW())`,
+        `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, $4, 'telegram', $5, NOW())`,
         [
           order.order_id,
           order.client_id,
+          order.store_id || null,
           order.customer_phone || '',
           `📦 تحديث حالة التتبع — الطلب #${order.order_id}\n\nالحالة: ${newStatus}\n${statusResponse.description || ''}\n${statusResponse.location ? `الموقع: ${statusResponse.location}` : ''}\nرقم التتبع: ${order.tracking_number}`,
         ]

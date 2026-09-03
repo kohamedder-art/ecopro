@@ -1268,14 +1268,15 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
       // Fallback: link PSID to most recent pending order for this client
       try {
         const recentOrder = await pool.query(
-          `SELECT id, customer_phone, customer_name, total_price, product_snapshot
+          `SELECT id, store_id, customer_phone, customer_name, total_price, product_snapshot
            FROM store_orders
            WHERE client_id = $1
            ORDER BY created_at DESC LIMIT 1`,
           [client_id]
         );
         if (recentOrder.rows.length > 0) {
-          const { customer_phone, customer_name, total_price, product_snapshot, id: orderId } = recentOrder.rows[0];
+          const { customer_phone, customer_name, total_price, product_snapshot, id: orderId, store_id } = recentOrder.rows[0];
+          const orderStoreId = store_id || client_id;
           const product_name = product_snapshot?.title || product_snapshot?.name || `#${orderId}`;
           await pool.query(
             `INSERT INTO customer_messaging_ids (client_id, customer_phone, messenger_psid, created_at, updated_at)
@@ -1319,9 +1320,9 @@ async function handlePostback(pageId: string, senderId: string, postback: any) {
             const delay = bs.messenger_delay_minutes || 5;
             const now = new Date();
             const sendAt = new Date(Date.now() + delay * 60 * 1000);
-            await pool.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at) VALUES ($1,$2,$3,'messenger',$4,$5)`, [orderId, client_id, customer_phone, instantMsg, now]);
-            await pool.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at) VALUES ($1,$2,$3,'messenger',$4,$5)`, [orderId, client_id, customer_phone, pinMsg, now]);
-            await pool.query(`INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at) VALUES ($1,$2,$3,'messenger',$4,$5,$6)`, [orderId, client_id, customer_phone, confirmMsg, confirmLink, sendAt]);
+            await pool.query(`INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at) VALUES ($1,$2,$3,$4,'messenger',$5,$6)`, [orderId, client_id, orderStoreId, customer_phone, instantMsg, now]);
+            await pool.query(`INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at) VALUES ($1,$2,$3,$4,'messenger',$5,$6)`, [orderId, client_id, orderStoreId, customer_phone, pinMsg, now]);
+            await pool.query(`INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at) VALUES ($1,$2,$3,$4,'messenger',$5,$6,$7)`, [orderId, client_id, orderStoreId, customer_phone, confirmMsg, confirmLink, sendAt]);
             console.log(`[Messenger] Queued order messages for order ${orderId} after GET_STARTED`);
           }
           console.log(`[Messenger] Fallback: linked PSID ${senderId} to phone ${customer_phone} via recent order`);

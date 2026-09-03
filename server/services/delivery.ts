@@ -713,9 +713,9 @@ export class DeliveryService {
       // Send store owner notification about delivery status update
       try {
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-           VALUES ($1, $2, $3, 'telegram', $4, NOW())`,
-          [orderId, clientId, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحالة: ${event.status}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+           VALUES ($1, $2, $3, $4, 'telegram', $5, NOW())`,
+          [orderId, clientId, storeId || null, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحالة: ${event.status}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
         );
       } catch (ownerNotifyErr) {
         console.error('[Webhook] Store owner notification failed:', ownerNotifyErr);

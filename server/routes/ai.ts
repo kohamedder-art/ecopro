@@ -2126,7 +2126,7 @@ router.post('/bot/send-message', authenticate, requireClient, authAiLimiter, asy
 
     // Fetch order — must belong to this client
     const orderRes = await pool.query(
-      `SELECT o.id, o.customer_name, o.customer_phone, o.total_price, o.status,
+      `SELECT o.id, o.store_id, o.customer_name, o.customer_phone, o.total_price, o.status,
               o.delivery_address, o.notes,
               p.title as product_name
        FROM store_orders o
@@ -2196,9 +2196,9 @@ Write a professional, friendly message in Arabic (Algerian dialect preferred). K
     // Insert into bot_messages queue (send immediately = send_at = NOW())
     const msgType = provider === 'messenger' ? 'messenger' : provider === 'whatsapp_cloud' ? 'whatsapp' : 'telegram';
     await pool.query(
-      `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [Number(orderId), clientId, order.customer_phone, msgType, messageText.trim()]
+      `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [Number(orderId), clientId, order.store_id || null, order.customer_phone, msgType, messageText.trim()]
     );
 
     return res.json({
@@ -2345,7 +2345,7 @@ Return JSON only:
       const channelOverride = req.body.channel ? String(req.body.channel).toLowerCase() : null;
       if (!orderId) return res.status(400).json({ error: 'orderId is required.' });
       const orderRes = await pool.query(
-        `SELECT o.id, o.customer_name, o.customer_phone, o.total_price, o.status, o.delivery_address,
+        `SELECT o.id, o.store_id, o.customer_name, o.customer_phone, o.total_price, o.status, o.delivery_address,
                 p.title as product_name
          FROM store_orders o
          LEFT JOIN client_store_products p ON p.id = o.product_id
@@ -2377,9 +2377,9 @@ Purpose: ${intent || 'a helpful order update'}
 Write in Arabic (Algerian dialect). Be direct and friendly. Under 150 words. Use actual values, not placeholders.`;
       const messageText = await generateText('store_owner', msgPrompt, { storeId: clientId, storeName, clientId, userType: 'owner' });
       await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [orderId, clientId, order.customer_phone, msgType, messageText.trim()]
+        `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [orderId, clientId, order.store_id || null, order.customer_phone, msgType, messageText.trim()]
       );
       return res.json({ success: true, message: `Message queued via ${msgType} for order #${orderId}.`, preview: messageText.trim() });
     }

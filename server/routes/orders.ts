@@ -1380,9 +1380,9 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
           // Send via Telegram
           if (settings.telegram_bot_token) {
             await pool.query(
-              `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-               VALUES ($1,$2,$3,'telegram',$4,NULL,NOW())`,
-              [orderRow.id, req.user.id, orderRow.customer_phone || '', msg]
+              `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+               VALUES ($1,$2,$3,$4,'telegram',$5,NULL,NOW())`,
+              [orderRow.id, req.user.id, storeIdVal, orderRow.customer_phone || '', msg]
             );
             // Ensure order_telegram_chats has an entry so the bot worker can find chat_id
             try {
@@ -1405,9 +1405,9 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
           // Send via Messenger
           if (settings.messenger_enabled && settings.fb_page_id) {
             await pool.query(
-              `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-               VALUES ($1,$2,$3,'messenger',$4,NULL,NOW())`,
-              [orderRow.id, req.user.id, orderRow.customer_phone || '', msg]
+              `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+               VALUES ($1,$2,$3,$4,'messenger',$5,NULL,NOW())`,
+              [orderRow.id, req.user.id, storeIdVal, orderRow.customer_phone || '', msg]
             );
           }
         }

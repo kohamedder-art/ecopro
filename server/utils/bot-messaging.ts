@@ -595,9 +595,9 @@ export async function sendDeliveryStatusNotification(params: {
     for (const ch of channels) {
       await pool.query(
         `INSERT INTO bot_messages
-         (order_id, client_id, customer_phone, message_type, message_content, send_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
-        [orderId, clientId, customerPhone, ch, message]
+         (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [orderId, clientId, storeId || null, customerPhone, ch, message]
       );
     }
 
@@ -772,9 +772,9 @@ export async function sendOrderConfirmationMessages(
         const delayMinutes = settings.telegram_delay_minutes || 5;
         const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-           VALUES ($1, $2, $3, 'telegram', $4, $5, $6)`,
-          [orderId, clientId, customerPhone, telegramMessage, confirmationLink, sendAt]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, $4, 'telegram', $5, $6, $7)`,
+          [orderId, clientId, storeId || null, customerPhone, telegramMessage, confirmationLink, sendAt]
         );
         console.log(`[Bot] Telegram scheduled for ${customerPhone} at ${sendAt}`);
       } else {
@@ -798,9 +798,9 @@ export async function sendOrderConfirmationMessages(
             const delayMinutes = settings.telegram_delay_minutes || 5;
             const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
             await pool.query(
-              `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-               VALUES ($1, $2, $3, 'telegram', $4, $5, $6)`,
-              [orderId, clientId, customerPhone, telegramMessage, confirmationLink, sendAt]
+              `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+               VALUES ($1, $2, $3, $4, 'telegram', $5, $6, $7)`,
+              [orderId, clientId, storeId || null, customerPhone, telegramMessage, confirmationLink, sendAt]
             );
             console.log(`[Bot] Telegram scheduled for owner ${customerPhone} at ${sendAt}`);
           } else {
@@ -847,24 +847,24 @@ export async function sendOrderConfirmationMessages(
 
         const now = new Date();
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-           VALUES ($1, $2, $3, 'messenger', $4, $5)`,
-          [orderId, clientId, customerPhone, instantMessage, now]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+           VALUES ($1, $2, $3, $4, 'messenger', $5, $6)`,
+          [orderId, clientId, storeId || null, customerPhone, instantMessage, now]
         );
         // Add 5 second delay for pin message so it arrives after the greeting
         const pinDelay = new Date(now.getTime() + 5000);
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-           VALUES ($1, $2, $3, 'messenger', $4, $5)`,
-          [orderId, clientId, customerPhone, pinMessage, pinDelay]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+           VALUES ($1, $2, $3, $4, 'messenger', $5, $6)`,
+          [orderId, clientId, storeId || null, customerPhone, pinMessage, pinDelay]
         );
 
         const delayMinutes = settings.messenger_delay_minutes || 5;
         const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-           VALUES ($1, $2, $3, 'messenger', $4, $5, $6)`,
-          [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, $4, 'messenger', $5, $6, $7)`,
+          [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
         );
         console.log(`[Bot] Messenger scheduled for order ${orderId} at ${sendAt}`);
       } else {
@@ -881,21 +881,21 @@ export async function sendOrderConfirmationMessages(
         const delayMinutes = settings.messenger_delay_minutes || 5;
         const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at, error_message)
-           VALUES ($1, $2, $3, 'messenger', $4, $5, 'WAITING_FOR_MESSENGER_PSID')`,
-          [orderId, clientId, customerPhone, instantMessage, now]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at, error_message)
+           VALUES ($1, $2, $3, $4, 'messenger', $5, $6, 'WAITING_FOR_MESSENGER_PSID')`,
+          [orderId, clientId, storeId || null, customerPhone, instantMessage, now]
         );
         // Add 5 second delay for pin message
         const pinDelay = new Date(now.getTime() + 5000);
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at, error_message)
-           VALUES ($1, $2, $3, 'messenger', $4, $5, 'WAITING_FOR_MESSENGER_PSID')`,
-          [orderId, clientId, customerPhone, pinMessage, pinDelay]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at, error_message)
+           VALUES ($1, $2, $3, $4, 'messenger', $5, $6, 'WAITING_FOR_MESSENGER_PSID')`,
+          [orderId, clientId, storeId || null, customerPhone, pinMessage, pinDelay]
         );
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at, error_message)
-           VALUES ($1, $2, $3, 'messenger', $4, $5, $6, 'WAITING_FOR_MESSENGER_PSID')`,
-          [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at, error_message)
+           VALUES ($1, $2, $3, $4, 'messenger', $5, $6, $7, 'WAITING_FOR_MESSENGER_PSID')`,
+          [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
         );
         console.log(`[Bot] Messenger messages queued with WAITING_FOR_MESSENGER_PSID for order ${orderId}`);
       }
@@ -922,18 +922,18 @@ export async function sendOrderConfirmationMessages(
       // Instant receipt — send now
       const now = new Date();
       await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, send_at)
-         VALUES ($1, $2, $3, 'whatsapp_cloud', $4, $5)`,
-        [orderId, clientId, customerPhone, instantMessage, now]
+        `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
+         VALUES ($1, $2, $3, $4, 'whatsapp_cloud', $5, $6)`,
+        [orderId, clientId, storeId || null, customerPhone, instantMessage, now]
       );
 
       // Delayed confirmation with buttons
       const delayMinutes = settings.whatsapp_delay_minutes || settings.telegram_delay_minutes || 5;
       const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
       await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-         VALUES ($1, $2, $3, 'whatsapp_cloud', $4, $5, $6)`,
-        [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+        `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+         VALUES ($1, $2, $3, $4, 'whatsapp_cloud', $5, $6, $7)`,
+        [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
       );
       console.log(`[Bot] WhatsApp Cloud scheduled for ${customerPhone} at ${sendAt}`);
     }
@@ -956,9 +956,9 @@ export async function sendOrderConfirmationMessages(
         const delayMinutes = settings.viber_delay_minutes || settings.telegram_delay_minutes || 5;
         const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
         await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-           VALUES ($1, $2, $3, 'viber', $4, $5, $6)`,
-          [orderId, clientId, customerPhone, confirmationMessage, confirmationLink, sendAt]
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, $4, 'viber', $5, $6, $7)`,
+          [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
         );
         console.log(`[Bot] Viber scheduled for ${customerPhone} at ${sendAt}`);
       }
