@@ -950,7 +950,7 @@ export default function IycoTemplate({
               })}
             </div>
             {/* Mobile: 2-column grid */}
-            <div className="md:hidden grid grid-cols-2" style={{ gap: '8px' }}>
+            <div className="md:hidden grid grid-cols-1" style={{ gap: '8px' }}>
               {otherProducts.map(prod => {
                 const thumb = prod.images?.[0] || '/placeholder.png';
                 const price = Number(prod.price ?? 0);
@@ -1011,20 +1011,20 @@ export default function IycoTemplate({
                         </button>
                       </div>
                     </div>
-                    <div className="px-0.5 pt-1 pb-0.5">
-                      <h3 className="text-[11px] font-normal truncate leading-tight" style={{ color: '#333', margin: 0 }}>{prod.title}</h3>
-                      <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
-                        <span className="text-xs font-bold" style={{ color: '#222' }}>{price.toLocaleString()} DA</span>
+                    <div className="px-1 pt-1.5 pb-1">
+                      <h3 className="text-sm font-normal leading-tight" style={{ color: '#333', margin: 0 }}>{prod.title}</h3>
+                      <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
+                        <span className="text-sm font-bold" style={{ color: '#222' }}>{price.toLocaleString()} DA</span>
                         {origPrice > price && (
-                          <span className="text-[9px] line-through" style={{ color: '#999' }}>{origPrice.toLocaleString()} DA</span>
+                          <span className="text-xs line-through" style={{ color: '#999' }}>{origPrice.toLocaleString()} DA</span>
                         )}
                       </div>
                       {disc > 0 && (
-                        <span className="text-[9px] font-semibold" style={{ color: '#ff4d4f' }}>Last day {price.toLocaleString()} DA</span>
+                        <span className="text-[11px] font-semibold" style={{ color: '#ff4d4f' }}>Last day {price.toLocaleString()} DA</span>
                       )}
                       {soldCount > 0 && (
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className="text-[9px]" style={{ color: '#999' }}>🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold</span>
+                          <span className="text-[11px]" style={{ color: '#999' }}>🔥 {soldCount >= 1000 ? `${(soldCount / 1000).toFixed(1)}K+` : `${soldCount}+`} sold</span>
                         </div>
                       )}
                     </div>

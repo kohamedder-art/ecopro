@@ -1826,7 +1826,7 @@ ${urls}
 
   // Order routes
   app.post("/api/orders/create", storefrontOrderLimiter, orderRoutes.createOrder); // Public - buyers can create orders
-  app.post("/api/client/orders", authenticate, requireClient, orderRoutes.createClientOrder); // Authenticated - store owner creates order manually
+  app.post("/api/client/orders", authenticate, requireClient, resolveActiveStore, orderRoutes.createClientOrder); // Authenticated - store owner creates order manually
   app.get("/api/client/orders", authenticate, requireClient, resolveActiveStore, orderRoutes.getClientOrders);
   app.get("/api/client/orders/chat", authenticate, requireClient, resolveActiveStore, orderRoutes.getChatOrders);
   app.get("/api/orders/new-count", authenticate, requireClient, resolveActiveStore, orderRoutes.getNewOrdersCount); // Get count of new orders;
