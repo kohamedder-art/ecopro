@@ -1644,7 +1644,6 @@ export const listAllStores: RequestHandler = async (_req, res) => {
         COALESCE(css.store_name, c.name, c.email) as store_name,
         css.store_slug,
         css.subdomain,
-        css.language,
         'active' as subscription_status,
         css.created_at,
         (SELECT COUNT(*) FROM client_store_products p WHERE p.store_id = css.id) as product_count
