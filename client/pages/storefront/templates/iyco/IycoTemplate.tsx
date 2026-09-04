@@ -884,7 +884,7 @@ export default function IycoTemplate({
                       <div className="relative" style={{ aspectRatio: '3 / 4' }}>
                         {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                           ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb || ''}
-                              loadDelay={500}
+                              loadDelay={2000}
                               className="w-full h-full object-cover" />
                           : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
@@ -970,7 +970,7 @@ export default function IycoTemplate({
                       <div className="relative" style={{ aspectRatio: '3 / 4' }}>
                         {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
                           ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb || ''}
-                              loadDelay={500}
+                              loadDelay={2000}
                               className="w-full h-full object-cover" />
                           : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />

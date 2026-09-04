@@ -4,11 +4,11 @@ interface LazyVideoProps {
   src: string;
   poster: string;
   className?: string;
-  /** Delay in ms before starting video load. Staggers loading across products. */
+  /** Delay in ms before video starts loading. Default 2000ms (2s) between videos. */
   loadDelay?: number;
 }
 
-export default function LazyVideo({ src, poster, className, loadDelay = 0 }: LazyVideoProps) {
+export default function LazyVideo({ src, poster, className, loadDelay = 2000 }: LazyVideoProps) {
   const [isReady, setIsReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -21,13 +21,12 @@ export default function LazyVideo({ src, poster, className, loadDelay = 0 }: Laz
       ([entry]) => {
         if (entry.isIntersecting) {
           observer.disconnect();
-          // Stagger: delay video load so thumbnails appear first, one-by-one
           loadTimerRef.current = setTimeout(() => {
             setIsReady(true);
           }, loadDelay);
         }
       },
-      { rootMargin: '300px' }
+      { rootMargin: '100px' }
     );
 
     observer.observe(containerRef.current);
@@ -37,7 +36,6 @@ export default function LazyVideo({ src, poster, className, loadDelay = 0 }: Laz
     };
   }, [src, loadDelay]);
 
-  // When video element mounts, load metadata + first frame
   useEffect(() => {
     if (!isReady || !videoRef.current) return;
     const video = videoRef.current;
@@ -56,7 +54,7 @@ export default function LazyVideo({ src, poster, className, loadDelay = 0 }: Laz
 
   return (
     <div ref={containerRef} className={className} style={{ position: 'relative', overflow: 'hidden' }}>
-      {/* Video: layered behind poster, fades in when first frame ready */}
+      {/* Video: behind poster, fades in when first frame ready */}
       {isReady && (
         <video
           ref={videoRef}
@@ -78,7 +76,7 @@ export default function LazyVideo({ src, poster, className, loadDelay = 0 }: Laz
           }}
         />
       )}
-      {/* Poster: ALWAYS visible underneath, never blank */}
+      {/* Poster: ALWAYS visible — no blank products */}
       <img
         src={poster}
         alt=""
