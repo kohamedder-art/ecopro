@@ -247,6 +247,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
   const showStoreGrid = !currentSlug && (products?.length || 0) > 1;
   const [gridImageIndex, setGridImageIndex] = useState<Record<number, number>>({});
   const [imgLoaded, setImgLoaded] = useState<Record<string, boolean>>({});
+  const [videoReady, setVideoReady] = useState<Record<string, boolean>>({});
   const optimizeImg = (src: string, size: 'small' | 'large' = 'small') => {
     if (!src || !src.includes('cloudinary.com') || src.includes('?tr=')) return src;
     return `${src}?tr=${size === 'large' ? 'w_800,q_auto,f_auto,c_limit' : 'w_400,q_auto,f_auto,c_limit'}`;
@@ -371,6 +372,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 7', backgroundColor: surfaceMuted }}>
                     {hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
                       <LazyVideo src={hasVideo} poster={firstImage}
+                        loadDelay={index * 200}
+                        onPosterReady={() => setVideoReady(prev => ({...prev, [String(product.id)]: true}))}
                         onMouseEnter={e => (e.target as HTMLVideoElement).play()}
                         onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
                         className="w-full h-full object-cover" />
@@ -817,6 +820,8 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                           <LazyVideo
                             src={hasVideo}
                             poster={firstImage}
+                            loadDelay={1000}
+                            onPosterReady={() => setVideoReady(prev => ({...prev, [String(p.id)]: true}))}
                             className="w-full h-full"
                           />
                         ) : hasVideo && hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
