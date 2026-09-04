@@ -6,79 +6,92 @@ interface LazyVideoProps {
   className?: string;
   onMouseEnter?: (e: React.MouseEvent<HTMLVideoElement>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLVideoElement>) => void;
-  /** Delay before starting video load (ms). Lets thumbnails load first. */
-  loadDelay?: number;
-  /** Called when first video frame is ready (not full download). */
-  onPosterReady?: () => void;
 }
 
-export default function LazyVideo({ src, poster, className, onMouseEnter, onMouseLeave, loadDelay = 0, onPosterReady }: LazyVideoProps) {
+export default function LazyVideo({ src, poster, className, onMouseEnter, onMouseLeave }: LazyVideoProps) {
   const [shouldLoad, setShouldLoad] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // IntersectionObserver: detect when visible
+  // Load video ONLY on hover — one at a time, no bandwidth competition
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!shouldLoad && src) {
+      setShouldLoad(true);
+    }
+    // Forward event to video if it exists
+    if (videoRef.current && onMouseEnter) {
+      onMouseEnter(e as any);
+    }
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (videoRef.current && onMouseLeave) {
+      onMouseLeave(e as any);
+    }
+  };
+
+  // Once shouldLoad is true, detect when first frame is ready
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!shouldLoad || !src || !videoRef.current) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // Apply delay so thumbnails load first
-          if (loadDelay > 0) {
-            const timer = setTimeout(() => setShouldLoad(true), loadDelay);
-            return () => clearTimeout(timer);
-          }
-          setShouldLoad(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '200px' }
-    );
-
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [loadDelay]);
-
-  // Load video metadata + first frame only (not full video)
-  useEffect(() => {
-    if (!shouldLoad || !src) return;
-
-    const video = document.createElement('video');
-    video.preload = 'auto'; // auto so browser fetches enough for first frame
-    video.src = src;
-    video.muted = true;
-
+    const video = videoRef.current;
     const onReady = () => {
       setIsReady(true);
-      onPosterReady?.();
     };
 
-    // loadeddata fires when first frame is available — MUCH faster than canplaythrough
     video.addEventListener('loadeddata', onReady, { once: true });
     video.load();
 
     return () => {
       video.removeEventListener('loadeddata', onReady);
-      video.src = '';
     };
   }, [shouldLoad, src]);
 
   return (
-    <div ref={containerRef} className={className} style={{ position: 'relative', overflow: 'hidden' }}>
-      {isReady ? (
+    <div
+      ref={containerRef}
+      className={className}
+      style={{ position: 'relative', overflow: 'hidden' }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Video: always in DOM once shouldLoad, but hidden until ready */}
+      {shouldLoad && (
         <video
+          ref={videoRef}
           src={src}
           muted
           loop
           playsInline
-          autoPlay
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
+          preload="auto"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            position: isReady ? 'relative' : 'absolute',
+            top: 0,
+            left: 0,
+            opacity: isReady ? 1 : 0,
+            zIndex: isReady ? 1 : -1,
+            transition: 'opacity 0.3s',
+          }}
         />
-      ) : (
-        <img src={poster} alt="" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      )}
+      {/* Poster: always visible until video first frame is ready */}
+      {!isReady && (
+        <img
+          src={poster}
+          alt=""
+          decoding="async"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        />
       )}
     </div>
   );
