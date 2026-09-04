@@ -495,7 +495,7 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
             <LazyVideo
               src={videoUrl}
               poster={landingImages[0] || productImages[0] || ''}
-              className="w-full h-auto"
+              className="w-full aspect-[9/16] sm:aspect-[3/4]"
             />
           )}
           {landingImages.length > 0 ? (
