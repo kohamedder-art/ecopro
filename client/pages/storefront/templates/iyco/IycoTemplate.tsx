@@ -986,8 +986,6 @@ export default function IycoTemplate({
                                 onLoad={() => setImgLoaded(prev => ({...prev, [prod.id]: true}))}
                               />
                         }
-                      </div>
-                        )}
                         {disc > 0 && (
                           <div className="absolute top-0 left-0 mt-4 z-10">
                             <span className="inline-block bg-[#ff4d4f] text-white text-[8px] font-bold px-1.5 py-0.5 leading-tight">
