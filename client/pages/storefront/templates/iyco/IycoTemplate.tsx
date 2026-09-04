@@ -883,9 +883,8 @@ export default function IycoTemplate({
                     >
                       <div className="relative" style={{ aspectRatio: '3 / 4' }}>
                         {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                          ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb}
-                              onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                              onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                          ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb || ''}
+                              loadDelay={500}
                               className="w-full h-full object-cover" />
                           : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
@@ -970,9 +969,8 @@ export default function IycoTemplate({
                     >
                       <div className="relative" style={{ aspectRatio: '3 / 4' }}>
                         {(prod as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                          ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb}
-                              onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                              onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                          ? <LazyVideo src={(prod as any).metadata.video_url} poster={thumb || ''}
+                              loadDelay={500}
                               className="w-full h-full object-cover" />
                           : (prod as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
                             ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(prod as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
@@ -988,12 +986,7 @@ export default function IycoTemplate({
                                 onLoad={() => setImgLoaded(prev => ({...prev, [prod.id]: true}))}
                               />
                         }
-                        {(disc > 0 || (prod as any)?.metadata?.promo_label) && (
-                          <div className="absolute top-0 left-0 z-10">
-                            <span className="inline-block bg-[#ff4d4f] text-white text-[10px] font-bold px-1.5 py-0.5 leading-tight">
-                              {disc > 0 ? `-${disc}%` : (prod as any).metadata.promo_label}
-                            </span>
-                          </div>
+                      </div>
                         )}
                         {disc > 0 && (
                           <div className="absolute top-0 left-0 mt-4 z-10">

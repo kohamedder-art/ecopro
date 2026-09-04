@@ -4,60 +4,60 @@ interface LazyVideoProps {
   src: string;
   poster: string;
   className?: string;
-  onMouseEnter?: (e: React.MouseEvent<HTMLVideoElement>) => void;
-  onMouseLeave?: (e: React.MouseEvent<HTMLVideoElement>) => void;
+  /** Delay in ms before starting video load. Staggers loading across products. */
+  loadDelay?: number;
 }
 
-export default function LazyVideo({ src, poster, className, onMouseEnter, onMouseLeave }: LazyVideoProps) {
-  const [shouldLoad, setShouldLoad] = useState(false);
+export default function LazyVideo({ src, poster, className, loadDelay = 0 }: LazyVideoProps) {
   const [isReady, setIsReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const loadTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Load video ONLY on hover — one at a time, no bandwidth competition
-  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!shouldLoad && src) {
-      setShouldLoad(true);
-    }
-    // Forward event to video if it exists
-    if (videoRef.current && onMouseEnter) {
-      onMouseEnter(e as any);
-    }
-  };
-
-  const handleMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (videoRef.current && onMouseLeave) {
-      onMouseLeave(e as any);
-    }
-  };
-
-  // Once shouldLoad is true, detect when first frame is ready
   useEffect(() => {
-    if (!shouldLoad || !src || !videoRef.current) return;
+    if (!containerRef.current || !src) return;
 
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          observer.disconnect();
+          // Stagger: delay video load so thumbnails appear first, one-by-one
+          loadTimerRef.current = setTimeout(() => {
+            setIsReady(true);
+          }, loadDelay);
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(containerRef.current);
+    return () => {
+      observer.disconnect();
+      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    };
+  }, [src, loadDelay]);
+
+  // When video element mounts, load metadata + first frame
+  useEffect(() => {
+    if (!isReady || !videoRef.current) return;
     const video = videoRef.current;
-    const onReady = () => {
-      setIsReady(true);
+
+    const onLoaded = () => {
+      video.play().catch(() => {});
     };
 
-    video.addEventListener('loadeddata', onReady, { once: true });
+    video.addEventListener('loadeddata', onLoaded, { once: true });
     video.load();
 
     return () => {
-      video.removeEventListener('loadeddata', onReady);
+      video.removeEventListener('loadeddata', onLoaded);
     };
-  }, [shouldLoad, src]);
+  }, [isReady]);
 
   return (
-    <div
-      ref={containerRef}
-      className={className}
-      style={{ position: 'relative', overflow: 'hidden' }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Video: always in DOM once shouldLoad, but hidden until ready */}
-      {shouldLoad && (
+    <div ref={containerRef} className={className} style={{ position: 'relative', overflow: 'hidden' }}>
+      {/* Video: layered behind poster, fades in when first frame ready */}
+      {isReady && (
         <video
           ref={videoRef}
           src={src}
@@ -69,30 +69,28 @@ export default function LazyVideo({ src, poster, className, onMouseEnter, onMous
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            position: isReady ? 'relative' : 'absolute',
+            position: 'absolute',
             top: 0,
             left: 0,
+            zIndex: 2,
             opacity: isReady ? 1 : 0,
-            zIndex: isReady ? 1 : -1,
-            transition: 'opacity 0.3s',
+            transition: 'opacity 0.4s',
           }}
         />
       )}
-      {/* Poster: always visible until video first frame is ready */}
-      {!isReady && (
-        <img
-          src={poster}
-          alt=""
-          decoding="async"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            position: 'relative',
-            zIndex: 1,
-          }}
-        />
-      )}
+      {/* Poster: ALWAYS visible underneath, never blank */}
+      <img
+        src={poster}
+        alt=""
+        decoding="async"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      />
     </div>
   );
 }
