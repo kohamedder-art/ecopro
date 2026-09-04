@@ -8,11 +8,8 @@ interface LazyVideoProps {
 
 export default function LazyVideo({ src, poster, className }: LazyVideoProps) {
   const [inView, setInView] = useState(false);
-  const [firstFrameReady, setFirstFrameReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Detect when visible — then start loading
   useEffect(() => {
     if (!containerRef.current || !src) return;
 
@@ -30,22 +27,10 @@ export default function LazyVideo({ src, poster, className }: LazyVideoProps) {
     return () => observer.disconnect();
   }, [src]);
 
-  // When video element mounts, detect first frame
-  useEffect(() => {
-    if (!inView || !videoRef.current) return;
-    const video = videoRef.current;
-
-    const onData = () => setFirstFrameReady(true);
-    video.addEventListener('loadeddata', onData, { once: true });
-
-    return () => video.removeEventListener('loadeddata', onData);
-  }, [inView]);
-
   return (
     <div ref={containerRef} className={className} style={{ position: 'relative', overflow: 'hidden' }}>
       {inView && (
         <video
-          ref={videoRef}
           src={src}
           muted
           loop
@@ -60,8 +45,6 @@ export default function LazyVideo({ src, poster, className }: LazyVideoProps) {
             top: 0,
             left: 0,
             zIndex: 2,
-            opacity: firstFrameReady ? 1 : 0,
-            transition: 'opacity 0.3s',
           }}
         />
       )}
