@@ -4,16 +4,15 @@ interface LazyVideoProps {
   src: string;
   poster: string;
   className?: string;
-  /** Delay in ms before video starts loading. Default 2000ms (2s) between videos. */
-  loadDelay?: number;
 }
 
-export default function LazyVideo({ src, poster, className, loadDelay = 2000 }: LazyVideoProps) {
-  const [isReady, setIsReady] = useState(false);
+export default function LazyVideo({ src, poster, className }: LazyVideoProps) {
+  const [inView, setInView] = useState(false);
+  const [firstFrameReady, setFirstFrameReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const loadTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Detect when visible — then start loading
   useEffect(() => {
     if (!containerRef.current || !src) return;
 
@@ -21,47 +20,37 @@ export default function LazyVideo({ src, poster, className, loadDelay = 2000 }: 
       ([entry]) => {
         if (entry.isIntersecting) {
           observer.disconnect();
-          loadTimerRef.current = setTimeout(() => {
-            setIsReady(true);
-          }, loadDelay);
+          setInView(true);
         }
       },
-      { rootMargin: '100px' }
+      { rootMargin: '300px' }
     );
 
     observer.observe(containerRef.current);
-    return () => {
-      observer.disconnect();
-      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
-    };
-  }, [src, loadDelay]);
+    return () => observer.disconnect();
+  }, [src]);
 
+  // When video element mounts, detect first frame
   useEffect(() => {
-    if (!isReady || !videoRef.current) return;
+    if (!inView || !videoRef.current) return;
     const video = videoRef.current;
 
-    const onLoaded = () => {
-      video.play().catch(() => {});
-    };
+    const onData = () => setFirstFrameReady(true);
+    video.addEventListener('loadeddata', onData, { once: true });
 
-    video.addEventListener('loadeddata', onLoaded, { once: true });
-    video.load();
-
-    return () => {
-      video.removeEventListener('loadeddata', onLoaded);
-    };
-  }, [isReady]);
+    return () => video.removeEventListener('loadeddata', onData);
+  }, [inView]);
 
   return (
     <div ref={containerRef} className={className} style={{ position: 'relative', overflow: 'hidden' }}>
-      {/* Video: behind poster, fades in when first frame ready */}
-      {isReady && (
+      {inView && (
         <video
           ref={videoRef}
           src={src}
           muted
           loop
           playsInline
+          autoPlay
           preload="auto"
           style={{
             width: '100%',
@@ -71,12 +60,11 @@ export default function LazyVideo({ src, poster, className, loadDelay = 2000 }: 
             top: 0,
             left: 0,
             zIndex: 2,
-            opacity: isReady ? 1 : 0,
-            transition: 'opacity 0.4s',
+            opacity: firstFrameReady ? 1 : 0,
+            transition: 'opacity 0.3s',
           }}
         />
       )}
-      {/* Poster: ALWAYS visible — no blank products */}
       <img
         src={poster}
         alt=""

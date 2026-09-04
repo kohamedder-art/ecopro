@@ -371,7 +371,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                   <div className="relative overflow-hidden" style={{ aspectRatio: '5 / 7', backgroundColor: surfaceMuted }}>
                     {hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
                       <LazyVideo src={hasVideo} poster={firstImage || thumb || ''}
-                        loadDelay={index * 2000}
                         className="w-full h-full object-cover" />
                     ) : hasVideo && (gridImageIndex[product.id] || 0) === 0 && hasVideo?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
                       <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
@@ -816,7 +815,6 @@ export default function ZenithTemplate({ settings, products, canManage, storeSlu
                           <LazyVideo
                             src={hasVideo}
                             poster={firstImage || ''}
-                            loadDelay={2000}
                             className="w-full h-full"
                           />
                         ) : hasVideo && hasVideo.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/) ? (
