@@ -34,8 +34,23 @@ export default function SpiriluxeTemplate({
       ? rawBgImage
       : `url(${rawBgImage})`)
     : '';
+  const mixHex = (a: string, b: string, w: number) => {
+    const norm = (h: string) => {
+      h = (h || '').replace('#', '');
+      if (h.length === 3) h = h.split('').map(c => c + c).join('');
+      return h.length === 6 ? h : 'ffffff';
+    };
+    const ha = norm(a), hb = norm(b);
+    const ch = (i: number) => {
+      const v = Math.round(parseInt(ha.substring(i, i + 2), 16) * (1 - w) + parseInt(hb.substring(i, i + 2), 16) * w);
+      return Math.max(0, Math.min(255, isNaN(v) ? 255 : v)).toString(16).padStart(2, '0');
+    };
+    return `#${ch(0)}${ch(2)}${ch(4)}`;
+  };
   const isDark = useMemo(() => {
-    const hex = bgColor.replace('#', '');
+    let hex = (bgColor || '').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    if (hex.length !== 6) return false;
     const r = parseInt(hex.substring(0, 2), 16);
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
@@ -44,8 +59,8 @@ export default function SpiriluxeTemplate({
   const textColor = isDark ? '#f1f5f9' : '#0f172a';
   const textMuted = isDark ? '#94a3b8' : '#334155';
   const borderColor = isDark ? '#64748b' : '#cbd5e1';
-  const cardBg = isDark ? '#1e293b' : '#ffffff';
-  const surfaceMuted = isDark ? '#1e293b' : '#ffffff';
+  const cardBg = isDark ? mixHex(bgColor, '#273549', 0.55) : mixHex(bgColor, '#ffffff', 0.65);
+  const surfaceMuted = isDark ? mixHex(bgColor, '#16202e', 0.5) : mixHex(bgColor, '#eef1f5', 0.55);
   const currency = settings?.currency_code || 'د.ج';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,15 +103,32 @@ export default function SpiriluxeTemplate({
   const [videoFailed, setVideoFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState<Record<number, boolean>>({});
   // ─── Store (all-products) view ───
-  const [showStore, setShowStore] = useState(false);
+  // No slug in URL = store home = grid. Product slug = that product's landing.
+  // There is no special "main product".
+  const [showStore, setShowStore] = useState(!initialProductSlug);
   const [storeSearch, setStoreSearch] = useState('');
   const [storeCat, setStoreCat] = useState('');
   // ─── Product Selection ───
-  const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
+  const urlProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug) : null) || products?.[0];
+  // Instant switch: show the clicked product immediately instead of waiting
+  // for the URL to catch up (avoids flashing the previous product first)
+  const [pendingProduct, setPendingProduct] = useState<any>(null);
+  useEffect(() => {
+    if (pendingProduct && initialProductSlug && (pendingProduct.slug === initialProductSlug || String(pendingProduct.id) === String(initialProductSlug))) {
+      setPendingProduct(null);
+    }
+  }, [initialProductSlug]);
+  const mainProduct = pendingProduct || urlProduct;
 
   useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
-  // Opening a product URL always shows the product landing, never the store grid
-  useEffect(() => { setShowStore(false); }, [initialProductSlug]);
+  // Always start at the top when the shown product changes (covers
+  // similar-product clicks and browser back/forward, even as images load)
+  useEffect(() => { window.scrollTo(0, 0); }, [mainProduct?.id]);
+  // URL is the source of truth: store root shows the grid, product URL shows that product
+  useEffect(() => {
+    setShowStore(!initialProductSlug);
+    window.scrollTo(0, 0);
+  }, [initialProductSlug]);
 
   const goStore = () => {
     setShowStore(true);
@@ -107,6 +139,7 @@ export default function SpiriluxeTemplate({
   };
   const goProduct = (p: any) => {
     setShowStore(false);
+    setPendingProduct(p);
     if (onProductView) onProductView(p);
     if (navigate) navigate(buildStoreUrl(storeSlug, p?.slug || String(p.id)));
     window.scrollTo(0, 0);
@@ -412,9 +445,9 @@ export default function SpiriluxeTemplate({
     });
     const dp = (n: number) => Math.round(n || 0).toLocaleString();
     return (
-      <div className="min-h-screen" dir="rtl" style={{ backgroundColor: '#f2f2f2', color: '#222' }}>
+      <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', color: textColor }}>
         {/* Utility strip */}
-        <div style={{ backgroundColor: '#222', color: '#fff' }}>
+        <div style={{ backgroundColor: accentColor, color: '#fff' }}>
           <div className="max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 text-[11px]">
             <span>الدفع عند الاستلام</span>
             <span className="hidden sm:inline">التوصيل متوفر لـ 58 ولاية</span>
@@ -422,54 +455,48 @@ export default function SpiriluxeTemplate({
           </div>
         </div>
         {/* Header */}
-        <div style={{ backgroundColor: '#fff', borderBottom: '2px solid #222' }}>
+        <div style={{ backgroundColor: cardBg, borderBottom: `2px solid ${accentColor}` }}>
           <div className="max-w-7xl mx-auto flex items-center gap-3 px-3 py-3">
             {settings?.store_logo ? (
               <img src={settings.store_logo} alt={settings?.store_name || ''} className="h-10 object-contain" />
             ) : null}
-            <div className="font-bold text-lg" style={{ color: '#222' }}>{settings?.store_name || 'المتجر'}</div>
+            <div className="font-bold text-lg" style={{ color: textColor }}>{settings?.store_name || 'المتجر'}</div>
             <div className="flex-1" />
-            <div className="hidden sm:flex" style={{ border: '1px solid #999' }}>
+            <div className="hidden sm:flex" style={{ border: `1px solid ${borderColor}` }}>
               <input
                 value={storeSearch}
                 onChange={e => setStoreSearch(e.target.value)}
                 placeholder="ابحث عن منتج..."
                 className="px-3 py-2 text-sm outline-none w-56"
-                style={{ backgroundColor: '#fff', color: '#222' }}
+                style={{ backgroundColor: cardBg, color: textColor }}
               />
-              <span className="px-4 py-2 text-sm font-bold flex items-center" style={{ backgroundColor: '#222', color: '#fff' }}>بحث</span>
+              <span className="px-4 py-2 text-sm font-bold flex items-center" style={{ backgroundColor: accentColor, color: '#fff' }}>بحث</span>
             </div>
-            {mainProduct && (
-              <button onClick={() => goProduct(mainProduct)} className="px-3 py-2 text-xs font-bold flex items-center gap-1.5" style={{ border: '1px solid #222', color: '#222', backgroundColor: '#fff' }}>
-                <Home size={14} />
-                المنتج الرئيسي
-              </button>
-            )}
           </div>
           <div className="max-w-7xl mx-auto px-3 pb-3 sm:hidden">
-            <div className="flex" style={{ border: '1px solid #999' }}>
+            <div className="flex" style={{ border: `1px solid ${borderColor}` }}>
               <input
                 value={storeSearch}
                 onChange={e => setStoreSearch(e.target.value)}
                 placeholder="ابحث عن منتج..."
                 className="flex-1 px-3 py-2 text-sm outline-none"
-                style={{ backgroundColor: '#fff', color: '#222' }}
+                style={{ backgroundColor: cardBg, color: textColor }}
               />
-              <span className="px-4 py-2 text-sm font-bold flex items-center" style={{ backgroundColor: '#222', color: '#fff' }}><Search size={14} /></span>
+              <span className="px-4 py-2 text-sm font-bold flex items-center" style={{ backgroundColor: accentColor, color: '#fff' }}><Search size={14} /></span>
             </div>
           </div>
         </div>
         {/* Breadcrumb + categories */}
         <div className="max-w-7xl mx-auto px-3 pt-3">
-          <div className="flex items-center justify-between text-xs" style={{ color: '#555' }}>
+          <div className="flex items-center justify-between text-xs" style={{ color: textMuted }}>
             <span>الرئيسية / جميع المنتجات</span>
             <span>{storeProducts.length} منتج</span>
           </div>
           {allCats.length > 0 && (
             <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-              <button onClick={() => setStoreCat('')} className="shrink-0 px-4 py-1.5 text-xs font-bold" style={{ border: '1px solid #222', backgroundColor: !storeCat ? '#222' : '#fff', color: !storeCat ? '#fff' : '#222' }}>الكل</button>
+              <button onClick={() => setStoreCat('')} className="shrink-0 px-4 py-1.5 text-xs font-bold" style={{ border: `1px solid ${accentColor}`, backgroundColor: !storeCat ? accentColor : cardBg, color: !storeCat ? '#fff' : textColor }}>الكل</button>
               {allCats.map(c => (
-                <button key={c} onClick={() => setStoreCat(c)} className="shrink-0 px-4 py-1.5 text-xs font-bold" style={{ border: '1px solid #222', backgroundColor: storeCat === c ? '#222' : '#fff', color: storeCat === c ? '#fff' : '#222' }}>{c}</button>
+                <button key={c} onClick={() => setStoreCat(c)} className="shrink-0 px-4 py-1.5 text-xs font-bold" style={{ border: `1px solid ${accentColor}`, backgroundColor: storeCat === c ? accentColor : cardBg, color: storeCat === c ? '#fff' : textColor }}>{c}</button>
               ))}
             </div>
           )}
@@ -477,7 +504,7 @@ export default function SpiriluxeTemplate({
         {/* Grid */}
         <div className="max-w-7xl mx-auto px-3 py-4">
           {storeProducts.length === 0 ? (
-            <div className="text-center py-16 text-sm" style={{ backgroundColor: '#fff', border: '1px solid #ddd', color: '#555' }}>
+            <div className="text-center py-16 text-sm" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}`, color: textMuted }}>
               لا توجد منتجات مطابقة للبحث
             </div>
           ) : (
@@ -487,26 +514,26 @@ export default function SpiriluxeTemplate({
                 const disc = p.original_price && p.original_price > p.price ? Math.round(((p.original_price - p.price) / p.original_price) * 100) : 0;
                 const low = p.stock_quantity > 0 && p.stock_quantity <= 5;
                 return (
-                  <div key={p.id} onClick={() => goProduct(p)} className="cursor-pointer" style={{ backgroundColor: '#fff', border: '1px solid #ddd' }}>
-                    <div style={{ aspectRatio: '3 / 4', backgroundColor: '#eee' }}>
+                  <div key={p.id} onClick={() => goProduct(p)} className="cursor-pointer" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
+                    <div style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
                       {img ? (
                         <img src={img} alt={p.title || ''} loading="lazy" decoding="async" className="w-full h-full" style={{ objectFit: 'cover', display: 'block' }} />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#999' }}>لا توجد صورة</div>
+                        <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: textMuted }}>لا توجد صورة</div>
                       )}
                     </div>
-                    <div className="p-2.5" style={{ borderTop: '1px solid #ddd' }}>
-                      <div className="text-xs leading-snug" style={{ color: '#222', height: '2.2em', overflow: 'hidden' }}>{p.title || p.name || 'منتج'}</div>
+                    <div className="p-2.5" style={{ borderTop: `1px solid ${borderColor}` }}>
+                      <div className="text-xs leading-snug" style={{ color: textColor, height: '2.2em', overflow: 'hidden' }}>{p.title || p.name || 'منتج'}</div>
                       <div className="flex items-baseline gap-2 mt-1.5">
-                        <span className="text-base font-bold" dir="ltr" style={{ color: '#b00000' }}>{dp(p.price)}</span>
-                        <span className="text-[10px]" style={{ color: '#555' }}>{currency}</span>
+                        <span className="text-base font-bold" dir="ltr" style={{ color: accentColor }}>{dp(p.price)}</span>
+                        <span className="text-[10px]" style={{ color: textMuted }}>{currency}</span>
                         {p.original_price && p.original_price > p.price && (
-                          <span className="text-[11px]" dir="ltr" style={{ color: '#888', textDecoration: 'line-through' }}>{dp(p.original_price)}</span>
+                          <span className="text-[11px]" dir="ltr" style={{ color: textMuted, textDecoration: 'line-through' }}>{dp(p.original_price)}</span>
                         )}
-                        {disc > 0 && <span className="text-[11px] font-bold" style={{ color: '#b00000' }}>-{disc}%</span>}
+                        {disc > 0 && <span className="text-[11px] font-bold" style={{ color: accentColor }}>-{disc}%</span>}
                       </div>
-                      {low && <div className="text-[11px] mt-1" style={{ color: '#b36a00' }}>بقي {p.stock_quantity} فقط في المخزون</div>}
-                      <button className="w-full mt-2 py-2 text-xs font-bold" style={{ border: '1px solid #222', color: '#222', backgroundColor: '#fff' }}>عرض المنتج</button>
+                      {low && <div className="text-[11px] mt-1" style={{ color: accentColor }}>بقي {p.stock_quantity} فقط في المخزون</div>}
+                      <button className="w-full mt-2 py-2 text-xs font-bold" style={{ border: `1px solid ${textColor}`, color: textColor, backgroundColor: 'transparent' }}>عرض المنتج</button>
                     </div>
                   </div>
                 );
@@ -515,11 +542,11 @@ export default function SpiriluxeTemplate({
           )}
         </div>
         {/* Footer */}
-        <div className="mt-6" style={{ backgroundColor: '#222', color: '#ccc' }}>
-          <div className="max-w-7xl mx-auto px-3 py-5 text-center text-xs">
-            <div className="font-bold text-sm" style={{ color: '#fff' }}>{settings?.store_name || 'المتجر'}</div>
+        <div className="mt-6" style={{ backgroundColor: cardBg, borderTop: `2px solid ${accentColor}` }}>
+          <div className="max-w-7xl mx-auto px-3 py-5 text-center text-xs" style={{ color: textMuted }}>
+            <div className="font-bold text-sm" style={{ color: textColor }}>{settings?.store_name || 'المتجر'}</div>
             <div className="mt-2">الدفع عند الاستلام &nbsp;|&nbsp; توصيل لـ 58 ولاية &nbsp;|&nbsp; <span dir="ltr">{settings?.store_phone || ''}</span></div>
-            <div className="mt-2"><a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>made by sahla4eco</a></div>
+            <div className="mt-2"><a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: textMuted }}>made by sahla4eco</a></div>
           </div>
         </div>
       </div>
@@ -937,7 +964,7 @@ export default function SpiriluxeTemplate({
         title="العودة للمتجر"
         aria-label="العودة للمتجر"
         className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[9999] w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-white"
-        style={{ backgroundColor: '#222' }}
+        style={{ backgroundColor: accentColor }}
       >
         <Home className="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
