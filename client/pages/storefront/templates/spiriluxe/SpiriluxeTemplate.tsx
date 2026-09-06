@@ -10,7 +10,7 @@ import { buildStoreUrl } from '@/lib/resolvedStore';
 import { getAlgeriaCommunesByWilayaId, getAlgeriaCommuneById, communeDisplayName } from '@/lib/algeriaGeo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
 import VariantSelector, { SelectedVariant } from '@/components/storefront/VariantSelector';
-import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown, User, Phone, MapPin, ShoppingBag } from 'lucide-react';
+import { Truck, Shield, Trash2, Plus, Home, Building2, ChevronDown, User, Phone, MapPin, ShoppingBag, Search } from 'lucide-react';
 import { uploadImage } from '@/lib/api';
 import { trackAllPixels, PixelEvents } from '@/components/storefront/PixelScripts';
 import { useABTestVariant, useABTestIdFromUrl } from '@/hooks/useABTest';
@@ -87,10 +87,30 @@ export default function SpiriluxeTemplate({
 
   const [videoFailed, setVideoFailed] = useState(false);
   const [imgLoaded, setImgLoaded] = useState<Record<number, boolean>>({});
+  // ─── Store (all-products) view ───
+  const [showStore, setShowStore] = useState(false);
+  const [storeSearch, setStoreSearch] = useState('');
+  const [storeCat, setStoreCat] = useState('');
   // ─── Product Selection ───
   const mainProduct = (initialProductSlug ? products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug) : null) || (settings?.dzp_main_product_id ? products?.find((p: any) => String(p.id) === String(settings.dzp_main_product_id)) : null) || products?.[0];
 
   useEffect(() => { if (mainProduct && onProductView) onProductView(mainProduct); }, [mainProduct?.id]);
+  // Opening a product URL always shows the product landing, never the store grid
+  useEffect(() => { setShowStore(false); }, [initialProductSlug]);
+
+  const goStore = () => {
+    setShowStore(true);
+    setStoreSearch('');
+    setStoreCat('');
+    if (navigate) navigate(buildStoreUrl(storeSlug));
+    window.scrollTo(0, 0);
+  };
+  const goProduct = (p: any) => {
+    setShowStore(false);
+    if (onProductView) onProductView(p);
+    if (navigate) navigate(buildStoreUrl(storeSlug, p?.slug || String(p.id)));
+    window.scrollTo(0, 0);
+  };
 
   // ── Video (product metadata or store-level hero_video_url) ──
   const videoUrl = (mainProduct as any)?.metadata?.video_url || (settings as any)?.hero_video_url || '';
@@ -358,33 +378,16 @@ export default function SpiriluxeTemplate({
         const globalIndex = startIndex + i;
         return (
           <div key={url + globalIndex} className="relative group">
-            <img src={url.includes('cloudinary.com') && !url.includes('?tr=') ? `${url}?tr=w_400,q_auto,f_auto,c_limit` : url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" width="1200" height="675" style={{ contentVisibility: 'auto', filter: imgLoaded[globalIndex] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [globalIndex]: true}))} />
+            <img src={url} alt="" className="w-full block object-contain" loading={startIndex + i === 0 ? 'eager' : 'lazy'} fetchpriority={startIndex + i === 0 ? 'high' : 'low'} decoding="async" width="1200" height="675" style={{ contentVisibility: 'auto' }} />
             {canManage && (
               <div className="absolute top-2 right-2 flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                {/* Show ↑ if not first image, OR if it's the first below-image (can cross into above) */}
                 {(globalIndex > 0 || (position === 'below' && globalIndex === (aboveCount ?? productImages.length))) && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleMoveImage(globalIndex, 'up'); }}
-                    className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold"
-                    title="Move up"
-                  >↑</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleMoveImage(globalIndex, 'up'); }} className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold" title="Move up">↑</button>
                 )}
-                {/* Show ↓ if not last image, OR if it's the last above-image (can cross into below) */}
                 {(globalIndex < productImages.length - 1 || (position === 'above' && globalIndex === (aboveCount ?? productImages.length) - 1)) && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); handleMoveImage(globalIndex, 'down'); }}
-                    className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold"
-                    title="Move down"
-                  >↓</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleMoveImage(globalIndex, 'down'); }} className="p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 text-xs font-bold" title="Move down">↓</button>
                 )}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); handleRemoveImage(globalIndex); }}
-                  className="p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
-                  title="Remove"
-                ><Trash2 className="w-4 h-4" /></button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveImage(globalIndex); }} className="p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600" title="Remove"><Trash2 className="w-4 h-4" /></button>
               </div>
             )}
           </div>
@@ -398,11 +401,138 @@ export default function SpiriluxeTemplate({
   const belowImages = productImages.slice(currentAboveCount);
 
   // ─── Render ───
+  // ── STORE VIEW: classic square Web 2.0 all-products page ──
+  if (showStore) {
+    const allCats = [...new Set((products || []).map((p: any) => p.category).filter(Boolean))] as string[];
+    const q = storeSearch.trim().toLowerCase();
+    const storeProducts = (products || []).filter((p: any) => {
+      if (storeCat && p.category !== storeCat) return false;
+      if (q && !(p.title?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q))) return false;
+      return true;
+    });
+    const dp = (n: number) => Math.round(n || 0).toLocaleString();
+    return (
+      <div className="min-h-screen" dir="rtl" style={{ backgroundColor: '#f2f2f2', color: '#222' }}>
+        {/* Utility strip */}
+        <div style={{ backgroundColor: '#222', color: '#fff' }}>
+          <div className="max-w-7xl mx-auto flex items-center justify-between px-3 py-1.5 text-[11px]">
+            <span>الدفع عند الاستلام</span>
+            <span className="hidden sm:inline">التوصيل متوفر لـ 58 ولاية</span>
+            <span dir="ltr">{settings?.store_phone || ''}</span>
+          </div>
+        </div>
+        {/* Header */}
+        <div style={{ backgroundColor: '#fff', borderBottom: '2px solid #222' }}>
+          <div className="max-w-7xl mx-auto flex items-center gap-3 px-3 py-3">
+            {settings?.store_logo ? (
+              <img src={settings.store_logo} alt={settings?.store_name || ''} className="h-10 object-contain" />
+            ) : null}
+            <div className="font-bold text-lg" style={{ color: '#222' }}>{settings?.store_name || 'المتجر'}</div>
+            <div className="flex-1" />
+            <div className="hidden sm:flex" style={{ border: '1px solid #999' }}>
+              <input
+                value={storeSearch}
+                onChange={e => setStoreSearch(e.target.value)}
+                placeholder="ابحث عن منتج..."
+                className="px-3 py-2 text-sm outline-none w-56"
+                style={{ backgroundColor: '#fff', color: '#222' }}
+              />
+              <span className="px-4 py-2 text-sm font-bold flex items-center" style={{ backgroundColor: '#222', color: '#fff' }}>بحث</span>
+            </div>
+            {mainProduct && (
+              <button onClick={() => goProduct(mainProduct)} className="px-3 py-2 text-xs font-bold flex items-center gap-1.5" style={{ border: '1px solid #222', color: '#222', backgroundColor: '#fff' }}>
+                <Home size={14} />
+                المنتج الرئيسي
+              </button>
+            )}
+          </div>
+          <div className="max-w-7xl mx-auto px-3 pb-3 sm:hidden">
+            <div className="flex" style={{ border: '1px solid #999' }}>
+              <input
+                value={storeSearch}
+                onChange={e => setStoreSearch(e.target.value)}
+                placeholder="ابحث عن منتج..."
+                className="flex-1 px-3 py-2 text-sm outline-none"
+                style={{ backgroundColor: '#fff', color: '#222' }}
+              />
+              <span className="px-4 py-2 text-sm font-bold flex items-center" style={{ backgroundColor: '#222', color: '#fff' }}><Search size={14} /></span>
+            </div>
+          </div>
+        </div>
+        {/* Breadcrumb + categories */}
+        <div className="max-w-7xl mx-auto px-3 pt-3">
+          <div className="flex items-center justify-between text-xs" style={{ color: '#555' }}>
+            <span>الرئيسية / جميع المنتجات</span>
+            <span>{storeProducts.length} منتج</span>
+          </div>
+          {allCats.length > 0 && (
+            <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+              <button onClick={() => setStoreCat('')} className="shrink-0 px-4 py-1.5 text-xs font-bold" style={{ border: '1px solid #222', backgroundColor: !storeCat ? '#222' : '#fff', color: !storeCat ? '#fff' : '#222' }}>الكل</button>
+              {allCats.map(c => (
+                <button key={c} onClick={() => setStoreCat(c)} className="shrink-0 px-4 py-1.5 text-xs font-bold" style={{ border: '1px solid #222', backgroundColor: storeCat === c ? '#222' : '#fff', color: storeCat === c ? '#fff' : '#222' }}>{c}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Grid */}
+        <div className="max-w-7xl mx-auto px-3 py-4">
+          {storeProducts.length === 0 ? (
+            <div className="text-center py-16 text-sm" style={{ backgroundColor: '#fff', border: '1px solid #ddd', color: '#555' }}>
+              لا توجد منتجات مطابقة للبحث
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" style={{ gap: '10px' }}>
+              {storeProducts.map((p: any) => {
+                const img = (p.images || []).find((u: string) => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)) || p.images?.[0] || '';
+                const disc = p.original_price && p.original_price > p.price ? Math.round(((p.original_price - p.price) / p.original_price) * 100) : 0;
+                const low = p.stock_quantity > 0 && p.stock_quantity <= 5;
+                return (
+                  <div key={p.id} onClick={() => goProduct(p)} className="cursor-pointer" style={{ backgroundColor: '#fff', border: '1px solid #ddd' }}>
+                    <div style={{ aspectRatio: '3 / 4', backgroundColor: '#eee' }}>
+                      {img ? (
+                        <img src={img} alt={p.title || ''} loading="lazy" decoding="async" className="w-full h-full" style={{ objectFit: 'cover', display: 'block' }} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#999' }}>لا توجد صورة</div>
+                      )}
+                    </div>
+                    <div className="p-2.5" style={{ borderTop: '1px solid #ddd' }}>
+                      <div className="text-xs leading-snug" style={{ color: '#222', height: '2.2em', overflow: 'hidden' }}>{p.title || p.name || 'منتج'}</div>
+                      <div className="flex items-baseline gap-2 mt-1.5">
+                        <span className="text-base font-bold" dir="ltr" style={{ color: '#b00000' }}>{dp(p.price)}</span>
+                        <span className="text-[10px]" style={{ color: '#555' }}>{currency}</span>
+                        {p.original_price && p.original_price > p.price && (
+                          <span className="text-[11px]" dir="ltr" style={{ color: '#888', textDecoration: 'line-through' }}>{dp(p.original_price)}</span>
+                        )}
+                        {disc > 0 && <span className="text-[11px] font-bold" style={{ color: '#b00000' }}>-{disc}%</span>}
+                      </div>
+                      {low && <div className="text-[11px] mt-1" style={{ color: '#b36a00' }}>بقي {p.stock_quantity} فقط في المخزون</div>}
+                      <button className="w-full mt-2 py-2 text-xs font-bold" style={{ border: '1px solid #222', color: '#222', backgroundColor: '#fff' }}>عرض المنتج</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {/* Footer */}
+        <div className="mt-6" style={{ backgroundColor: '#222', color: '#ccc' }}>
+          <div className="max-w-7xl mx-auto px-3 py-5 text-center text-xs">
+            <div className="font-bold text-sm" style={{ color: '#fff' }}>{settings?.store_name || 'المتجر'}</div>
+            <div className="mt-2">الدفع عند الاستلام &nbsp;|&nbsp; توصيل لـ 58 ولاية &nbsp;|&nbsp; <span dir="ltr">{settings?.store_phone || ''}</span></div>
+            <div className="mt-2"><a href="https://sahla4eco.com" target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>made by sahla4eco</a></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen" dir="rtl" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', color: textColor }}>
       <div className="max-w-3xl mx-auto">
 
-        {/* Video Embed (above images) */}
+        {/* Images Above Form */}
+        {aboveImages.length > 0 && renderImages(aboveImages, 0, 'above')}
+
+        {/* Video Embed (below images) */}
         {videoEmbed && !videoFailed && (
           <div className="relative">
             {videoEmbed.type === 'youtube' ? (
@@ -420,9 +550,6 @@ export default function SpiriluxeTemplate({
             )}
           </div>
         )}
-
-        {/* Images Above Form */}
-        {aboveImages.length > 0 && renderImages(aboveImages, 0, 'above')}
 
         {/* Upload above button - editor only */}
         {canManage && (
@@ -708,6 +835,89 @@ export default function SpiriluxeTemplate({
         {/* Images Below Form */}
         {belowImages.length > 0 && renderImages(belowImages, currentAboveCount, 'below')}
 
+        {/* ── HOME BUTTON ── */}
+        <div className="px-3 pt-4 pb-2">
+          <button
+            onClick={goStore}
+            className="w-full py-3 font-bold text-sm flex items-center justify-center gap-2"
+            style={{ border: `1.5px solid ${borderColor}`, color: textColor, backgroundColor: cardBg }}
+          >
+            <Home size={16} />
+            العودة للمتجر
+          </button>
+        </div>
+
+        {/* ── SIMILAR PRODUCTS ── */}
+        {(() => {
+          const otherProducts = (products || []).filter((p: any) => String(p.id) !== String(mainProduct?.id));
+          if (otherProducts.length === 0) return null;
+          const optimizeImg = (url: string) => url?.includes('cloudinary.com') && !url.includes('?tr=') ? `${url}?tr=w_400,q_auto,f_auto,c_limit` : url;
+          const displayPrice = (n: number) => Math.round(n).toLocaleString();
+          return (
+            <div className="px-3 pt-1 pb-5">
+              <h3 className="text-base font-bold mb-3" style={{ color: textColor }}>منتجات أخرى من المتجر</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {otherProducts.map((p: any) => {
+                  const allImages = p.images || [];
+                  const firstImage = allImages.find((img: string) => !/\.(mp4|webm|ogg)(\?|$)/i.test(img)) || '';
+                  const hasVideo = p.metadata?.video_url;
+                  const price = p.price || 0;
+                  const disc = p.original_price && p.original_price > price
+                    ? Math.round(((p.original_price - price) / p.original_price) * 100)
+                    : 0;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => goProduct(p)}
+                      className="cursor-pointer overflow-hidden"
+                      style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
+                    >
+                      <div className="relative" style={{ aspectRatio: '3 / 4', backgroundColor: surfaceMuted }}>
+                        {hasVideo && hasVideo.match(/\.(mp4|webm|ogg)(\?|$)/i) ? (
+                          <LazyVideo src={hasVideo} poster={firstImage || ''} className="w-full h-full" />
+                        ) : firstImage ? (
+                          <img
+                            src={optimizeImg(firstImage)}
+                            alt={p.title || ''}
+                            loading="lazy"
+                            decoding="async"
+                            width="400"
+                            height="400"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-3xl" style={{ backgroundColor: surfaceMuted }}>📦</div>
+                        )}
+                        {disc > 0 && (
+                          <span className="absolute top-2 right-2 text-[10px] font-bold text-white px-2 py-0.5" style={{ backgroundColor: '#ef4444' }}>
+                            -{disc}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2.5">
+                        <h4 className="text-xs font-medium leading-snug line-clamp-2" style={{ color: textColor }}>
+                          {p.title || p.name || 'منتج'}
+                        </h4>
+                        <div className="flex items-baseline gap-1.5 mt-1.5">
+                          <span className="text-sm font-bold" style={{ color: accentColor }}>
+                            {displayPrice(price)}
+                          </span>
+                          <span className="text-[10px]" style={{ color: textMuted }}>{currency}</span>
+                          {p.original_price && p.original_price > price && (
+                            <span className="text-[10px] line-through" style={{ color: textMuted }}>
+                              {displayPrice(p.original_price)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
 
         {/* Platform Link */}
         <div className="text-center py-6">
@@ -721,6 +931,16 @@ export default function SpiriluxeTemplate({
           </a>
         </div>
       </div>
+      {/* Floating home bubble — square, mirrors the contact bubbles side */}
+      <button
+        onClick={goStore}
+        title="العودة للمتجر"
+        aria-label="العودة للمتجر"
+        className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[9999] w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-white"
+        style={{ backgroundColor: '#222' }}
+      >
+        <Home className="w-5 h-5 sm:w-6 sm:h-6" />
+      </button>
     </div>
   );
 

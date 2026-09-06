@@ -104,10 +104,7 @@ export function RenderStorefront(t: TemplateId | string, props: TemplateProps) {
   const sanitizedProps: TemplateProps = {
     ...props,
     products: orderedProducts,
-    filtered: (props.filtered || []).map((p) => ({ ...p, category: undefined })),
-    categories: [],
-    categoryFilter: '',
-    setCategoryFilter: () => {},
+    filtered: props.filtered || [],
   };
 
   const TemplateComponent = getTemplate(id);

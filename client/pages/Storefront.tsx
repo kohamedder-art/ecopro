@@ -338,10 +338,9 @@ export default function Storefront() {
         }
         
         const items = (productsData?.products || productsData || []) as StoreProduct[];
-        // Strip categories from products for all storefront templates.
-        const withoutCategories = items.map((p) => ({ ...p, category: undefined }));
-        setProducts(withoutCategories);
-        setCategories([]);
+        setProducts(items);
+        const cats = [...new Set(items.map(p => p.category).filter(Boolean))] as string[];
+        setCategories(cats);
         setLoading(false);
       } catch (e: any) {
         if (!isMounted) return;
