@@ -874,8 +874,13 @@ export const getLowStockAlerts: RequestHandler = async (req, res) => {
     );
 
     res.json(result.rows);
-  } catch (error) {
+  } catch (error: any) {
     console.error('[getLowStockAlerts] error:', error);
+    // Alerts polling endpoint: on transient DB timeouts return an empty
+    // fallback instead of breaking the dashboard (next poll retries).
+    if (String(error?.message || '').toLowerCase().includes('timeout')) {
+      return res.json([]);
+    }
     res.status(500).json({ error: 'Failed to fetch low stock alerts' });
   }
 };

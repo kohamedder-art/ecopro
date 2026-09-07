@@ -20,6 +20,8 @@
  */
 
 import { ensureConnection } from '../utils/database';
+import { encryptData } from '../utils/encryption';
+import { importCompanyPrices, priceImportSupport } from './courier-pricing';
 import { generateText, GeminiContent } from './gemini';
 import { checkRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
 
@@ -571,14 +573,25 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'configure_delivery_integration': {
         const { companyId, apiKey, apiSecret, accountNumber, merchantId } = action;
         if (!companyId || !apiKey) return { success: false, message: 'معرف الشركة والمفتاح مطلوبان' };
+        const encKey = encryptData(String(apiKey));
+        const encSecret = apiSecret ? encryptData(String(apiSecret)) : null;
         const existing = await p.query(`SELECT id FROM delivery_integrations WHERE client_id = $1 AND delivery_company_id = $2`, [clientId, companyId]);
         if (existing.rows.length) {
-          await p.query(`UPDATE delivery_integrations SET api_key_encrypted = $1, is_enabled = true, updated_at = NOW() WHERE client_id = $2 AND delivery_company_id = $3`, [apiKey, clientId, companyId]);
+          await p.query(`UPDATE delivery_integrations SET api_key_encrypted = $1, api_secret_encrypted = COALESCE($2, api_secret_encrypted), account_number = COALESCE($3, account_number), merchant_id = COALESCE($4, merchant_id), is_enabled = true, updated_at = NOW() WHERE client_id = $5 AND delivery_company_id = $6`, [encKey, encSecret, accountNumber || null, merchantId || null, clientId, companyId]);
         } else {
-          await p.query(`INSERT INTO delivery_integrations (client_id, delivery_company_id, api_key_encrypted, api_secret_encrypted, account_number, merchant_id) VALUES ($1, $2, $3, $4, $5, $6)`, [clientId, companyId, apiKey, apiSecret || null, accountNumber || null, merchantId || null]);
+          await p.query(`INSERT INTO delivery_integrations (client_id, delivery_company_id, api_key_encrypted, api_secret_encrypted, account_number, merchant_id, is_enabled) VALUES ($1, $2, $3, $4, $5, $6, true)`, [clientId, companyId, encKey, encSecret, accountNumber || null, merchantId || null]);
         }
         const co = await p.query(`SELECT name FROM delivery_companies WHERE id = $1`, [companyId]);
-        return { success: true, message: `تم إعداد ${co.rows[0]?.name || 'شركة التوصيل'} ✅` };
+        const companyName = String(co.rows[0]?.name || 'شركة التوصيل');
+        // Auto-import wilaya prices from the company API when it provides them
+        if (priceImportSupport(companyName) !== null) {
+          setImmediate(() => {
+            importCompanyPrices({ clientId, companyId, companyName, apiKey: String(apiKey), apiSecret: apiSecret ? String(apiSecret) : undefined })
+              .then(r => console.log(`[Delivery] AI connect auto-imported ${r.imported.length} wilaya prices from ${r.source} for client ${clientId}`))
+              .catch(e => console.error('[Delivery] AI connect price import failed:', e?.message || e));
+          });
+        }
+        return { success: true, message: `تم إعداد ${companyName} ✅` };
       }
       case 'delete_delivery_integration': {
         const { companyId } = action;

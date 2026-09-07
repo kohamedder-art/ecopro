@@ -9,7 +9,7 @@
  */
 
 import { pool } from './database';
-import { decryptData } from './encryption';
+import { getIntegrationSecrets } from './integration-secrets';
 import { getCourierService } from '../services/courier-service';
 // Importing DeliveryService triggers the courier service registry side effects
 // (registerCourierService calls in delivery.ts populate the lookup map).
@@ -60,24 +60,24 @@ async function fetchPollableOrders(): Promise<PollableOrder[]> {
  * Get API credentials for a client + company
  */
 async function getCredentials(clientId: number, companyName: string): Promise<{ apiKey: string; secondary?: string } | null> {
-  const result = await pool.query(`
-    SELECT di.api_key_encrypted, di.api_secret_encrypted, di.account_number, di.merchant_id
-    FROM delivery_integrations di
-    JOIN delivery_companies dc ON dc.id = di.delivery_company_id
-    WHERE di.client_id = $1 AND dc.name = $2 AND di.is_enabled = true
-    LIMIT 1
-  `, [clientId, companyName]);
+  const companyIdRow = await pool.query(
+    `SELECT dc.id AS company_id
+     FROM delivery_companies dc
+     WHERE dc.name = $1
+     LIMIT 1`,
+    [companyName]
+  );
+  if (!companyIdRow.rows.length) return null;
 
-  if (!result.rows.length) return null;
-
-  const row = result.rows[0];
   try {
-    const apiKey = decryptData(row.api_key_encrypted);
+    const secrets = await getIntegrationSecrets(clientId, Number(companyIdRow.rows[0].company_id));
+    if (!secrets) return null;
     // Secondary credential: account_number (Noest GUID), merchant_id (Maystro Store ID), or api_secret
-    const secondary = row.account_number || row.merchant_id || (row.api_secret_encrypted ? decryptData(row.api_secret_encrypted) : undefined);
-    return { apiKey, secondary };
+    const secondary = secrets.accountNumber || secrets.merchantId || secrets.apiSecret;
+    return { apiKey: secrets.apiKey, secondary };
   } catch (err: any) {
-    // Don't disable — likely a temporary ENCRYPTION_KEY mismatch. Just skip this cycle.
+    // Genuine key mismatch (not legacy plaintext — that self-heals).
+    // Don't disable — just skip this cycle; dashboard flags reconnect needed.
     console.warn(`[TrackingPoll] Skipping ${companyName} for client ${clientId} — decrypt failed:`, err?.message || err);
     return null;
   }

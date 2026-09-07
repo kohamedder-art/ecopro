@@ -2174,8 +2174,13 @@ export const getFlaggedOrdersCount: RequestHandler = async (req, res) => {
       [storeIdVal]
     );
     res.json({ count: result.rows[0]?.count || 0 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Get flagged orders count error:", error);
+    // Badge polling endpoint: on transient DB timeouts return a stale
+    // fallback instead of breaking the dashboard.
+    if (String(error?.message || '').toLowerCase().includes('timeout')) {
+      return res.json({ count: 0, stale: true });
+    }
     res.status(500).json({ error: "Failed to get flagged orders count" });
   }
 };

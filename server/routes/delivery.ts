@@ -8,7 +8,8 @@ import {
   GenerateLabelSchema,
   ConfigureIntegrationSchema,
 } from '../types/delivery';
-import { encryptData } from '../utils/encryption';
+import { encryptData, decryptData } from '../utils/encryption';
+import { isEncryptedSecretFormat } from '../utils/integration-secrets';
 import { getCourierService } from '../services/courier-service';
 import { importCompanyPrices, priceImportSupport } from '../services/courier-pricing';
 
@@ -174,6 +175,7 @@ export const listDeliveryIntegrations: RequestHandler = async (req, res) => {
               is_enabled,
               (api_key_encrypted IS NOT NULL AND api_key_encrypted <> '') AS has_api_key,
               (api_secret_encrypted IS NOT NULL AND api_secret_encrypted <> '') AS has_api_secret,
+              api_key_encrypted,
               configured_at,
               updated_at
        FROM delivery_integrations
@@ -182,7 +184,23 @@ export const listDeliveryIntegrations: RequestHandler = async (req, res) => {
       [clientId]
     );
 
-    res.json(result.rows);
+    // Flag integrations whose stored key can no longer be decrypted
+    // (e.g. encryption key changed) so the dashboard can ask for reconnection.
+    // Legacy plaintext rows are NOT flagged — they self-heal on next use.
+    const rows = result.rows.map((r: any) => {
+      const { api_key_encrypted, ...rest } = r;
+      let needs_reconnect = false;
+      if (isEncryptedSecretFormat(api_key_encrypted)) {
+        try {
+          decryptData(api_key_encrypted);
+        } catch {
+          needs_reconnect = true;
+        }
+      }
+      return { ...rest, needs_reconnect };
+    });
+
+    res.json(rows);
   } catch (error: any) {
     console.error('[Delivery] listDeliveryIntegrations error:', error);
     res.status(500).json({ error: 'Failed to fetch integrations' });
@@ -357,26 +375,18 @@ export const downloadShippingLabel: RequestHandler = async (req, res) => {
       return;
     }
 
-    // Load integration credentials
-    const integrationResult = await pool.query(
-      `SELECT api_key_encrypted, api_secret_encrypted
-       FROM delivery_integrations
-       WHERE client_id = $1 AND delivery_company_id = $2 AND is_enabled = true`,
-      [clientId, Number(order.delivery_company_id)]
-    );
-
-    if (integrationResult.rows.length === 0) {
+    // Load integration credentials (self-heals legacy plaintext rows)
+    const { getCourierService } = await import('../services/courier-service');
+    const { getIntegrationSecrets } = await import('../utils/integration-secrets');
+    const secrets = await getIntegrationSecrets(Number(clientId), Number(order.delivery_company_id));
+    if (!secrets) {
       res.status(400).json({ error: 'Delivery integration not configured for this company' });
       return;
     }
 
     // Decrypt token and fetch label via courier service
-    const { decryptData } = await import('../utils/encryption');
-    const { getCourierService } = await import('../services/courier-service');
-    const token = decryptData(integrationResult.rows[0].api_key_encrypted);
-    const secondaryCredential = integrationResult.rows[0].api_secret_encrypted
-      ? decryptData(integrationResult.rows[0].api_secret_encrypted)
-      : undefined;
+    const token = secrets.apiKey;
+    const secondaryCredential = secrets.apiSecret;
 
     const service = getCourierService(order.company_name);
     if (!service || typeof (service as any).getLabelPdf !== 'function') {
@@ -472,9 +482,10 @@ export const registerDeliveryWebhook: RequestHandler = async (req, res) => {
     let webhookSecret: string | undefined;
 
     if (service?.registerWebhook) {
-      const { decryptData } = await import('../utils/encryption');
-      const apiKey = decryptData(row.api_key_encrypted);
-      const apiSecret = row.api_secret_encrypted ? decryptData(row.api_secret_encrypted) : undefined;
+      const { getIntegrationSecretsById } = await import('../utils/integration-secrets');
+      const secrets = await getIntegrationSecretsById(Number(integrationId), Number(clientId)).catch(() => null);
+      const apiKey = secrets?.apiKey || '';
+      const apiSecret = secrets?.apiSecret;
 
       try {
         const result = await service.registerWebhook(webhookUrl, apiKey, apiSecret);

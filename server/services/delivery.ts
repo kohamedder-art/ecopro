@@ -3,6 +3,7 @@
 
 import { pool } from '../utils/database';
 import { encryptData, decryptData } from '../utils/encryption';
+import { getIntegrationSecrets } from '../utils/integration-secrets';
 import { generateRequestId, logDeliveryEvent } from '../utils/delivery-logging';
 import { getCourierService } from './courier-service';
 import { registerCourierService } from './courier-service';
@@ -163,25 +164,17 @@ export class DeliveryService {
         return s.length ? s : undefined;
       })();
 
-      const integrationResult = await pool.query(
-        `SELECT id, api_key_encrypted, api_secret_encrypted, merchant_id
-         FROM delivery_integrations
-         WHERE client_id = $1 AND delivery_company_id = $2 AND is_enabled = true`,
-        [clientId, companyId]
-      );
-
-      if (integrationResult.rows.length === 0) {
+      const secrets = await getIntegrationSecrets(Number(clientId), Number(companyId));
+      if (!secrets) {
         throw new Error('لم يتم تكوين تكامل التوصيل لهذه الشركة');
       }
 
-      const integration = integrationResult.rows[0];
+      const integration = { merchant_id: secrets.merchantId };
       let apiKey: string;
       let secondaryCredential: string | undefined;
       try {
-        apiKey = decryptData(integration.api_key_encrypted);
-        secondaryCredential = integration.api_secret_encrypted
-          ? decryptData(integration.api_secret_encrypted)
-          : undefined;
+        apiKey = secrets.apiKey;
+        secondaryCredential = secrets.apiSecret;
       } catch {
         throw new Error('فشل فك تشفير بيانات التوصيل. يرجى إعادة حفظ بيانات الشركة في الإعدادات');
       }

@@ -7,8 +7,8 @@
 
 import { Router, RequestHandler } from 'express';
 import { ensureConnection } from '../utils/database';
-import { decryptData } from '../utils/encryption';
 import { importCompanyPrices } from '../services/courier-pricing';
+import { getIntegrationSecrets } from '../utils/integration-secrets';
 
 const router = Router();
 
@@ -374,19 +374,17 @@ export const importFromDeliveryCompany: RequestHandler = async (req, res) => {
     }
 
     const companyName = String(integrationResult.rows[0].name || '');
-    const apiKey = decryptData(integrationResult.rows[0].api_key_encrypted || '');
-    if (!apiKey) {
-      return res.status(400).json({ error: 'Missing API token in integration' });
+    const secrets = await getIntegrationSecrets(clientId, deliveryCompanyId);
+    if (!secrets) {
+      return res.status(400).json({ error: 'Delivery integration not configured for this company' });
     }
-    const apiSecretEnc = (integrationResult.rows[0] as any).api_secret_encrypted || '';
-    const apiSecret = apiSecretEnc ? decryptData(apiSecretEnc) : undefined;
 
     const result = await importCompanyPrices({
       clientId,
       companyId: deliveryCompanyId,
       companyName,
-      apiKey,
-      apiSecret: apiSecret || undefined,
+      apiKey: secrets.apiKey,
+      apiSecret: secrets.apiSecret,
     });
 
     if (!result.supported) {
