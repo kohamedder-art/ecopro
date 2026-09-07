@@ -86,6 +86,54 @@ ECOPRO_ACTION:{"type":"create_customer_order","productTitle":"[اسم المنت
 
 المهم أن تكوني مفيدة. يشعر الزبون أنه يكلم إنساناً، لا روبوتاً ولا برنامجاً.`;
 
+/**
+ * Extract an embedded ECOPRO_ACTION:{...} using balanced-brace scanning
+ * (handles nested objects/arrays and trailing chatter the old non-greedy
+ * regex truncated, silently dropping actions).
+ */
+function extractEmbeddedAction(text: string): { data: any | null; clean: string } {
+  const tag = 'ECOPRO_ACTION:';
+  const idx = text.indexOf(tag);
+  if (idx === -1) return { data: null, clean: text };
+  const start = text.indexOf('{', idx);
+  if (start === -1) return { data: null, clean: text };
+  let depth = 0, inStr = false, esc = false, end = -1;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  if (end === -1) return { data: null, clean: text };
+  try {
+    const data = JSON.parse(text.slice(start, end + 1).replace(/'/g, '"').replace(/,\s*}/g, '}'));
+    return { data, clean: (text.slice(0, idx) + text.slice(end + 1)).trim() };
+  } catch (e) {
+    console.error('[CustomerAI] Action parse error:', e);
+    return { data: null, clean: text };
+  }
+}
+
+function stripAllEmbeddedActions(text: string): string {
+  let out = text;
+  for (let i = 0; i < 5; i++) {
+    const r = extractEmbeddedAction(out);
+    if (!r.data && r.clean === out) break;
+    out = r.clean;
+    if (!r.data) break;
+  }
+  return out.trim();
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DISPUTE SHIELD — Hard-coded intercept for complaints/returns
 // ═══════════════════════════════════════════════════════════════
@@ -433,22 +481,24 @@ export async function handleCustomerMessage(
     // Dedup: strip consecutive identical ECOPRO_ACTION (prevents repeating same search/action)
     const lastModelMsg = history.filter(h => h.role === 'model').pop();
     if (lastModelMsg) {
-      const lastAction = lastModelMsg.parts[0]?.text?.match(/ECOPRO_ACTION:\s*(\{[\s\S]*?\})/);
-      const curAction = clean.match(/ECOPRO_ACTION:\s*(\{[\s\S]*?\})/);
-      if (lastAction && curAction && lastAction[1] === curAction[1]) {
-        clean = clean.replace(/ECOPRO_ACTION:\s*\{[\s\S]*?\}/, '').trim();
+      const lastAction = extractEmbeddedAction(lastModelMsg.parts[0]?.text || '').data;
+      const curAction = extractEmbeddedAction(clean).data;
+      if (lastAction && curAction && JSON.stringify(lastAction) === JSON.stringify(curAction)) {
+        clean = stripAllEmbeddedActions(clean);
         if (!clean) clean = 'نعم. ماذا تريد أن تفعل بعد ذلك؟';
       }
     }
 
     // Handle order creation action
-    const actionMatch = clean.match(/ECOPRO_ACTION:\s*(\{[\s\S]*?\})/);
-    if (actionMatch) {
+    const actionParsed = extractEmbeddedAction(clean);
+    const actionMatch = actionParsed.data ? ({}) as any : null;
+    if (actionParsed.data) {
       try {
-        const data = JSON.parse(actionMatch[1].replace(/'/g, '"').replace(/,\s*}/g, '}'));
+        const data = actionParsed.data;
+        clean = actionParsed.clean;
         if (data.type === 'create_customer_order') {
           const result = await createOrder({ clientId, platform, platformChatId, ...data });
-          clean = clean.replace(/ECOPRO_ACTION:\s*\{[\s\S]*?\}/, '').trim();
+          clean = stripAllEmbeddedActions(clean);
           if (result) {
             clean = `🎉 تم تأكيد طلبك!\n\n📦 رقم الطلب: #${result.orderId}\n💰 المبلغ: ${result.total} دج (الدفع عند الاستلام)\n\nشكراً ${data.customerName}! سيتم التواصل معك قريباً 🚚`;
             try {
@@ -471,7 +521,7 @@ export async function handleCustomerMessage(
           }
         } else if (data.type === 'update_address') {
           const updated = await updateCustomerOrderAddress(clientId, platform, data);
-          clean = clean.replace(/ECOPRO_ACTION:\s*\{[\s\S]*?\}/, '').trim();
+          clean = stripAllEmbeddedActions(clean);
           if (updated > 0) {
             clean = `تم تحديث عنوان التوصيل ✅\n\n${updated === 1 ? 'الطلب' : `${updated} طلب`} سيتم توصيله(ها) إلى:\n📍 ${data.shippingAddress}${data.wilayaName ? ` — ${data.wilayaName}` : ''}\n\nسنتواصل معك للتأكيد قبل الشحن.`;
           } else {
@@ -486,7 +536,7 @@ export async function handleCustomerMessage(
     }
 
     // Strip any remaining unhandled ECOPRO_ACTION text (e.g. search_store_data with no code handler)
-    clean = clean.replace(/\s*ECOPRO_ACTION:\s*\{[\s\S]*?\}\s*/g, '').trim();
+    clean = stripAllEmbeddedActions(clean);
 
     // Extract and save facts from the message itself (name, phone, wilaya, interaction count)
     const msgFacts = extractFactsFromMessage(msg, facts);

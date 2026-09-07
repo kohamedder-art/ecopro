@@ -3,7 +3,7 @@
  *
  * Sits on top of `opencode serve`. Each store owner on Sahla4Eco
  * gets their own opencode session. Messages are routed through
- * opencode's HTTP API using free models (big-pickle, hy3-free).
+ * opencode's HTTP API using free models (nemotron-3.5-lightning-free default).
  *
  * Usage:
  *   # Terminal 1: start opencode headless server
@@ -25,8 +25,8 @@ const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY || 'sk-bridge-dev';
 const PRODUCTION_URL = process.env.PRODUCTION_URL || 'http://localhost:8080';
 
 const OPENCODE_BASE = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
-const DEFAULT_AGENT = 'build';
-const DEFAULT_MODEL = { providerID: 'opencode', modelID: 'big-pickle' };
+const DEFAULT_AGENT = 'plan';
+const DEFAULT_MODEL = { providerID: 'opencode', modelID: 'nemotron-3.5-lightning-free' };
 const AUTH_HEADER = 'Basic ' + Buffer.from(`${OPENCODE_USER}:${OPENCODE_PASS}`).toString('base64');
 
 // ─── Helpers ───────────────────────────────────────────────────
@@ -149,11 +149,16 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      // Send the user's question
+      // Send the user's question.
+      // NOTE: the bridge only needs TEXT answers — platform actions work via
+      // ECOPRO_ACTION JSON parsed server-side, so the read-only 'plan' agent
+      // is used (never file/shell tools). Agent + model can be overridden
+      // per request: { agent, model: { providerID, modelID } }.
       const model = body.model || DEFAULT_MODEL;
+      const agent = body.agent || DEFAULT_AGENT;
       const reply = await ocFetch('POST', `/session/${sessionId}/message`, {
         parts: [{ type: 'text', text: question }],
-        agent: DEFAULT_AGENT,
+        agent,
         model,
       });
 

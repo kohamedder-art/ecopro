@@ -169,6 +169,43 @@ Statuses: pending, confirmed, processing, shipped, delivered, cancelled, returne
 // MAIN HANDLER
 // ═══════════════════════════════════════════════════════════════
 
+/**
+ * Extract an embedded ECOPRO_ACTION:{...} from model text using balanced-brace
+ * scanning (handles nested objects/arrays and trailing chatter).
+ * Returns the parsed action (or null) plus the text with the action removed.
+ */
+export function extractEmbeddedAction(text: string): { action: any | null; clean: string } {
+  const tag = 'ECOPRO_ACTION:';
+  const idx = text.indexOf(tag);
+  if (idx === -1) return { action: null, clean: text };
+  const start = text.indexOf('{', idx);
+  if (start === -1) return { action: null, clean: text };
+  let depth = 0, inStr = false, esc = false, end = -1;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  if (end === -1) return { action: null, clean: text };
+  try {
+    const action = JSON.parse(text.slice(start, end + 1));
+    const clean = (text.slice(0, idx) + text.slice(end + 1)).trim();
+    return { action, clean };
+  } catch {
+    return { action: null, clean: text };
+  }
+}
+
 export async function handleOwnerMessage(
   clientId: number,
   question: string,
@@ -193,16 +230,12 @@ export async function handleOwnerMessage(
   try {
     const response = await generateText('store_owner', prompt, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT + '\n' + ACTION_INSTRUCTIONS);
 
-    // Parse action
+    // Parse action (balanced-brace: works with nested JSON + trailing text)
     let answer = response;
     let action: any = null;
-    const actionMatch = response.match(/\nECOPRO_ACTION:(\{[\s\S]*?\})\s*$/);
-    if (actionMatch) {
-      try {
-        action = JSON.parse(actionMatch[1]);
-        answer = response.replace(/\nECOPRO_ACTION:\{[\s\S]*?\}\s*$/, '').trim();
-      } catch {}
-    }
+    const extracted = extractEmbeddedAction(response);
+    action = extracted.action;
+    if (action) answer = extracted.clean;
 
     // Handle search_store_data inline
     if (action?.type === 'search_store_data') {

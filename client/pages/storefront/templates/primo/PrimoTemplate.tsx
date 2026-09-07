@@ -24,7 +24,8 @@ import {
   Check,
   Home,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Search
 } from 'lucide-react';
 import LazyVideo from '@/components/storefront/LazyVideo';
 import OrderSuccessConnect from '@/components/storefront/OrderSuccessConnect';
@@ -39,6 +40,7 @@ export default function PrimoTemplate({
   onProductView,
   initialProductSlug,
   navigate,
+  bannerUrl,
 }: TemplateProps) {
   // ── Settings Wiring ──
   const accentColor = settings?.template_accent_color || propPrimaryColor || settings?.primary_color || '#f39c12';
@@ -102,6 +104,14 @@ export default function PrimoTemplate({
   const [viewMode, setViewMode] = useState<'catalog' | 'product'>('catalog');
   const [cardImageIdx, setCardImageIdx] = useState<Record<number, number>>({});
   const [cardSwipeDir, setCardSwipeDir] = useState<Record<number, string>>({});
+  // ── Catalog search (header icon toggles it) ──
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const visibleProducts = useMemo(() => {
+    const q = catalogQuery.trim().toLowerCase();
+    if (!q) return products || [];
+    return (products || []).filter((p: any) => p.title?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q));
+  }, [products, catalogQuery]);
   const baseMainProduct = useMemo(() => {
     if (initialProductSlug) {
       const bySlug = products?.find((p: any) => p.slug === initialProductSlug || String(p.id) === initialProductSlug);
@@ -369,7 +379,7 @@ const goBackToCatalog = () => {
     <div className="min-h-screen relative" style={{ backgroundColor: bgColor, backgroundImage: bgImageCss || undefined, backgroundSize: 'cover', backgroundPosition: 'center', color: textColor, fontFamily: "'Tajawal', sans-serif" }} dir="rtl">
 
       {/* ── TOP BANNER ── */}
-      <div className="py-2 text-center text-xs font-bold tracking-widest" style={{ backgroundColor: isDark ? '#000000' : '#111111', color: '#ffffff' }}>
+      <div className="py-2 px-4 text-center text-xs font-bold" style={{ backgroundColor: surfaceColor, color: surfaceTextColor, borderBottom: `1px solid ${surfaceBorderColor}` }}>
         <span
           contentEditable={canManage}
           suppressContentEditableWarning
@@ -380,32 +390,41 @@ const goBackToCatalog = () => {
       </div>
 
       {/* ── HEADER / NAV ── */}
-      <header className="sticky top-0 z-50 backdrop-blur-md transition-transform duration-300" style={{ backgroundColor: surfaceColor + 'cc', borderBottom: `1px solid ${surfaceBorderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-50 transition-transform duration-300" style={{ backgroundColor: surfaceColor, borderBottom: `1px solid ${surfaceBorderColor}`, transform: showHeader ? 'translateY(0)' : 'translateY(-100%)' }}>
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 flex-1">
             {viewMode === 'product' && (
               <button
                 onClick={goBackToCatalog}
-                className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                className="p-2 transition-colors"
                 style={{ color: surfaceTextColor }}
                 aria-label="عودة إلى المتجر"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="15,18 9,12 15,6" />
                 </svg>
               </button>
             )}
+            <button
+              onClick={() => setSearchOpen(v => !v)}
+              className="p-2 transition-colors"
+              style={{ color: surfaceTextColor }}
+              aria-label="بحث"
+            >
+              <Search size={20} />
+            </button>
+          </div>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={goBackToCatalog}>
             {settings?.store_logo ? (
-              <img src={optimizeImg(settings.store_logo)} alt={storeName} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" width="32" height="32" style={{ contentVisibility: 'auto', filter: imgLoaded['logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, 'logo': true}))} />
+              <img src={optimizeImg(settings.store_logo)} alt={storeName} className="h-8 object-contain" loading="lazy" decoding="async" style={{ contentVisibility: 'auto', filter: imgLoaded['logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s', maxWidth: '120px' }} onLoad={() => setImgLoaded(prev => ({...prev, 'logo': true}))} />
             ) : (
-              <div onClick={goBackToCatalog} className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer" style={{ backgroundColor: accentColor }}>
+              <div className="w-8 h-8 flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: accentColor }}>
                 {storeName.charAt(0)}
               </div>
             )}
             <h1
-              className="text-xl font-black tracking-tighter cursor-pointer"
+              className="text-xl font-black tracking-tighter"
               style={{ color: surfaceTextColor }}
-              onClick={goBackToCatalog}
               contentEditable={canManage}
               suppressContentEditableWarning
               onBlur={handleTextEdit('store_name')}
@@ -413,13 +432,31 @@ const goBackToCatalog = () => {
               {storeName}
             </h1>
           </div>
-          <div className="hidden md:flex gap-8 text-sm font-bold" style={{ color: surfaceTextMuted }}>
-            <a href="#" className="transition-colors" onMouseEnter={(e) => (e.currentTarget.style.color = accentColor)} onMouseLeave={(e) => (e.currentTarget.style.color = surfaceTextMuted)}>الرئيسية</a>
-            <a href="#" className="transition-colors" onMouseEnter={(e) => (e.currentTarget.style.color = accentColor)} onMouseLeave={(e) => (e.currentTarget.style.color = surfaceTextMuted)}>منتجاتنا</a>
+          <div className="hidden md:flex gap-8 text-sm font-bold flex-1 justify-center" style={{ color: surfaceTextMuted }}>
+            <a href="#" className="transition-colors" onClick={e => { e.preventDefault(); goBackToCatalog(); }} onMouseEnter={(e) => (e.currentTarget.style.color = accentColor)} onMouseLeave={(e) => (e.currentTarget.style.color = surfaceTextMuted)}>الرئيسية</a>
+            <a href="#" className="transition-colors" onClick={e => { e.preventDefault(); goBackToCatalog(); setTimeout(() => document.getElementById('primo-products')?.scrollIntoView({ behavior: 'smooth' }), 100); }} onMouseEnter={(e) => (e.currentTarget.style.color = accentColor)} onMouseLeave={(e) => (e.currentTarget.style.color = surfaceTextMuted)}>منتجاتنا</a>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1 md:flex-none justify-end">
           </div>
         </div>
+        {searchOpen && (
+          <div className="max-w-7xl mx-auto px-4 pb-3">
+            <div className="flex items-center gap-2 px-3 py-2" style={{ border: `1px solid ${surfaceBorderColor}`, backgroundColor: surfaceMuted }}>
+              <Search size={16} style={{ color: textMuted }} />
+              <input
+                autoFocus
+                value={catalogQuery}
+                onChange={e => setCatalogQuery(e.target.value)}
+                placeholder="ابحث عن منتج..."
+                className="flex-1 bg-transparent outline-none text-sm"
+                style={{ color: surfaceTextColor }}
+              />
+              {catalogQuery && (
+                <button onClick={() => setCatalogQuery('')} style={{ color: textMuted }} aria-label="مسح"><X size={16} /></button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ── canManage: empty products placeholder ── */}
@@ -434,7 +471,27 @@ const goBackToCatalog = () => {
           CATALOG VIEW
           ══════════════════════════════════════ */}
       {viewMode === 'catalog' && products && products.length > 0 && (
-        <main className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+        <>
+          {/* Hero — full-bleed lifestyle banner with headline + outline CTA */}
+          {bannerUrl && (
+            <section className="relative w-full overflow-hidden" style={{ minHeight: '52vh', backgroundColor: '#111' }}>
+              <img src={bannerUrl} alt={storeName} className="absolute inset-0 w-full h-full" style={{ objectFit: 'cover' }} loading="eager" fetchPriority="high" decoding="async" />
+              <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.35)' }} />
+              <div className="relative z-10 flex flex-col items-center justify-center text-center px-6" style={{ minHeight: '52vh' }}>
+                <h2 className="text-3xl md:text-5xl font-black text-white leading-tight" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
+                  <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
+                </h2>
+                <button
+                  onClick={() => document.getElementById('primo-products')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="mt-6 px-10 py-3 text-sm font-bold text-white transition-colors"
+                  style={{ border: '1px solid rgba(255,255,255,0.9)', backgroundColor: 'transparent' }}
+                >
+                  تسوق الآن
+                </button>
+              </div>
+            </section>
+          )}
+          <main id="primo-products" className="max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -445,114 +502,39 @@ const goBackToCatalog = () => {
             </div>
           </div>
 
-          {/* Best Sellers Horizontal Scroll */}
-          {products.filter(p => p.views > 100).length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: textColor }}>
-                <span className="w-1 h-4 rounded-full" style={{ backgroundColor: accentColor }} />
-                الأكثر طلباً
-              </h3>
-              <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-                {products.filter(p => p.views > 100).slice(0, 8).map(product => {
-                  const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
-                  return (
-                    <div key={product.id} className="flex-shrink-0 w-40 cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-lg" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }} onClick={() => openProduct(product)}>
-                  <div className="relative" style={{ aspectRatio: '2 / 3', backgroundColor: surfaceMuted }}>
-                        <img src={optimizeImg(product.images?.[0] || '/placeholder.png')} alt={product.title} loading="lazy" decoding="async" className="w-full h-full object-contain" style={{ backgroundColor: '#fff', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
-                        {discount > 0 && (
-                          <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
-                            -{discount}%
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-2">
-                        <p className="text-[11px] font-semibold truncate" style={{ color: surfaceTextColor }}>{product.title}</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-sm font-extrabold" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()}</span>
-                          <span className="text-[10px]" style={{ color: textMuted }}>{currency}</span>
-                          {discount > 0 && <span className="text-[9px] line-through mr-auto" style={{ color: textMuted }}>{Math.round(product.original_price).toLocaleString()}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Product Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
-            {products.map(product => {
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
+            {visibleProducts.map(product => {
               const discount = product.original_price ? Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
-              const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
               return (
                 <div
                   key={product.id}
-                  className="group cursor-pointer rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md active:scale-[0.98]"
-                  style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}
+                  className="group cursor-pointer"
+                  style={{ backgroundColor: 'transparent' }}
                   onClick={() => openProduct(product)}
                 >
                   {(() => {
-                    const currentIdx = cardImageIdx[product.id] ?? 0;
-                    const imgCount = product.images?.length || 0;
+                    const firstImg = (product.images || []).find((u: string) => !/\.(mp4|webm|ogg)(\?|$)/i.test(u)) || product.images?.[0] || '';
                     return (
-                      <div className="relative overflow-hidden" style={{ aspectRatio: '2 / 3', backgroundColor: surfaceMuted }}>
-                    {(product as any)?.metadata?.video_url?.match(/\.(mp4|webm|ogg)(\?|$)/i)
-                      ? <LazyVideo src={(product as any).metadata.video_url} poster={product.images?.[currentIdx] || '/placeholder.png'}
-                          onMouseEnter={e => (e.target as HTMLVideoElement).play()}
-                          onMouseLeave={e => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                          className="w-full h-full object-cover" />
-                      : (product as any)?.metadata?.video_url?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-                        ? <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}?autoplay=1&mute=1&loop=1&playlist=${(product as any).metadata.video_url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1]}&controls=0`} allow="autoplay; encrypted-media" />
-                        : imgCount > 0 ? (
-                          <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${imgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(currentIdx / imgCount) * 100}%)` }}>
-                            {product.images.map((img: string, i: number) => (
-                              <div key={i} style={{ width: `${100 / imgCount}%`, flexShrink: 0, height: '100%' }}>
-                                <img src={optimizeImg(img)} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
-                              </div>
-                            ))}
-                          </div>
+                      <div className="relative overflow-hidden" style={{ aspectRatio: '1 / 1', backgroundColor: surfaceMuted }}>
+                        {firstImg ? (
+                          <img src={optimizeImg(firstImg)} alt={product.title} loading="lazy" decoding="async" width="600" height="600" className="w-full h-full" style={{ objectFit: 'cover', display: 'block', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: '#f5f5f5' }}>📦</div>
-                        )
-                    }
-                    {discount > 0 && (
-                      <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
-                        -{discount}%
-                      </span>
-                    )}
-                    {isLowStock && (
-                      <span className="absolute bottom-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-md" style={{ backgroundColor: '#dc2626cc', color: '#fff' }}>
-                        {product.stock_quantity} قطع متبقية
-                      </span>
-                    )}
-                    {imgCount > 1 && (
-                      <>
-                        <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'prev' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx - 1 + imgCount) % imgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
-                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 18 9 12 15 6"/>
-                          </svg>
-                        </button>
-                        <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'next' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (currentIdx + 1) % imgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
-                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                  </div>
+                        )}
+                      </div>
                     );
                   })()}
-                  <div className="p-2.5">
-                    <h3 className="text-xs font-semibold leading-snug mb-1.5 line-clamp-2 text-right" style={{ color: surfaceTextColor }}>
+                  <div className="pt-3 pb-1">
+                    <h3 className="text-[13px] md:text-sm font-medium leading-snug mb-1 line-clamp-2 text-right" style={{ color: surfaceTextColor }}>
                       {product.title}
                     </h3>
                     <div className="text-right">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-sm" style={{ color: accentColor }}>
+                        <span className="font-bold text-sm md:text-[15px]" style={{ color: surfaceTextColor }}>
                           {Math.round(product.price ?? 0).toLocaleString()}
                         </span>
-                        <span className="text-[10px]" style={{ color: textMuted }}>{currency}</span>
+                        <span className="text-[11px]" style={{ color: surfaceTextColor }}>{currency}</span>
                         {discount > 0 && (
                           <span className="text-[10px] line-through mr-auto" style={{ color: textMuted }}>
                             {Math.round(product.original_price).toLocaleString()}
@@ -565,7 +547,8 @@ const goBackToCatalog = () => {
               );
             })}
           </div>
-        </main>
+          </main>
+        </>
       )}
 
       {viewMode === 'product' && mainProduct && (
@@ -591,7 +574,7 @@ const goBackToCatalog = () => {
               </div>
               {/* Main Image */}
               <div className="w-full lg:flex-1 lg:h-full">
-                <div className="relative rounded-2xl overflow-hidden shadow-xl lg:h-full" style={{ backgroundColor: surfaceMuted }}>
+                <div className="relative overflow-hidden lg:h-full" style={{ backgroundColor: surfaceMuted }}>
                 <div className="flex h-full" style={{ width: `${totalSlides * 100}%`, transform: `translateX(${(selectedMainImage / totalSlides) * 100}%)`, transition: 'transform 0.35s ease', touchAction: 'pan-y' }}
                   onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
                   onTouchMove={e => {
@@ -635,16 +618,21 @@ const goBackToCatalog = () => {
                 </div>
                 {totalSlides > 1 && (
                   <>
-                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage + 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-white transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage + 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm hidden md:flex items-center justify-center shadow-md hover:bg-white transition-colors">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 18 9 12 15 6"/>
                       </svg>
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage - 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-md hover:bg-white transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage - 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm hidden md:flex items-center justify-center shadow-md hover:bg-white transition-colors">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"/>
                       </svg>
                     </button>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+                      {Array.from({ length: totalSlides }).map((_, i) => (
+                        <span key={i} className="h-1.5 rounded-full transition-all" style={{ width: selectedMainImage === i ? '16px' : '6px', backgroundColor: selectedMainImage === i ? '#111' : 'rgba(0,0,0,0.25)' }} />
+                      ))}
+                    </div>
                   </>
                 )}
                 </div>
@@ -668,16 +656,9 @@ const goBackToCatalog = () => {
             <div className="w-full lg:w-[42%] flex flex-col gap-3">
               {/* Product Info */}
               <div>
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2" style={{ backgroundColor: accentColor + '15', color: accentColor }}>
-                  <span contentEditable={canManage} suppressContentEditableWarning onBlur={handleTextEdit('template_hero_heading')}>{heroTitle}</span>
-                </span>
                 <h2 className="text-2xl font-black mb-1" style={{ color: textColor }}>{mainProduct.title}</h2>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex" style={{ color: accentColor }}>{[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" />)}</div>
-                  <span className="text-xs font-bold" style={{ color: textMuted }}>(156 تقييم)</span>
-                </div>
                 <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-3xl font-black" style={{ color: accentColor }}>{Math.round(productPrice ?? 0).toLocaleString()} {currency}</span>
+                  <span className="text-3xl font-black" style={{ color: textColor }}>{Math.round(productPrice ?? 0).toLocaleString()} {currency}</span>
                   {(mainProduct as any).original_price && <span className="text-base line-through font-bold" style={{ color: textMuted }}>{Math.round((mainProduct as any).original_price ?? 0).toLocaleString()} {currency}</span>}
                 </div>
                 {mainProduct.description && <p className="dz-description" style={{ color: textMuted }} dangerouslySetInnerHTML={{ __html: mainProduct.description }} />}
@@ -713,31 +694,43 @@ const goBackToCatalog = () => {
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <User className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <input type="text" placeholder="الاسم الكامل" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: surfaceTextColor }}>الاسم الكامل <span style={{ color: '#dc2626' }}>*</span></label>
+                    <div className="relative">
+                      <User className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
+                      <input type="text" placeholder="الاسم الكامل" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <input type="tel" placeholder="رقم الهاتف" maxLength={10} value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: surfaceTextColor }}>رقم الهاتف <span style={{ color: '#dc2626' }}>*</span></label>
+                    <div className="relative">
+                      <Phone className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
+                      <input type="tel" placeholder="رقم الهاتف" maxLength={10} value={customerPhone} onChange={e => setCustomerPhone(e.target.value.replace(/[^0-9]/g, '').slice(0, 10))} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }} />
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
-                    <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
-                      <option value="">اختر الولاية</option>
-                      {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
-                    </select>
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: surfaceTextColor }}>الولاية <span style={{ color: '#dc2626' }}>*</span></label>
+                    <div className="relative">
+                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2" size={14} style={{ color: surfaceTextMuted }} />
+                      <select value={selectedWilayaId ?? ''} onChange={e => setSelectedWilayaId(Number(e.target.value) || null)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
+                        <option value="">اختر الولاية</option>
+                        {wilayas.map(w => <option key={w.id} value={w.id}>{w.labelAR}</option>)}
+                      </select>
+                    </div>
                   </div>
                   {showCommune && (
-                    <div className="relative">
-                      <select required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none disabled:opacity-50" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
-                        <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
-                        {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
-                      </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextMuted }} />
+                    <div>
+                      <label className="block text-xs font-bold mb-1" style={{ color: surfaceTextColor }}>البلدية <span style={{ color: '#dc2626' }}>*</span></label>
+                      <div className="relative">
+                        <select required disabled={!selectedWilayaId} value={customerCommune} onChange={e => setCustomerCommune(e.target.value)} className="w-full rounded-lg py-2.5 pr-9 pl-3 text-sm outline-none font-bold appearance-none disabled:opacity-50" style={{ backgroundColor: isHeaderDark ? 'rgba(255,255,255,0.08)' : surfaceMuted, color: surfaceTextColor, border: `1px solid ${surfaceBorderColor}` }}>
+                          <option value="">{selectedWilayaId ? 'اختر البلدية' : 'اختر الولاية أولاً'}</option>
+                          {communes.map(c => <option key={c.id} value={c.id}>{communeDisplayName(c)}</option>)}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: surfaceTextMuted }} />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -803,55 +796,28 @@ const goBackToCatalog = () => {
               ═══════════════════════════════════ */}
           {otherProducts.length > 0 && (
             <section className="mt-16">
-              <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>{otherProducts.length} منتجات أخرى</h3>
+              <h3 className="text-2xl font-black mb-8" style={{ color: textColor }}>قد يعجبك أيضاً</h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" style={{ contentVisibility: 'auto', containIntrinsicSize: '600px' }}>
                 {otherProducts.map(product => {
                   const swapProduct = () => { setActiveMainProduct(product); setSelectedMainImage(0); setViewMode('product'); onProductView?.(product); window.scrollTo({ top: 0, behavior: 'smooth' }); if (navigate) navigate(buildStoreUrl(storeSlug, product?.slug || String(product.id))); };
                   return (
-                  <div key={product.id} className="rounded-2xl overflow-hidden transition-transform hover:scale-[1.02]" style={{ backgroundColor: surfaceColor, border: `1px solid ${surfaceBorderColor}` }}>
+                  <div key={product.id} className="cursor-pointer" style={{ backgroundColor: surfaceColor }}>
                     {(() => {
                       const otherIdx = cardImageIdx[product.id] ?? 0;
                       const otherImgCount = product.images?.length || 0;
                       return (
-                    <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '2 / 3', backgroundColor: '#fff' }} onClick={swapProduct}>
+                    <div className="overflow-hidden cursor-pointer relative" style={{ aspectRatio: '1 / 1', backgroundColor: surfaceMuted }} onClick={swapProduct}>
                       {otherImgCount > 0 ? (
-                        <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', display: 'flex', width: `${otherImgCount * 100}%`, transition: 'transform 0.4s ease', transform: `translateX(-${(otherIdx / otherImgCount) * 100}%)` }}>
-                          {product.images.map((img: string, i: number) => (
-                            <div key={i} style={{ width: `${100 / otherImgCount}%`, flexShrink: 0, height: '100%' }}>
-                              <img src={optimizeImg(img)} alt={product.title} loading="lazy" decoding="async" width="600" height="600" style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#fff', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
-                            </div>
-                          ))}
-                        </div>
+                        <img src={optimizeImg(product.images?.[otherIdx] || product.images[0])} alt={product.title} loading="lazy" decoding="async" width="600" height="600" className="w-full h-full" style={{ objectFit: 'cover', display: 'block', filter: imgLoaded[String(product.id)] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }} onLoad={() => setImgLoaded(prev => ({...prev, [String(product.id)]: true}))} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-4xl" style={{ backgroundColor: '#f5f5f5' }}>📦</div>
-                      )}
-                      {otherImgCount > 1 && (
-                        <>
-                          <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'prev' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx - 1 + otherImgCount) % otherImgCount })); }} className="absolute left-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="15 18 9 12 15 6"/>
-                            </svg>
-                          </button>
-                          <button onClick={e => { e.stopPropagation(); setCardSwipeDir(prev => ({ ...prev, [product.id]: 'next' })); setCardImageIdx(prev => ({ ...prev, [product.id]: (otherIdx + 1) % otherImgCount })); }} className="absolute right-2 top-1/2 -translate-y-1/2 drop-shadow-md z-10">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="9 18 15 12 9 6"/>
-                            </svg>
-                          </button>
-                        </>
                       )}
                     </div>
                       );
                     })()}
                     <div className="p-3">
                       <h4 className="font-bold mb-1 text-sm line-clamp-1" style={{ color: surfaceTextColor }}>{product.title}</h4>
-                      <p className="font-black mb-2" style={{ color: accentColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
-                      <button
-                        onClick={swapProduct}
-                        className="w-full py-2 rounded-xl text-white text-xs font-bold transition-all active:scale-95"
-                        style={{ backgroundColor: accentColor }}
-                      >
-                        اطلب هذا المنتج →
-                      </button>
+                      <p className="font-black" style={{ color: surfaceTextColor }}>{Math.round(product.price ?? 0).toLocaleString()} {currency}</p>
                     </div>
                   </div>
                   );
