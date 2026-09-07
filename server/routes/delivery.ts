@@ -10,6 +10,7 @@ import {
 } from '../types/delivery';
 import { encryptData } from '../utils/encryption';
 import { getCourierService } from '../services/courier-service';
+import { importCompanyPrices, priceImportSupport } from '../services/courier-pricing';
 
 export const deliveryRouter = Router();
 
@@ -68,7 +69,7 @@ export const configureDeliveryIntegration: RequestHandler = async (req, res) => 
 
     // Verify company exists
     const companyCheck = await pool.query(
-      'SELECT id FROM delivery_companies WHERE id = $1',
+      'SELECT id, name FROM delivery_companies WHERE id = $1',
       [delivery_company_id]
     );
 
@@ -99,7 +100,29 @@ export const configureDeliveryIntegration: RequestHandler = async (req, res) => 
       [clientId, delivery_company_id, encryptedKey, encryptedSecret, account_number, merchant_id, encryptedWebhookSecret]
     );
 
-    res.json({ success: true, integration_id: result.rows[0].id });
+    res.json({
+      success: true,
+      integration_id: result.rows[0].id,
+      // 'started' = prices import from the company API in the background;
+      // 'manual' = this company's API exposes no pricing, enter prices manually.
+      price_import: (() => {
+        const companyName = String((companyCheck.rows[0] as any)?.name || '');
+        if (priceImportSupport(companyName) === null) return 'manual';
+        const cid = Number(clientId);
+        setImmediate(() => {
+          importCompanyPrices({
+            clientId: cid,
+            companyId: delivery_company_id,
+            companyName,
+            apiKey: api_key,
+            apiSecret: api_secret,
+          })
+            .then(r => console.log(`[Delivery] Auto-imported ${r.imported.length} wilaya prices from ${r.source} for client ${cid}`))
+            .catch(e => console.error('[Delivery] Background price import failed:', e?.message || e));
+        });
+        return 'started';
+      })(),
+    });
   } catch (error: any) {
     console.error('[Delivery] configureDeliveryIntegration error:', error);
     res.status(500).json({ error: 'Failed to configure integration' });

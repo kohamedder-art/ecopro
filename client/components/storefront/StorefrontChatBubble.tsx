@@ -74,13 +74,18 @@ export default function StorefrontChatBubble({ storeSlug, enabled }: StorefrontC
 
   if (!enabled || channels.length === 0 || checkoutOpen) return null;
 
+  // On mobile, app links (Telegram, Messenger, WhatsApp…) must open in the
+  // same tab so the OS intercepts them and launches the native app.
+  // target="_blank" would trap them in a browser tab instead.
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
   return (
     <div data-storefront-contact="true" className="fixed bottom-20 sm:bottom-6 left-4 sm:left-6 z-[9999] flex flex-col gap-3" dir="ltr">
       {channels.map((ch) => (
         <a
           key={ch.platform}
           href={ch.url}
-          target={ch.platform === 'phone' ? '_self' : '_blank'}
+          target={ch.platform === 'phone' || isMobile ? '_self' : '_blank'}
           rel="noopener noreferrer"
           className="w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:scale-110 hover:shadow-xl active:scale-95"
           style={{ backgroundColor: PLATFORM_COLORS[ch.platform] || '#6366f1' }}

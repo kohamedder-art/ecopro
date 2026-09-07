@@ -8,39 +8,9 @@
 import { Router, RequestHandler } from 'express';
 import { ensureConnection } from '../utils/database';
 import { decryptData } from '../utils/encryption';
+import { importCompanyPrices } from '../services/courier-pricing';
 
 const router = Router();
-
-const MAYSTRO_API_BASE = 'https://orders-management.maystro-delivery.com/api';
-
-interface MaystroDeliveryOption {
-  type: string;
-  price: number;
-}
-
-async function fetchMaystroDeliveryOptions(token: string, communeId: number): Promise<MaystroDeliveryOption[]> {
-  const url = `${MAYSTRO_API_BASE}/base/delivery-options/?commune=${encodeURIComponent(String(communeId))}`;
-  const res = await fetch(url, {
-    headers: { Authorization: token },
-  });
-  if (!res.ok) {
-    throw new Error(`Maystro delivery-options failed (${res.status}) for commune ${communeId}`);
-  }
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-}
-
-async function fetchMaystroCommunes(token: string, wilayaId: number): Promise<Array<{ id: number }>> {
-  const url = `${MAYSTRO_API_BASE}/base/communes/?wilaya=${encodeURIComponent(String(wilayaId))}`;
-  const res = await fetch(url, {
-    headers: { Authorization: token },
-  });
-  if (!res.ok) {
-    throw new Error(`Maystro communes failed (${res.status}) for wilaya ${wilayaId}`);
-  }
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
-}
 
 // Type for delivery price
 interface DeliveryPrice {
@@ -391,7 +361,7 @@ export const importFromDeliveryCompany: RequestHandler = async (req, res) => {
 
     const pool = await ensureConnection();
     const integrationResult = await pool.query(
-      `SELECT di.api_key_encrypted, dc.name
+      `SELECT di.api_key_encrypted, di.api_secret_encrypted, dc.name
        FROM delivery_integrations di
        JOIN delivery_companies dc ON dc.id = di.delivery_company_id
        WHERE di.client_id = $1 AND di.delivery_company_id = $2 AND di.is_enabled = true
@@ -403,86 +373,35 @@ export const importFromDeliveryCompany: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: 'Delivery integration not configured for this company' });
     }
 
-    const companyName = String(integrationResult.rows[0].name || '').toLowerCase();
-    if (!companyName.includes('maystro')) {
+    const companyName = String(integrationResult.rows[0].name || '');
+    const apiKey = decryptData(integrationResult.rows[0].api_key_encrypted || '');
+    if (!apiKey) {
+      return res.status(400).json({ error: 'Missing API token in integration' });
+    }
+    const apiSecretEnc = (integrationResult.rows[0] as any).api_secret_encrypted || '';
+    const apiSecret = apiSecretEnc ? decryptData(apiSecretEnc) : undefined;
+
+    const result = await importCompanyPrices({
+      clientId,
+      companyId: deliveryCompanyId,
+      companyName,
+      apiKey,
+      apiSecret: apiSecret || undefined,
+    });
+
+    if (!result.supported) {
       return res.status(501).json({
         success: false,
-        message: 'Auto-import is currently supported for Maystro Delivery only.',
+        message: `Auto-import is not supported for ${companyName} — its API exposes no pricing. Enter prices manually.`,
       });
     }
 
-    const token = decryptData(integrationResult.rows[0].api_key_encrypted || '');
-    if (!token) {
-      return res.status(400).json({ error: 'Missing Maystro API token in integration' });
-    }
-
-    const imported: Array<{ wilaya_id: number; home_delivery_price: number; desk_delivery_price: number | null }> = [];
-    const failed: Array<{ wilaya_id: number; error: string }> = [];
-
-    // Iterate through all Algerian wilayas (1..58) and infer default pricing
-    // from the first commune returned by Maystro for each wilaya.
-    for (let wilayaId = 1; wilayaId <= 58; wilayaId++) {
-      try {
-        const communes = await fetchMaystroCommunes(token, wilayaId);
-        if (!communes.length || !communes[0]?.id) {
-          failed.push({ wilaya_id: wilayaId, error: 'No communes returned by Maystro' });
-          continue;
-        }
-
-        const communeId = Number(communes[0].id);
-        const options = await fetchMaystroDeliveryOptions(token, communeId);
-        const home = options.find((o: any) => String(o?.type || '').toLowerCase() === 'home');
-        const desk = options.find((o: any) => String(o?.type || '').toLowerCase() === 'stopdesk');
-
-        if (!home) {
-          failed.push({ wilaya_id: wilayaId, error: 'Home delivery option not found' });
-          continue;
-        }
-
-        const homePrice = Number(home.price);
-        const deskPrice = desk ? Number(desk.price) : null;
-        if (!Number.isFinite(homePrice) || homePrice < 0) {
-          failed.push({ wilaya_id: wilayaId, error: 'Invalid home price from Maystro' });
-          continue;
-        }
-
-        await pool.query(
-          `INSERT INTO delivery_prices (
-            client_id, wilaya_id, delivery_company_id, home_delivery_price,
-            desk_delivery_price, is_active, estimated_days, notes, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, true, 3, $6, NOW())
-          ON CONFLICT (client_id, wilaya_id, delivery_company_id)
-          DO UPDATE SET
-            home_delivery_price = EXCLUDED.home_delivery_price,
-            desk_delivery_price = EXCLUDED.desk_delivery_price,
-            is_active = true,
-            updated_at = NOW()`,
-          [
-            clientId,
-            wilayaId,
-            deliveryCompanyId,
-            homePrice,
-            Number.isFinite(deskPrice as number) && (deskPrice as number) >= 0 ? deskPrice : null,
-            `Imported from Maystro commune ${communeId}`,
-          ]
-        );
-
-        imported.push({
-          wilaya_id: wilayaId,
-          home_delivery_price: homePrice,
-          desk_delivery_price: Number.isFinite(deskPrice as number) ? (deskPrice as number) : null,
-        });
-      } catch (e: any) {
-        failed.push({ wilaya_id: wilayaId, error: e?.message || 'Unknown import error' });
-      }
-    }
-
     res.json({
-      success: imported.length > 0,
-      importedCount: imported.length,
-      failedCount: failed.length,
-      imported,
-      failed,
+      success: result.imported.length > 0,
+      importedCount: result.imported.length,
+      failedCount: result.failed.length,
+      imported: result.imported,
+      failed: result.failed,
     });
 
   } catch (error) {
