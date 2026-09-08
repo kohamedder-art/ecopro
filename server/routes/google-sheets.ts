@@ -505,6 +505,12 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
     const exported = await googleSheetsService.appendRows(accessToken, spreadsheetId, sheetName, header, rows);
     res.json({ success: true, exported });
   } catch (error: any) {
+    // Known-safe classified messages (auth, permissions, missing sheet) are
+    // shown as-is; anything else stays a generic 500 in production.
+    const msg = error instanceof Error ? error.message : String(error || '');
+    if (/reconnect|not found|not enabled|No Google tokens|spreadsheet_id is required/i.test(msg)) {
+      return res.status(400).json({ error: msg });
+    }
     return jsonServerError(res, error, 'Order export failed');
   }
 });

@@ -261,7 +261,8 @@ export class GoogleSheetsService {
 
   /**
    * Append rows to a sheet. If the sheet is empty, the header row is
-   * written first. Returns the number of data rows appended.
+   * written first. If the tab doesn't exist, it is created.
+   * Returns the number of data rows appended.
    */
   async appendRows(
     accessToken: string,
@@ -278,6 +279,15 @@ export class GoogleSheetsService {
         spreadsheetId,
         range: `${quoted}!A1:Z1`,
         majorDimension: 'ROWS',
+      }).catch(async (e: any) => {
+        if (String(e?.message || '').includes('Unable to parse range')) {
+          await this.sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] },
+          });
+          return { data: { values: [] } };
+        }
+        throw e;
       });
       const hasHeader = (first.data.values || []).some((r: any[]) => r.some((c: any) => c));
       const values = hasHeader ? rows : [header, ...rows];
@@ -296,7 +306,13 @@ export class GoogleSheetsService {
       if (msg.includes('403') || /insufficient|permission/i.test(msg)) {
         throw new Error('Google denied write access — reconnect your Google account to grant spreadsheet write permission, then retry.');
       }
-      throw new Error(`Failed to write to sheet: ${msg}`);
+      if (msg.includes('404')) {
+        throw new Error('Spreadsheet not found — check the ID and make sure it is shared with your connected Google account.');
+      }
+      if (/SERVICE_DISABLED|has not been used|API.*not enabled/i.test(msg)) {
+        throw new Error('Google Sheets API is not enabled for your Google Cloud project — enable it, then retry.');
+      }
+      throw new Error(`Failed to write to sheet: ${msg.slice(0, 200)}`);
     }
   }
 

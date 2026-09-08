@@ -124,8 +124,7 @@ export default function KernelLiveFeed({ events, liveEvents, connected, onSelect
             {feed.length === 0 ? "No events recorded" : "No matches found"}
           </div>
         ) : (
-          <ScrollArea className="h-[520px] k-scroll">
-            <div className="divide-y k-bdr">
+          <div className="divide-y k-bdr">
               {filtered.map((e) => {
                 const tool = (e.metadata as any)?.detected_tool || getToolFromUA(e.user_agent)
                 const threat = (e.metadata as any)?.threat_class || "noise"
@@ -161,7 +160,6 @@ export default function KernelLiveFeed({ events, liveEvents, connected, onSelect
                 )
               })}
             </div>
-          </ScrollArea>
         )}
       </div>
     </div>
