@@ -591,7 +591,7 @@ export default function Dashboard() {
 
       </div>
 
-      <div className="h-20 lg:hidden"></div>
+      <div className="h-28 lg:hidden"></div>
     </div>
   );
 }

@@ -450,16 +450,15 @@ export default function FloatingChatBubble() {
 
   return (
     <>
-      {/* Floating contact bubbles — fan out vertically above the main button */}
       {!isAdmin && open && (
-        <div className={`fixed z-[9999] flex flex-col-reverse gap-3 ${isEditorPage ? 'left-4' : 'right-4'}`} style={{ bottom: '88px' }}>
+        <div className={`fixed z-[9999] flex flex-col-reverse gap-2 sm:gap-3 ${isEditorPage ? 'left-4' : 'right-3 sm:right-4'}`} style={{ bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
           {adminContacts.map((ch, i) => (
             <a
               key={ch.platform + ch.url}
               href={ch.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
+              className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
               style={{
                 backgroundColor: CONTACT_COLORS[ch.platform] || '#6366f1',
                 animation: `fcb-bubble-in 200ms ease ${i * 50}ms both`,
@@ -474,7 +473,7 @@ export default function FloatingChatBubble() {
           <button
             type="button"
             onClick={() => { setChatMode('admin'); }}
-            className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
+            className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
             style={{
               backgroundColor: '#0ea5e9',
               animation: `fcb-bubble-in 200ms ease ${(adminContacts.length) * 50}ms both`,
@@ -488,7 +487,7 @@ export default function FloatingChatBubble() {
           <button
             type="button"
             onClick={() => { setChatMode('ai'); }}
-            className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
+            className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all"
             style={{
               backgroundColor: '#8b5cf6',
               animation: `fcb-bubble-in 200ms ease ${(adminContacts.length + 1) * 50}ms both`,
@@ -501,8 +500,7 @@ export default function FloatingChatBubble() {
         </div>
       )}
 
-      {/* Floating trigger button */}
-      <div className={`fixed bottom-20 sm:bottom-4 z-[9999] ${isEditorPage ? 'left-4' : 'right-4'}`}>
+      <div className={`fixed z-[9999] ${isEditorPage ? 'left-4' : 'right-3 sm:right-4'} bottom-[calc(74px+env(safe-area-inset-bottom,0px))] sm:bottom-4`}>
         <div className="relative">
           {unreadMessagesCount > 0 && (
             <div className="absolute inset-0 rounded-full border-2 border-indigo-400 animate-ping opacity-60 pointer-events-none" />
@@ -510,7 +508,7 @@ export default function FloatingChatBubble() {
           <button
             type="button"
             onClick={() => setOpen(v => !v)}
-            className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-slate-900 dark:bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
+            className="relative w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full bg-slate-900 dark:bg-black flex items-center justify-center text-white transition-all duration-300 hover:scale-105 active:scale-95"
             style={{
               boxShadow: unreadMessagesCount > 0
                 ? '0 0 0 4px rgba(99,102,241,0.15), 0 8px 32px rgba(0,0,0,0.12)'
