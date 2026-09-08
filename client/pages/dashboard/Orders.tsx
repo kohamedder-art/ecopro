@@ -281,6 +281,31 @@ export default function OrdersAdmin() {
   const [sheetName, setSheetName] = useState('Orders');
   const [sheetsExporting, setSheetsExporting] = useState(false);
   const [sheetsMsg, setSheetsMsg] = useState<string | null>(null);
+  const [sheetsConnected, setSheetsConnected] = useState<boolean | null>(null);
+
+  const openSheetsModal = async () => {
+    setSheetsMsg(null);
+    setSheetsConnected(null);
+    setShowSheetsModal(true);
+    try {
+      const res = await fetch('/api/google/status', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      setSheetsConnected(!!data.connected);
+    } catch {
+      setSheetsConnected(false);
+    }
+  };
+
+  const connectGoogle = async () => {
+    try {
+      const res = await fetch('/api/google/auth-url', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      if (data.url) window.location.href = data.url;
+      else setSheetsMsg('Could not start Google connection');
+    } catch (e: any) {
+      setSheetsMsg(e.message || 'Could not start Google connection');
+    }
+  };
 
   const exportToSheets = async () => {
     if (!sheetsId.trim() || sheetsExporting) return;
@@ -1038,7 +1063,7 @@ export default function OrdersAdmin() {
               <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
                 <Download className="h-3.5 w-3.5"/> <span className="hidden sm:inline">{t('orders.download')}</span>
               </button>
-              <button onClick={() => { setSheetsMsg(null); setShowSheetsModal(true); }} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
+              <button onClick={openSheetsModal} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
                 <Upload className="h-3.5 w-3.5"/> <span className="hidden sm:inline">Google Sheets</span>
               </button>
             </div>
@@ -2016,6 +2041,20 @@ export default function OrdersAdmin() {
               </button>
             </div>
             <div className="p-4 space-y-3">
+              {sheetsConnected === false && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs">
+                  <p className="font-bold mb-2">Google account not connected</p>
+                  <button
+                    onClick={connectGoogle}
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+                  >
+                    Connect Google Account
+                  </button>
+                </div>
+              )}
+              {sheetsConnected === null && (
+                <p className="text-xs text-muted-foreground">Checking Google connection...</p>
+              )}
               <div>
                 <label className="block text-xs font-bold mb-1">Spreadsheet ID</label>
                 <input

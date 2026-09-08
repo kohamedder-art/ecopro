@@ -455,7 +455,7 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
          o.id, o.created_at, o.customer_name, o.customer_phone,
          o.shipping_address, o.shipping_wilaya_id, o.shipping_commune_id,
          o.quantity, o.total_price, o.delivery_fee, o.status, o.delivery_type,
-         o.tracking_number, o.customer_notes, o.variant_name, o.variant_color, o.variant_size,
+         o.tracking_number, o.notes, o.variant_name, o.variant_color, o.variant_size,
          COALESCE(cp.title, '') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products cp ON o.product_id = cp.id
@@ -494,7 +494,7 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
         o.status || '',
         o.delivery_type || '',
         o.tracking_number || '',
-        o.customer_notes || '',
+        o.notes || '',
       ];
     });
 
