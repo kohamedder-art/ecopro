@@ -16,10 +16,11 @@ const router = Router();
 
 // Middleware to require authentication
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req.user as any)?.clientId || (req.user as any)?.id;
   if (!clientId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  (req as any).clientId = clientId;
   next();
 };
 
@@ -41,7 +42,7 @@ router.get('/auth-url', (req: Request, res: Response) => {
  * OAuth callback - exchange code for tokens and save
  */
 router.post('/connect', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
 
   try {
     const { code, state } = GoogleConnectSchema.parse(req.body);
@@ -72,7 +73,7 @@ router.post('/connect', requireAuth, async (req: Request, res: Response) => {
  * Check if Google account is connected
  */
 router.get('/status', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
 
   try {
     const result = await pool.query(
@@ -102,7 +103,7 @@ router.get('/status', requireAuth, async (req: Request, res: Response) => {
  * List sheets in a spreadsheet
  */
 router.get('/sheets/:spreadsheetId', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
   const { spreadsheetId } = req.params;
 
   try {
@@ -120,7 +121,7 @@ router.get('/sheets/:spreadsheetId', requireAuth, async (req: Request, res: Resp
  * Preview data from a sheet range
  */
 router.post('/preview', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
 
   try {
     const { spreadsheetId, range, limit = 10 } = req.body;
@@ -153,7 +154,7 @@ router.post('/preview', requireAuth, async (req: Request, res: Response) => {
  * Save or update a column mapping
  */
 router.post('/mappings', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
 
   try {
     const data = ImportMappingSchema.parse(req.body);
@@ -188,7 +189,7 @@ router.post('/mappings', requireAuth, async (req: Request, res: Response) => {
  * Get all saved mappings for the client
  */
 router.get('/mappings', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
   const { importType } = req.query;
 
   try {
@@ -225,7 +226,7 @@ router.get('/mappings', requireAuth, async (req: Request, res: Response) => {
  * Start an import job
  */
 router.post('/import', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
 
   try {
     const data = ImportRequestSchema.parse(req.body);
@@ -332,7 +333,7 @@ router.post('/import', requireAuth, async (req: Request, res: Response) => {
  * Get import history for the client
  */
 router.get('/imports', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
   const { limit = 20, offset = 0, importType } = req.query;
 
   try {
@@ -367,7 +368,7 @@ router.get('/imports', requireAuth, async (req: Request, res: Response) => {
  * Get details of a specific import job
  */
 router.get('/imports/:jobId', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
   const { jobId } = req.params;
 
   try {
@@ -407,7 +408,7 @@ router.get('/imports/:jobId', requireAuth, async (req: Request, res: Response) =
  * Disconnect Google account
  */
 router.post('/disconnect', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
 
   try {
     await pool.query(
@@ -432,11 +433,14 @@ router.post('/disconnect', requireAuth, async (req: Request, res: Response) => {
  * Body: { spreadsheet_id: string, sheet_name?: string }
  */
 router.post('/export-orders', requireAuth, async (req: Request, res: Response) => {
-  const clientId = (req.user as any)?.clientId;
+  const clientId = (req as any).clientId;
   const activeStoreId = (req as any).activeStoreId;
 
   try {
-    const spreadsheetId = String(req.body?.spreadsheet_id || '').trim();
+    const rawInput = String(req.body?.spreadsheet_id || '').trim();
+    // Accept either the bare ID or a full docs.google.com URL pasted in
+    const urlMatch = rawInput.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const spreadsheetId = urlMatch ? urlMatch[1] : rawInput;
     const sheetName = String(req.body?.sheet_name || 'Orders').trim() || 'Orders';
     if (!spreadsheetId) {
       return res.status(400).json({ error: 'spreadsheet_id is required' });
