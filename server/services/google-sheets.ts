@@ -39,7 +39,9 @@ export class GoogleSheetsService {
    * Get OAuth authorization URL for user consent
    */
   getAuthorizationUrl(state?: string): string {
-    const scopes = ['https://www.googleapis.com/auth/spreadsheets.readonly'];
+    // Full spreadsheets scope: read (import) + write (order export).
+    // Users connected with the old readonly scope must reconnect once.
+    const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
 
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
@@ -224,6 +226,47 @@ export class GoogleSheetsService {
         });
     } catch (error: any) {
       throw new Error(`Failed to read range: ${error.message}`);
+    }
+  }
+
+  /**
+   * Append rows to a sheet. If the sheet is empty, the header row is
+   * written first. Returns the number of data rows appended.
+   */
+  async appendRows(
+    accessToken: string,
+    spreadsheetId: string,
+    sheetName: string,
+    header: string[],
+    rows: any[][]
+  ): Promise<number> {
+    try {
+      this.oauth2Client.setCredentials({ access_token: accessToken });
+      const quoted = `'${String(sheetName).replace(/'/g, "''")}'`;
+
+      const first = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${quoted}!A1:Z1`,
+        majorDimension: 'ROWS',
+      });
+      const hasHeader = (first.data.values || []).some((r: any[]) => r.some((c: any) => c));
+      const values = hasHeader ? rows : [header, ...rows];
+      if (values.length === 0) return 0;
+
+      await this.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${quoted}!A:Z`,
+        valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values },
+      });
+      return rows.length;
+    } catch (error: any) {
+      const msg = String(error?.message || '');
+      if (msg.includes('403') || /insufficient|permission/i.test(msg)) {
+        throw new Error('Google denied write access — reconnect your Google account to grant spreadsheet write permission, then retry.');
+      }
+      throw new Error(`Failed to write to sheet: ${msg}`);
     }
   }
 

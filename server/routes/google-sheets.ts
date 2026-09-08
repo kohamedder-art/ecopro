@@ -426,4 +426,83 @@ router.post('/disconnect', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/google/export-orders
+ * Upload the store's orders into a Google Sheet (appends rows).
+ * Body: { spreadsheet_id: string, sheet_name?: string }
+ */
+router.post('/export-orders', requireAuth, async (req: Request, res: Response) => {
+  const clientId = (req.user as any)?.clientId;
+  const activeStoreId = (req as any).activeStoreId;
+
+  try {
+    const spreadsheetId = String(req.body?.spreadsheet_id || '').trim();
+    const sheetName = String(req.body?.sheet_name || 'Orders').trim() || 'Orders';
+    if (!spreadsheetId) {
+      return res.status(400).json({ error: 'spreadsheet_id is required' });
+    }
+
+    const accessToken = await googleSheetsService.getValidTokens(clientId);
+
+    const storeFilter = activeStoreId ? 'o.store_id' : 'o.client_id';
+    const storeIdVal = activeStoreId || clientId;
+    const result = await pool.query(
+      `SELECT
+         o.id, o.created_at, o.customer_name, o.customer_phone,
+         o.shipping_address, o.shipping_wilaya_id, o.shipping_commune_id,
+         o.quantity, o.total_price, o.delivery_fee, o.status, o.delivery_type,
+         o.tracking_number, o.customer_notes, o.variant_name, o.variant_color, o.variant_size,
+         COALESCE(cp.title, '') as product_title
+       FROM store_orders o
+       LEFT JOIN client_store_products cp ON o.product_id = cp.id
+       WHERE ${storeFilter} = $1 AND o.deleted_at IS NULL
+       ORDER BY o.created_at DESC
+       LIMIT 5000`,
+      [storeIdVal]
+    );
+
+    // Wilaya id -> Arabic name for readable sheets
+    let wilayaName = (id: any) => String(id ?? '');
+    try {
+      const wilayas = (await import('../../client/data/algeria-geo/wilayas.json')).default as any[];
+      const map = new Map(wilayas.map((w: any) => [Number(w.code ?? w.id), w.arabic_name || w.name]));
+      wilayaName = (id: any) => map.get(Number(id)) || String(id ?? '');
+    } catch { /* fallback to raw id */ }
+
+    const header = ['Order ID', 'Date', 'Customer', 'Phone', 'Wilaya', 'Address', 'Product', 'Variant', 'Qty', 'Product Total', 'Delivery Fee', 'Grand Total', 'Status', 'Delivery Type', 'Tracking', 'Notes'];
+    const rows = result.rows.map((o: any) => {
+      const variant = o.variant_name || [o.variant_color, o.variant_size].filter(Boolean).join(' / ') || '';
+      const total = Number(o.total_price || 0);
+      const fee = Number(o.delivery_fee || 0);
+      return [
+        o.id,
+        o.created_at ? new Date(o.created_at).toISOString().slice(0, 16).replace('T', ' ') : '',
+        o.customer_name || '',
+        String(o.customer_phone || ''),
+        wilayaName(o.shipping_wilaya_id),
+        o.shipping_address || '',
+        o.product_title || '',
+        variant,
+        Number(o.quantity || 0),
+        total,
+        fee,
+        total + fee,
+        o.status || '',
+        o.delivery_type || '',
+        o.tracking_number || '',
+        o.customer_notes || '',
+      ];
+    });
+
+    if (rows.length === 0) {
+      return res.json({ success: true, exported: 0, message: 'No orders to export' });
+    }
+
+    const exported = await googleSheetsService.appendRows(accessToken, spreadsheetId, sheetName, header, rows);
+    res.json({ success: true, exported });
+  } catch (error: any) {
+    return jsonServerError(res, error, 'Order export failed');
+  }
+});
+
 export default router;

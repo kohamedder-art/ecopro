@@ -342,6 +342,7 @@ export default function Header() {
 // Store Switcher component (inside header dropdown)
 function StoreSwitcher() {
   const { stores, activeStore, setActiveStore, createStore } = useStore();
+  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -370,7 +371,7 @@ function StoreSwitcher() {
           return (
             <button
               key={store.id}
-              onClick={() => setActiveStore(store)}
+              onClick={() => { setActiveStore(store); navigate('/dashboard'); }}
               className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-gradient-to-r from-indigo-500/10 to-indigo-500/5 dark:from-indigo-400/15 dark:to-indigo-400/5 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-indigo-500/20'

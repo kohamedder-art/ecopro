@@ -261,8 +261,7 @@ export default function OrdersAdmin() {
   };
 
   // CSV export
-  const exportCSV = () => {
-    const rows = getFilteredOrders();
+  const exportCSV = () => {    const rows = getFilteredOrders();
     const headers = ['Order ID', 'Customer', 'Phone', 'Product', 'Qty', 'Total (DZD)', 'Status', 'Date'];
     const lines = [headers.join(','), ...rows.map(o => [
       o.id, `"${o.customer || ''}"`, o.phone || '', `"${o.product_title || ''}"`,
@@ -274,6 +273,34 @@ export default function OrdersAdmin() {
     const a = document.createElement('a');
     a.href = url; a.download = `orders-${new Date().toISOString().slice(0,10)}.csv`; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Google Sheets export
+  const [showSheetsModal, setShowSheetsModal] = useState(false);
+  const [sheetsId, setSheetsId] = useState('');
+  const [sheetName, setSheetName] = useState('Orders');
+  const [sheetsExporting, setSheetsExporting] = useState(false);
+  const [sheetsMsg, setSheetsMsg] = useState<string | null>(null);
+
+  const exportToSheets = async () => {
+    if (!sheetsId.trim() || sheetsExporting) return;
+    setSheetsExporting(true);
+    setSheetsMsg(null);
+    try {
+      const res = await fetch('/api/google/export-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ spreadsheet_id: sheetsId.trim(), sheet_name: sheetName.trim() || 'Orders' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || 'Export failed');
+      setSheetsMsg(`✓ ${data.exported} orders uploaded to Google Sheets`);
+    } catch (e: any) {
+      setSheetsMsg(e.message || 'Export failed');
+    } finally {
+      setSheetsExporting(false);
+    }
   };
 
   // Get paginated orders
@@ -1010,6 +1037,9 @@ export default function OrdersAdmin() {
               </button>
               <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
                 <Download className="h-3.5 w-3.5"/> <span className="hidden sm:inline">{t('orders.download')}</span>
+              </button>
+              <button onClick={() => { setSheetsMsg(null); setShowSheetsModal(true); }} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
+                <Upload className="h-3.5 w-3.5"/> <span className="hidden sm:inline">Google Sheets</span>
               </button>
             </div>
           </div>
@@ -1976,6 +2006,51 @@ export default function OrdersAdmin() {
       )}
 
       {/* Add Order Modal */}
+      {showSheetsModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2">
+          <div className="bg-card border border-border shadow-2xl max-w-md w-full max-h-[80dvh] overflow-y-auto rounded-xl">
+            <div className="border-b border-border px-4 py-3 flex items-center justify-between">
+              <h2 className="text-base font-bold">Upload orders to Google Sheets</h2>
+              <button onClick={() => setShowSheetsModal(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-bold mb-1">Spreadsheet ID</label>
+                <input
+                  type="text"
+                  value={sheetsId}
+                  onChange={e => setSheetsId(e.target.value)}
+                  placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  dir="ltr"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">From your sheet URL: docs.google.com/spreadsheets/d/<b>SPREADSHEET_ID</b>/edit</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Sheet name</label>
+                <input
+                  type="text"
+                  value={sheetName}
+                  onChange={e => setSheetName(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  dir="ltr"
+                />
+              </div>
+              {sheetsMsg && <p className="text-xs font-bold">{sheetsMsg}</p>}
+              <button
+                onClick={exportToSheets}
+                disabled={!sheetsId.trim() || sheetsExporting}
+                className="w-full h-9 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {sheetsExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {sheetsExporting ? 'Uploading...' : 'Upload orders'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showAddOrder && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2">
           <div className="bg-card border border-border shadow-2xl max-w-md w-full my-4 sm:my-0 max-h-[80dvh] overflow-y-auto rounded-xl">
