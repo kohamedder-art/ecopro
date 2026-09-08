@@ -3,7 +3,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { pool } from '../utils/database';
-import { googleSheetsService } from '../services/google-sheets';
+import { googleSheetsService, sheetsCallbackUrl } from '../services/google-sheets';
 import {
   GoogleConnectSchema,
   ImportMappingSchema,
@@ -506,6 +506,52 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
     res.json({ success: true, exported });
   } catch (error: any) {
     return jsonServerError(res, error, 'Order export failed');
+  }
+});
+
+/**
+ * GET /api/google/connect-url?return_to=/dashboard/orders
+ * Host-aware consent URL for the Sheets flow (works on localhost AND
+ * production, as long as each /api/google/sheets-callback URI is
+ * whitelisted in Google Cloud Console).
+ */
+router.get('/connect-url', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const proto = String((req.headers['x-forwarded-proto'] as string) || req.protocol || 'http').split(',')[0].trim();
+    const host = String(req.get('host') || '');
+    const redirectUri = sheetsCallbackUrl(proto, host);
+    let returnTo = String(req.query.return_to || '/dashboard/orders');
+    if (!returnTo.startsWith('/')) returnTo = '/dashboard/orders';
+    const url = googleSheetsService.getSheetsAuthUrl(redirectUri, returnTo);
+    res.json({ url });
+  } catch (error: any) {
+    return jsonServerError(res, error, 'Failed to generate consent URL');
+  }
+});
+
+/**
+ * GET /api/google/sheets-callback?code=...&state=/dashboard/orders
+ * Server-side OAuth callback (same working pattern as login):
+ * exchanges the code, saves tokens, redirects back to the dashboard.
+ */
+router.get('/sheets-callback', async (req: Request, res: Response) => {
+  const clientId = (req.user as any)?.clientId || (req.user as any)?.id;
+  const fail = (to: string) => res.redirect(`${to}${to.includes('?') ? '&' : '?'}google_error=auth_failed`);
+  try {
+    let returnTo = typeof req.query.state === 'string' && req.query.state.startsWith('/') ? req.query.state : '/dashboard/orders';
+    const code = req.query.code;
+    if (!clientId) return fail('/login');
+    if (!code || typeof code !== 'string') return fail(returnTo);
+    const proto = String((req.headers['x-forwarded-proto'] as string) || req.protocol || 'http').split(',')[0].trim();
+    const host = String(req.get('host') || '');
+    const redirectUri = sheetsCallbackUrl(proto, host);
+    const tokens = await googleSheetsService.getTokensFromCode(code, redirectUri);
+    await googleSheetsService.saveTokens(Number(clientId), tokens);
+    res.redirect(`${returnTo}${returnTo.includes('?') ? '&' : '?'}google_connected=1`);
+  } catch (error: any) {
+    console.error('[Sheets] OAuth callback failed:', error?.message || error);
+    const returnTo = typeof req.query.state === 'string' && req.query.state.startsWith('/') ? req.query.state : '/dashboard/orders';
+    fail(returnTo);
   }
 });
 

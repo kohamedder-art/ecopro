@@ -298,7 +298,7 @@ export default function OrdersAdmin() {
 
   const connectGoogle = async () => {
     try {
-      const res = await fetch('/api/google/auth-url', { credentials: 'include' });
+      const res = await fetch('/api/google/connect-url?return_to=' + encodeURIComponent(window.location.pathname), { credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       if (data.url) window.location.href = data.url;
       else setSheetsMsg('Could not start Google connection');
@@ -306,6 +306,19 @@ export default function OrdersAdmin() {
       setSheetsMsg(e.message || 'Could not start Google connection');
     }
   };
+
+  // After Google OAuth redirect, reopen the modal automatically
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('google_connected') === '1') {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      openSheetsModal();
+    } else if (params.get('google_error')) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setSheetsMsg('Google connection failed — please try again');
+      setShowSheetsModal(true);
+    }
+  }, []);
 
   const exportToSheets = async () => {
     if (!sheetsId.trim() || sheetsExporting) return;

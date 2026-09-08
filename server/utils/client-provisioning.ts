@@ -21,18 +21,29 @@ const DEFAULT_TEMPLATES = {
 };
 
 let cachedOrderStatusesHasIsSystem: boolean | null = null;
+let cachedOrderStatusesHasStoreId: boolean | null = null;
 
-async function orderStatusesHasIsSystem(): Promise<boolean> {
-  if (cachedOrderStatusesHasIsSystem != null) return cachedOrderStatusesHasIsSystem;
+async function orderStatusesHasColumn(column: string, cache: { v: boolean | null }, setCache: (v: boolean) => void): Promise<boolean> {
+  if (cache.v != null) return cache.v;
   const pool = await ensureConnection();
   const res = await pool.query(
     `SELECT 1
      FROM information_schema.columns
-     WHERE table_schema = 'public' AND table_name = 'order_statuses' AND column_name = 'is_system'
-     LIMIT 1`
+     WHERE table_schema = 'public' AND table_name = 'order_statuses' AND column_name = $1
+     LIMIT 1`,
+    [column]
   );
-  cachedOrderStatusesHasIsSystem = res.rowCount > 0;
-  return cachedOrderStatusesHasIsSystem;
+  const has = (res.rowCount ?? 0) > 0;
+  setCache(has);
+  return has;
+}
+
+async function orderStatusesHasIsSystem(): Promise<boolean> {
+  return orderStatusesHasColumn('is_system', { v: cachedOrderStatusesHasIsSystem }, v => { cachedOrderStatusesHasIsSystem = v; });
+}
+
+async function orderStatusesHasStoreId(): Promise<boolean> {
+  return orderStatusesHasColumn('store_id', { v: cachedOrderStatusesHasStoreId }, v => { cachedOrderStatusesHasStoreId = v; });
 }
 
 /**

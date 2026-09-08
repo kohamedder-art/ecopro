@@ -19,7 +19,19 @@ import {
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+// Production redirect (must be whitelisted in Google Cloud Console).
+// Local dev uses http://<host>/api/google/sheets-callback — whitelist
+// http://localhost:8080/api/google/sheets-callback too.
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5173/auth/google/callback';
+
+/** Redirect URI for the Sheets OAuth flow, matching the current host. */
+export function sheetsCallbackUrl(protocol: string, host: string): string {
+  const h = String(host || '').toLowerCase();
+  if (h.startsWith('localhost') || h.startsWith('127.0.0.1')) {
+    return `http://${h}/api/google/sheets-callback`;
+  }
+  return `https://${h}/api/google/sheets-callback`;
+}
 
 export class GoogleSheetsService {
   private oauth2Client: OAuth2Client;
@@ -33,6 +45,24 @@ export class GoogleSheetsService {
     );
 
     this.sheets = google.sheets({ version: 'v4', auth: this.oauth2Client });
+  }
+
+  private clientFor(redirectUri?: string): OAuth2Client {
+    if (!redirectUri || redirectUri === GOOGLE_REDIRECT_URI) return this.oauth2Client;
+    return new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, redirectUri);
+  }
+
+  /**
+   * Build the consent URL for the Sheets flow (spreadsheets scope +
+   * offline access so exports work without re-login).
+   */
+  getSheetsAuthUrl(redirectUri: string, state?: string): string {
+    return this.clientFor(redirectUri).generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/spreadsheets'],
+      state: state || generateRequestId(),
+      prompt: 'consent',
+    });
   }
 
   /**
@@ -54,13 +84,13 @@ export class GoogleSheetsService {
   /**
    * Exchange authorization code for tokens
    */
-  async getTokensFromCode(code: string): Promise<{
+  async getTokensFromCode(code: string, redirectUri?: string): Promise<{
     access_token: string;
     refresh_token?: string;
     expires_in: number;
   }> {
     try {
-      const { tokens } = await this.oauth2Client.getToken(code);
+      const { tokens } = await this.clientFor(redirectUri).getToken(code);
       return {
         access_token: tokens.access_token || '',
         refresh_token: tokens.refresh_token,
