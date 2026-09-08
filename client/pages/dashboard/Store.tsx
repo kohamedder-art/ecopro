@@ -3420,7 +3420,7 @@ export default function Store() {
 
                   {/* Landing images */}
                   <div className="space-y-2">
-                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">صور الصفحة الم镉ية <span className="font-normal text-xs text-muted-foreground">(أعلى الطلب)</span></h4>
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">صور الصفحة المطولة <span className="font-normal text-xs text-muted-foreground">(أعلى الطلب)</span></h4>
                     <div className="grid grid-cols-3 gap-1.5">
                       {(Array.isArray(formData.landing_images) ? formData.landing_images : []).slice(0, 10).map((url, idx) => (
                         <div key={`${url}-${idx}`} className="relative w-full aspect-[3/4] border rounded-lg overflow-hidden">
@@ -3449,7 +3449,7 @@ export default function Store() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  صور عادية: معرض الصور القابل للتمرير. صور الصفحة الم镉ية: صور طويلة تتكدس فوق نموذج الطلب.
+                  صور عادية: معرض الصور القابل للتمرير. صور الصفحة المطولة: صور طويلة تتكدس فوق نموذج الطلب.
                 </p>
               </div>
             )}

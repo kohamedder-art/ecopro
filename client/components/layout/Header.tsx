@@ -341,7 +341,7 @@ export default function Header() {
 
 // Store Switcher component (inside header dropdown)
 function StoreSwitcher() {
-  const { stores, activeStore, setActiveStore, createStore } = useStore();
+  const { stores, activeStore, setActiveStore, createStore, loading } = useStore();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
@@ -358,7 +358,17 @@ function StoreSwitcher() {
     }
   };
 
-  if (stores.length === 0 && !showCreate) return null;
+  if (loading) {
+    return (
+      <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-700/50">
+        <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 px-1">المتجر النشط</div>
+        <div className="animate-pulse space-y-2">
+          <div className="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-xl" />
+          <div className="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-xl w-3/4" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-700/50">

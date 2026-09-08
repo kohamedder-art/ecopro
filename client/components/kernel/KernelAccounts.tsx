@@ -111,7 +111,7 @@ export default function KernelAccounts() {
             </div>
           </div>
         ) : (
-          <div className="max-h-[500px] overflow-y-auto k-scroll">
+          <div>
             {accounts.length === 0 ? (
               <div className="flex items-center justify-center h-20 k-dim text-xs">No accounts found</div>
             ) : (
