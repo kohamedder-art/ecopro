@@ -2048,37 +2048,42 @@ export default function OrdersAdmin() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2">
           <div className="bg-card border border-border shadow-2xl max-w-md w-full max-h-[80dvh] overflow-y-auto rounded-xl">
             <div className="border-b border-border px-4 py-3 flex items-center justify-between">
-              <h2 className="text-base font-bold">Upload orders to Google Sheets</h2>
+              <div>
+                <h2 className="text-base font-bold">Google Sheets export</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Upload store orders into a spreadsheet</p>
+              </div>
               <button onClick={() => setShowSheetsModal(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
-            <div className="p-4 space-y-3">
-              {sheetsConnected === false && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs">
-                  <p className="font-bold mb-2">Google account not connected</p>
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${sheetsConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-xs font-bold">
+                    {sheetsConnected === null ? 'Checking connection...' : sheetsConnected ? 'Google account connected' : 'Google account not connected'}
+                  </span>
+                </div>
+                {sheetsConnected === false && (
                   <button
                     onClick={connectGoogle}
-                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                   >
-                    Connect Google Account
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+                    Connect
                   </button>
-                </div>
-              )}
-              {sheetsConnected === null && (
-                <p className="text-xs text-muted-foreground">Checking Google connection...</p>
-              )}
+                )}
+              </div>
               <div>
-                <label className="block text-xs font-bold mb-1">Spreadsheet ID</label>
+                <label className="block text-xs font-bold mb-1">Spreadsheet ID or URL</label>
                 <input
                   type="text"
                   value={sheetsId}
                   onChange={e => setSheetsId(e.target.value)}
-                  placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Paste the sheet link or ID"
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-left focus:outline-none focus:ring-2 focus:ring-primary/30"
                   dir="ltr"
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">From your sheet URL: docs.google.com/spreadsheets/d/<b>SPREADSHEET_ID</b>/edit</p>
               </div>
               <div>
                 <label className="block text-xs font-bold mb-1">Sheet name</label>
@@ -2086,15 +2091,15 @@ export default function OrdersAdmin() {
                   type="text"
                   value={sheetName}
                   onChange={e => setSheetName(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-left focus:outline-none focus:ring-2 focus:ring-primary/30"
                   dir="ltr"
                 />
               </div>
-              {sheetsMsg && <p className="text-xs font-bold">{sheetsMsg}</p>}
+              {sheetsMsg && <p className={`text-xs font-bold ${sheetsMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{sheetsMsg}</p>}
               <button
                 onClick={exportToSheets}
-                disabled={!sheetsId.trim() || sheetsExporting}
-                className="w-full h-9 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+                disabled={!sheetsId.trim() || sheetsExporting || !sheetsConnected}
+                className="w-full h-9 rounded-lg bg-green-600 text-white text-sm font-bold disabled:opacity-40 hover:bg-green-700 flex items-center justify-center gap-2"
               >
                 {sheetsExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 {sheetsExporting ? 'Uploading...' : 'Upload orders'}
