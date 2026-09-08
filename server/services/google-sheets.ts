@@ -17,7 +17,7 @@ import {
   ProductImportSchema,
 } from '../types/google-sheets';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 // Production redirect (must be whitelisted in Google Cloud Console).
 // Local dev uses http://<host>/api/google/sheets-callback — whitelist
