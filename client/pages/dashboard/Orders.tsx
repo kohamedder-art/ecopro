@@ -287,6 +287,7 @@ export default function OrdersAdmin() {
     setSheetsMsg(null);
     setSheetsConnected(null);
     setShowSheetsModal(true);
+    refreshSheetsPending();
     try {
       const res = await fetch('/api/google/status', { credentials: 'include' });
       const data = await res.json().catch(() => ({}));
@@ -320,7 +321,7 @@ export default function OrdersAdmin() {
     }
   }, []);
 
-  const exportToSheets = async () => {
+  const exportToSheets = async (mode: 'new' | 'all') => {
     if (!sheetsId.trim() || sheetsExporting) return;
     setSheetsExporting(true);
     setSheetsMsg(null);
@@ -329,15 +330,27 @@ export default function OrdersAdmin() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ spreadsheet_id: sheetsId.trim(), sheet_name: sheetName.trim() || 'Orders' }),
+        body: JSON.stringify({ spreadsheet_id: sheetsId.trim(), sheet_name: sheetName.trim() || 'Orders', mode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.message || 'Export failed');
       setSheetsMsg(`✓ ${data.exported} orders uploaded to Google Sheets`);
+      if (mode === 'new') refreshSheetsPending();
     } catch (e: any) {
       setSheetsMsg(e.message || 'Export failed');
     } finally {
       setSheetsExporting(false);
+    }
+  };
+
+  const [sheetsPending, setSheetsPending] = useState<number | null>(null);
+  const refreshSheetsPending = async () => {
+    try {
+      const res = await fetch('/api/google/export-orders/pending', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      setSheetsPending(typeof data.count === 'number' ? data.count : null);
+    } catch {
+      setSheetsPending(null);
     }
   };
 
@@ -2096,14 +2109,23 @@ export default function OrdersAdmin() {
                 />
               </div>
               {sheetsMsg && <p className={`text-xs font-bold ${sheetsMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{sheetsMsg}</p>}
-              <button
-                onClick={exportToSheets}
-                disabled={!sheetsId.trim() || sheetsExporting || !sheetsConnected}
-                className="w-full h-9 rounded-lg bg-green-600 text-white text-sm font-bold disabled:opacity-40 hover:bg-green-700 flex items-center justify-center gap-2"
-              >
-                {sheetsExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {sheetsExporting ? 'Uploading...' : 'Upload orders'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportToSheets('new')}
+                  disabled={!sheetsId.trim() || sheetsExporting || !sheetsConnected}
+                  className="flex-1 h-9 rounded-lg bg-green-600 text-white text-sm font-bold disabled:opacity-40 hover:bg-green-700 flex items-center justify-center gap-2"
+                >
+                  {sheetsExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {sheetsExporting ? 'Uploading...' : `Upload new${sheetsPending ? ` (${sheetsPending})` : ''}`}
+                </button>
+                <button
+                  onClick={() => exportToSheets('all')}
+                  disabled={!sheetsId.trim() || sheetsExporting || !sheetsConnected}
+                  className="h-9 px-4 rounded-lg border border-border text-sm font-bold disabled:opacity-40 hover:bg-muted flex items-center justify-center"
+                >
+                  Upload all
+                </button>
+              </div>
             </div>
           </div>
         </div>

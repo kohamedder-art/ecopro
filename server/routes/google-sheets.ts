@@ -428,9 +428,31 @@ router.post('/disconnect', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/google/export-orders/pending
+ * Count of orders not yet uploaded to Google Sheets.
+ */
+router.get('/export-orders/pending', requireAuth, async (req: Request, res: Response) => {
+  const clientId = (req as any).clientId;
+  const activeStoreId = (req as any).activeStoreId;
+  try {
+    const storeFilter = activeStoreId ? 'store_id' : 'client_id';
+    const storeIdVal = activeStoreId || clientId;
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM store_orders
+       WHERE ${storeFilter} = $1 AND deleted_at IS NULL AND exported_to_sheets_at IS NULL`,
+      [storeIdVal]
+    );
+    res.json({ count: result.rows[0]?.count || 0 });
+  } catch (error: any) {
+    return jsonServerError(res, error, 'Failed to count pending orders');
+  }
+});
+
+/**
  * POST /api/google/export-orders
  * Upload the store's orders into a Google Sheet (appends rows).
- * Body: { spreadsheet_id: string, sheet_name?: string }
+ * Body: { spreadsheet_id: string, sheet_name?: string, mode?: 'new' | 'all' }
+ * Default mode 'new' uploads only orders not uploaded before, then marks them.
  */
 router.post('/export-orders', requireAuth, async (req: Request, res: Response) => {
   const clientId = (req as any).clientId;
@@ -445,11 +467,13 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
     if (!spreadsheetId) {
       return res.status(400).json({ error: 'spreadsheet_id is required' });
     }
+    const mode = String(req.body?.mode || 'new').toLowerCase() === 'all' ? 'all' : 'new';
 
     const accessToken = await googleSheetsService.getValidTokens(clientId);
 
     const storeFilter = activeStoreId ? 'o.store_id' : 'o.client_id';
     const storeIdVal = activeStoreId || clientId;
+    const pendingClause = mode === 'new' ? 'AND o.exported_to_sheets_at IS NULL' : '';
     const result = await pool.query(
       `SELECT
          o.id, o.created_at, o.customer_name, o.customer_phone,
@@ -459,7 +483,7 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
          COALESCE(cp.title, '') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products cp ON o.product_id = cp.id
-       WHERE ${storeFilter} = $1 AND o.deleted_at IS NULL
+       WHERE ${storeFilter} = $1 AND o.deleted_at IS NULL ${pendingClause}
        ORDER BY o.created_at DESC
        LIMIT 5000`,
       [storeIdVal]
@@ -499,10 +523,19 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
     });
 
     if (rows.length === 0) {
-      return res.json({ success: true, exported: 0, message: 'No orders to export' });
+      return res.json({ success: true, exported: 0, message: mode === 'new' ? 'No new orders to export' : 'No orders to export' });
     }
 
     const exported = await googleSheetsService.appendRows(accessToken, spreadsheetId, sheetName, header, rows);
+    if (mode === 'new' && exported > 0) {
+      const ids = result.rows.map((o: any) => Number(o.id)).filter(Number.isFinite);
+      if (ids.length > 0) {
+        await pool.query(
+          `UPDATE store_orders SET exported_to_sheets_at = NOW() WHERE id = ANY($1::int[])`,
+          [ids]
+        );
+      }
+    }
     res.json({ success: true, exported });
   } catch (error: any) {
     // Known-safe classified messages (auth, permissions, missing sheet) are
