@@ -213,10 +213,11 @@ export async function backfillPlatformBotCredentials(): Promise<void> {
 }
 
 /**
- * Ensure system order statuses exist for a client.
- * Many dashboards/revenue queries rely on order_statuses rows.
+ * Ensure system order statuses exist for a client (and store, when given).
+ * NOTE: clientId must be a real clients.id — never pass a store id here,
+ * or the order_statuses_client_id_fkey constraint will reject the insert.
  */
-export async function ensureSystemOrderStatuses(clientId: number): Promise<void> {
+export async function ensureSystemOrderStatuses(clientId: number, storeId?: number | null): Promise<void> {
   const pool = await ensureConnection();
 
   // IMPORTANT:
@@ -225,9 +226,17 @@ export async function ensureSystemOrderStatuses(clientId: number): Promise<void>
   // We only insert missing keys and never overwrite user/custom rows.
 
   const hasIsSystem = await orderStatusesHasIsSystem();
+  const hasStoreId = await orderStatusesHasStoreId();
 
   const baseCols = ['client_id', 'name', 'key', 'color', 'icon', 'sort_order', 'is_default', 'counts_as_revenue'];
-  const cols = hasIsSystem ? [...baseCols, 'is_system'] : baseCols;
+  const cols = [...baseCols];
+  if (hasStoreId) cols.push('store_id');
+  if (hasIsSystem) cols.push('is_system');
+  const casts: Record<string, string> = {
+    client_id: 'int', name: 'text', key: 'text', color: 'text', icon: 'text',
+    sort_order: 'int', is_default: 'boolean', counts_as_revenue: 'boolean',
+    store_id: 'int', is_system: 'boolean',
+  };
 
   const values: any[] = [];
   // Seed only the essential statuses for new accounts.
@@ -245,6 +254,8 @@ export async function ensureSystemOrderStatuses(clientId: number): Promise<void>
   // Insert missing keys one-by-one using WHERE NOT EXISTS to avoid duplicates.
   // (Some older DBs may not have a unique constraint on (client_id, key).)
   // We also add explicit casts to avoid Postgres "inconsistent types deduced" errors.
+  // store_id position is always right after the 8 base columns when present.
+  const storeParamIdx = hasStoreId ? 9 : -1;
   for (const r of rows) {
     const rowVals = [
       clientId,
@@ -255,35 +266,25 @@ export async function ensureSystemOrderStatuses(clientId: number): Promise<void>
       r.sort_order,
       r.is_default,
       r.counts_as_revenue,
+      ...(hasStoreId ? [storeId ?? null] : []),
       ...(hasIsSystem ? [r.is_system] : []),
     ];
     values.length = 0;
     values.push(...rowVals);
-    const placeholders = rowVals.map((_, i) => {
-      const idx = i + 1;
-      // Fixed column order: client_id, name, key, color, icon, sort_order, is_default, counts_as_revenue, [is_system]
-      if (idx === 1) return `$${idx}::int`;
-      if (idx === 2) return `$${idx}::text`;
-      if (idx === 3) return `$${idx}::text`;
-      if (idx === 4) return `$${idx}::text`;
-      if (idx === 5) return `$${idx}::text`;
-      if (idx === 6) return `$${idx}::int`;
-      if (idx === 7) return `$${idx}::boolean`;
-      if (idx === 8) return `$${idx}::boolean`;
-      if (idx === 9) return `$${idx}::boolean`;
-      return `$${idx}`;
-    });
+    const placeholders = cols.map((c, i) => `$${i + 1}::${casts[c]}`);
 
     await pool.query(
       `INSERT INTO order_statuses (${cols.join(', ')})
        SELECT ${placeholders.join(', ')}
        WHERE NOT EXISTS (
-         SELECT 1 FROM order_statuses WHERE client_id = $1::int AND key = $3::text
+         SELECT 1 FROM order_statuses WHERE client_id = $1::int AND key = $3::text${
+           hasStoreId ? ` AND store_id IS NOT DISTINCT FROM $${storeParamIdx}::int` : ''
+         }
        )`,
-       values
-     );
-   }
- }
+      values
+    );
+  }
+}
 
 const SAMPLE_PRODUCTS = [
   {

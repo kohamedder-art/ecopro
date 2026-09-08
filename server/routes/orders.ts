@@ -1806,8 +1806,9 @@ export const getOrderStatuses: RequestHandler = async (req, res) => {
 
     // Backfill missing system/bot statuses for existing accounts as well.
     // This keeps the UI and bots aligned even if the account was created before new statuses were added.
+    // NOTE: first arg must be the real client id (never a store id — FK constraint).
     try {
-      await ensureSystemOrderStatuses(Number(storeIdVal));
+      await ensureSystemOrderStatuses(Number(clientId), activeStoreId ? Number(activeStoreId) : null);
     } catch (e) {
       console.warn('[getOrderStatuses] Failed to ensure system statuses:', (e as any)?.message || e);
     }

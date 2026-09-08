@@ -184,6 +184,13 @@ export class ProColisService implements CourierService {
       }
 
       const parcel: ProColisReadResponse = Array.isArray(data) ? data[0] : data;
+      if (!parcel || typeof parcel !== 'object') {
+        return {
+          tracking_number: trackingNumber,
+          status: 'unknown',
+          error: 'Empty parcel data from ProColis',
+        };
+      }
       const status = this.mapProColisStatus(parcel.Situational || parcel.Status || '');
 
       return {
