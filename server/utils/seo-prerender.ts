@@ -39,7 +39,9 @@ const PRIVACY_BODY = `
 <p>If you connect your Google account for order export, we request the spreadsheets scope to write your store orders into spreadsheets you choose. We never read unrelated files. You can revoke access anytime in your Google Account settings or by disconnecting in the dashboard.</p>
 <h2>3. Order data</h2>
 <p>When customers place orders we collect name, phone number, delivery address (wilaya, commune), ordered products and payment/delivery details, and share them with the store owner and the chosen delivery company to fulfill the order.</p>
-<h2>4. Messaging identifiers</h2>
+<h2>4. Third Parties We Share Data With</h2>
+<p>We do not sell personal data. We share data only as needed: delivery companies (to ship orders), messaging platforms you opted into, Google (Sign-In profile and Sheets you explicitly connect), and ad pixels you configure yourself.</p>
+<h2>5. Messaging identifiers</h2>
 <p>When you opt in to order notifications we store messaging identifiers (Telegram chat id, Messenger PSID) to send order status updates.</p>
 <h2>5. Cookies</h2>
 <p>We use strictly necessary cookies for login sessions, store selection and CSRF protection. No advertising cookies.</p>

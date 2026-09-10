@@ -34,6 +34,17 @@ export default function Privacy() {
         </section>
 
         <section className="mb-6">
+          <h2 className="text-xl font-semibold mb-3">4. Third Parties We Share Data With</h2>
+          <p className="text-gray-700">
+            We do not sell personal data. We share data only as needed to operate the service:
+            delivery companies (name, phone, address to ship orders), messaging platforms
+            (Telegram, WhatsApp, Messenger — only identifiers you opted in), Google (Sign-In
+            profile and Sheets content you explicitly connect), and payment/advertising pixels
+            you configure yourself (Meta, TikTok, Snapchat).
+          </p>
+        </section>
+
+        <section className="mb-6">
           <h2 className="text-xl font-semibold mb-3">4. Messaging Identifiers</h2>
           <p className="text-gray-700">
             When you opt in to order notifications we store messaging identifiers
