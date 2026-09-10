@@ -288,6 +288,10 @@ export default function OrdersAdmin() {
   const openSheetsModal = async (mode: 'new' | 'all' | 'selected' = 'new') => {
     setSheetsMsg(null);
     setSheetsMode(mode);
+    // Default the tab name to the active store
+    if (!sheetName || sheetName === 'Orders') {
+      setSheetName(activeStore?.store_name || 'Orders');
+    }
     setShowSheetsModal(true);
     refreshSheetsPending();
     try {
