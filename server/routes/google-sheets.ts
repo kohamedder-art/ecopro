@@ -468,12 +468,16 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
       return res.status(400).json({ error: 'spreadsheet_id is required' });
     }
     const mode = String(req.body?.mode || 'new').toLowerCase() === 'all' ? 'all' : 'new';
+    const onlyIds = Array.isArray(req.body?.order_ids)
+      ? req.body.order_ids.map(Number).filter(Number.isFinite)
+      : null;
 
     const accessToken = await googleSheetsService.getValidTokens(clientId);
 
     const storeFilter = activeStoreId ? 'o.store_id' : 'o.client_id';
     const storeIdVal = activeStoreId || clientId;
-    const pendingClause = mode === 'new' ? 'AND o.exported_to_sheets_at IS NULL' : '';
+    const pendingClause = mode === 'new' && !onlyIds ? 'AND o.exported_to_sheets_at IS NULL' : '';
+    const idsClause = onlyIds ? 'AND o.id = ANY($2::int[])' : '';
     const result = await pool.query(
       `SELECT
          o.id, o.created_at, o.customer_name, o.customer_phone,
@@ -483,10 +487,10 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
          COALESCE(cp.title, '') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products cp ON o.product_id = cp.id
-       WHERE ${storeFilter} = $1 AND o.deleted_at IS NULL ${pendingClause}
+       WHERE ${storeFilter} = $1 AND o.deleted_at IS NULL ${pendingClause} ${idsClause}
        ORDER BY o.created_at DESC
        LIMIT 5000`,
-      [storeIdVal]
+      onlyIds ? [storeIdVal, onlyIds] : [storeIdVal]
     );
 
     // Wilaya id -> Arabic name for readable sheets
@@ -527,7 +531,7 @@ router.post('/export-orders', requireAuth, async (req: Request, res: Response) =
     }
 
     const exported = await googleSheetsService.appendRows(accessToken, spreadsheetId, sheetName, header, rows);
-    if (mode === 'new' && exported > 0) {
+    if (exported > 0 && (mode === 'new' || onlyIds)) {
       const ids = result.rows.map((o: any) => Number(o.id)).filter(Number.isFinite);
       if (ids.length > 0) {
         await pool.query(

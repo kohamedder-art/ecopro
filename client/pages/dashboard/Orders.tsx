@@ -283,9 +283,12 @@ export default function OrdersAdmin() {
   const [sheetsMsg, setSheetsMsg] = useState<string | null>(null);
   const [sheetsConnected, setSheetsConnected] = useState<boolean | null>(null);
 
-  const openSheetsModal = async () => {
+  const [sheetsMode, setSheetsMode] = useState<'new' | 'all' | 'selected'>('new');
+
+  const openSheetsModal = async (mode: 'new' | 'all' | 'selected' = 'new') => {
     setSheetsMsg(null);
     setSheetsConnected(null);
+    setSheetsMode(mode);
     setShowSheetsModal(true);
     refreshSheetsPending();
     try {
@@ -308,6 +311,17 @@ export default function OrdersAdmin() {
     }
   };
 
+  const disconnectGoogle = async () => {
+    try {
+      const res = await fetch('/api/google/disconnect', { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error('Disconnect failed');
+      setSheetsConnected(false);
+      setSheetsMsg('Google account disconnected — connect another to switch');
+    } catch (e: any) {
+      setSheetsMsg(e.message || 'Disconnect failed');
+    }
+  };
+
   // After Google OAuth redirect, reopen the modal automatically
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -319,23 +333,36 @@ export default function OrdersAdmin() {
       setSheetsMsg('Google connection failed — please try again');
       setShowSheetsModal(true);
     }
+    refreshSheetsStatus();
   }, []);
 
-  const exportToSheets = async (mode: 'new' | 'all') => {
+  const refreshSheetsStatus = async () => {
+    try {
+      const res = await fetch('/api/google/status', { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      setSheetsConnected(!!data.connected);
+    } catch {
+      setSheetsConnected(false);
+    }
+  };
+
+  const exportToSheets = async (mode: 'new' | 'all' | 'selected') => {
     if (!sheetsId.trim() || sheetsExporting) return;
     setSheetsExporting(true);
     setSheetsMsg(null);
     try {
+      const body: any = { spreadsheet_id: sheetsId.trim(), sheet_name: sheetName.trim() || 'Orders', mode: mode === 'selected' ? 'all' : mode };
+      if (mode === 'selected') body.order_ids = Array.from(selectedOrders);
       const res = await fetch('/api/google/export-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ spreadsheet_id: sheetsId.trim(), sheet_name: sheetName.trim() || 'Orders', mode }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || data.message || 'Export failed');
       setSheetsMsg(`✓ ${data.exported} orders uploaded to Google Sheets`);
-      if (mode === 'new') refreshSheetsPending();
+      refreshSheetsPending();
     } catch (e: any) {
       setSheetsMsg(e.message || 'Export failed');
     } finally {
@@ -1089,8 +1116,9 @@ export default function OrdersAdmin() {
               <button onClick={exportCSV} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
                 <Download className="h-3.5 w-3.5"/> <span className="hidden sm:inline">{t('orders.download')}</span>
               </button>
-              <button onClick={openSheetsModal} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
-                <Upload className="h-3.5 w-3.5"/> <span className="hidden sm:inline">Google Sheets</span>
+              <button onClick={() => sheetsConnected ? openSheetsModal('new') : connectGoogle()} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
+                <span className={`w-2 h-2 rounded-full ${sheetsConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
+                <span className="hidden sm:inline">{sheetsConnected ? 'Sheets connected' : 'Connect Sheets'}</span>
               </button>
             </div>
           </div>
@@ -1191,6 +1219,13 @@ export default function OrdersAdmin() {
               >
                 <Truck className="h-4 w-4" />
                 {t('orders.uploadToDelivery')}
+              </button>
+              <button
+                onClick={() => openSheetsModal('selected')}
+                className="px-4 py-1.5 rounded text-sm font-bold bg-green-600 text-white hover:bg-green-700 transition-colors shadow flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Upload to sheet
               </button>
             </div>
           </div>
@@ -2077,7 +2112,7 @@ export default function OrdersAdmin() {
                     {sheetsConnected === null ? 'Checking connection...' : sheetsConnected ? 'Google account connected' : 'Google account not connected'}
                   </span>
                 </div>
-                {sheetsConnected === false && (
+                {sheetsConnected === false ? (
                   <button
                     onClick={connectGoogle}
                     className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
@@ -2085,8 +2120,13 @@ export default function OrdersAdmin() {
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
                     Connect
                   </button>
-                )}
+                ) : sheetsConnected ? (
+                  <button onClick={disconnectGoogle} className="text-xs font-bold text-red-600 hover:underline">Disconnect</button>
+                ) : null}
               </div>
+              {sheetsConnected && (
+                <button onClick={connectGoogle} className="text-[11px] text-muted-foreground hover:underline text-left">Switch to another Google account</button>
+              )}
               <div>
                 <label className="block text-xs font-bold mb-1">Spreadsheet ID or URL</label>
                 <input
@@ -2109,6 +2149,16 @@ export default function OrdersAdmin() {
                 />
               </div>
               {sheetsMsg && <p className={`text-xs font-bold ${sheetsMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{sheetsMsg}</p>}
+              {sheetsMode === 'selected' ? (
+                <button
+                  onClick={() => exportToSheets('selected')}
+                  disabled={!sheetsId.trim() || sheetsExporting || !sheetsConnected}
+                  className="w-full h-9 rounded-lg bg-green-600 text-white text-sm font-bold disabled:opacity-40 hover:bg-green-700 flex items-center justify-center gap-2"
+                >
+                  {sheetsExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {sheetsExporting ? 'Uploading...' : `Upload ${selectedOrders.size} selected`}
+                </button>
+              ) : (
               <div className="flex gap-2">
                 <button
                   onClick={() => exportToSheets('new')}
