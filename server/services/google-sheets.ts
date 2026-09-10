@@ -120,13 +120,14 @@ export class GoogleSheetsService {
       const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
       await pool.query(
-        `INSERT INTO google_tokens (client_id, access_token_encrypted, refresh_token_encrypted, expires_at, updated_at)
-         VALUES ($1, $2, $3, $4, NOW())
+        `INSERT INTO google_tokens (client_id, access_token_encrypted, refresh_token_encrypted, expires_at, is_active, updated_at)
+         VALUES ($1, $2, $3, $4, true, NOW())
          ON CONFLICT (client_id)
          DO UPDATE SET
            access_token_encrypted = $2,
            refresh_token_encrypted = $3,
            expires_at = $4,
+           is_active = true,
            last_refreshed_at = NOW(),
            updated_at = NOW()`,
         [clientId, encryptedAccessToken, encryptedRefreshToken, expiresAt]
