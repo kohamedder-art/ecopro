@@ -577,19 +577,23 @@ router.get('/connect-url', requireAuth, async (req: Request, res: Response) => {
  * Server-side OAuth callback (same working pattern as login):
  * exchanges the code, saves tokens, redirects back to the dashboard.
  */
-router.get('/sheets-callback', async (req: Request, res: Response) => {
+router.get('/sheets-callback', async (req, res: Response) => {
   const clientId = (req.user as any)?.clientId || (req.user as any)?.id;
+  console.log('[Sheets] callback hit, clientId:', clientId ? 'present' : 'MISSING', '| code:', typeof req.query.code === 'string' ? 'present' : 'MISSING');
   const fail = (to: string) => res.redirect(`${to}${to.includes('?') ? '&' : '?'}google_error=auth_failed`);
   try {
     let returnTo = typeof req.query.state === 'string' && req.query.state.startsWith('/') ? req.query.state : '/dashboard/orders';
     const code = req.query.code;
-    if (!clientId) return fail('/login');
-    if (!code || typeof code !== 'string') return fail(returnTo);
+    if (!clientId) { console.warn('[Sheets] callback: no authenticated user'); return fail('/login'); }
+    if (!code || typeof code !== 'string') { console.warn('[Sheets] callback: no code'); return fail(returnTo); }
     const proto = String((req.headers['x-forwarded-proto'] as string) || req.protocol || 'http').split(',')[0].trim();
     const host = String(req.get('host') || '');
     const redirectUri = sheetsCallbackUrl(proto, host);
+    console.log('[Sheets] callback: exchanging code, redirectUri:', redirectUri);
     const tokens = await googleSheetsService.getTokensFromCode(code, redirectUri);
+    console.log('[Sheets] callback: exchange ok, has refresh:', !!tokens.refresh_token);
     await googleSheetsService.saveTokens(Number(clientId), tokens);
+    console.log('[Sheets] callback: tokens saved for client', clientId);
     res.redirect(`${returnTo}${returnTo.includes('?') ? '&' : '?'}google_connected=1`);
   } catch (error: any) {
     console.error('[Sheets] OAuth callback failed:', error?.message || error);
