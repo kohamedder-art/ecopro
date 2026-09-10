@@ -2147,6 +2147,18 @@ ${urls}
         !req.path.startsWith('/assets') &&
         !looksLikeFile
       ) {
+        // Crawlers (Google verification, SEO) get static pre-rendered HTML
+        // for public pages since the SPA shell is empty without JS.
+        try {
+          const { prerenderForBot } = await import('./utils/seo-prerender');
+          const staticHtml = prerenderForBot(req.path, String(req.headers['user-agent'] || ''));
+          if (staticHtml) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+            res.send(staticHtml);
+            return;
+          }
+        } catch { /* fall through to SPA */ }
         const nonce = (res.locals as any).cspNonce;
         const buildId = String(process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || '').slice(0, 12);
         const indexPath = path.join(spaBuildPath, 'index.html');

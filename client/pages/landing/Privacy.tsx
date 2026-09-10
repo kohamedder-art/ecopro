@@ -3,54 +3,65 @@ export default function Privacy() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-8">
         <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
-        <p className="text-gray-600 mb-4">Last updated: January 11, 2026</p>
+        <p className="text-gray-600 mb-4">Last updated: September 10, 2026. Sahla4Eco (sahla4eco.com) is an Algerian e-commerce platform. This policy explains what data we collect and why.</p>
+
+        <section className="mb-6">
+          <h2 className="text-xl font-semibold mb-3">1. Account Data</h2>
+          <p className="text-gray-700">
+            When you create an account, including signing in with Google, we store your name,
+            email address and avatar. Google Sign-In shares only your basic profile
+            (name, email, avatar) with us.
+          </p>
+        </section>
+
+        <section className="mb-6">
+          <h2 className="text-xl font-semibold mb-3">2. Google Sheets Access</h2>
+          <p className="text-gray-700">
+            If you connect your Google account for order export, we request the spreadsheets
+            scope solely to write your store orders into spreadsheets you choose. We never
+            read unrelated files. You can revoke access at any time in your Google Account
+            settings or by disconnecting in the dashboard.
+          </p>
+        </section>
         
         <section className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">1. Information We Collect</h2>
+          <h2 className="text-xl font-semibold mb-3">3. Order Information</h2>
           <p className="text-gray-700">
-            We collect information you provide directly, including your name, phone number, 
-            and delivery address when placing orders. We also collect messaging identifiers 
-            (such as Telegram or Facebook Messenger IDs) when you opt-in to receive order notifications.
+            When customers place orders we collect name, phone number, and delivery address
+            (wilaya, commune), ordered products and payment/delivery details, and share them
+            with the store owner and the chosen delivery company to fulfill the order.
           </p>
         </section>
 
         <section className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">2. How We Use Your Information</h2>
+          <h2 className="text-xl font-semibold mb-3">4. Messaging Identifiers</h2>
           <p className="text-gray-700">
-            We use your information to process and deliver your orders, send order status 
-            notifications via your preferred messaging platform, and improve our services.
+            When you opt in to order notifications we store messaging identifiers
+            (such as Telegram chat id or Messenger PSID) to send order status updates.
           </p>
         </section>
 
         <section className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">3. Information Sharing</h2>
+          <h2 className="text-xl font-semibold mb-3">5. Cookies</h2>
           <p className="text-gray-700">
-            We do not sell your personal information. We share your information only with 
-            delivery partners to fulfill your orders and with messaging platforms (Telegram, 
-            Facebook Messenger) to send you notifications you've opted into.
+            We use strictly necessary cookies for login sessions, store selection and
+            CSRF protection. No advertising cookies.
           </p>
         </section>
 
         <section className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">4. Data Security</h2>
+          <h2 className="text-xl font-semibold mb-3">6. Retention and Your Rights</h2>
           <p className="text-gray-700">
-            We implement appropriate security measures to protect your personal information 
-            against unauthorized access, alteration, or destruction.
+            Order and account data is kept while your account is active. You can request access to,
+            correction of, or deletion of your personal data at any time via the dashboard or by
+            contacting us. You can opt-out of messaging notifications at any time.
           </p>
         </section>
 
         <section className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">5. Your Rights</h2>
+          <h2 className="text-xl font-semibold mb-3">7. Contact Us</h2>
           <p className="text-gray-700">
-            You can request access to, correction of, or deletion of your personal data 
-            by contacting us. You can opt-out of messaging notifications at any time.
-          </p>
-        </section>
-
-        <section className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">6. Contact Us</h2>
-          <p className="text-gray-700">
-            For questions about this privacy policy, please contact the store directly.
+            For questions about this privacy policy: sahla4eco@gmail.com
           </p>
         </section>
       </div>
