@@ -287,16 +287,15 @@ export default function OrdersAdmin() {
 
   const openSheetsModal = async (mode: 'new' | 'all' | 'selected' = 'new') => {
     setSheetsMsg(null);
-    setSheetsConnected(null);
     setSheetsMode(mode);
     setShowSheetsModal(true);
     refreshSheetsPending();
     try {
-      const res = await fetch('/api/google/status', { credentials: 'include' });
+      const res = await fetch('/api/google/status', { credentials: 'include', cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
-      setSheetsConnected(!!data.connected);
+      if (typeof data.connected === 'boolean') setSheetsConnected(data.connected);
     } catch {
-      setSheetsConnected(false);
+      /* leave previous state */
     }
   };
 
@@ -338,11 +337,13 @@ export default function OrdersAdmin() {
 
   const refreshSheetsStatus = async () => {
     try {
-      const res = await fetch('/api/google/status', { credentials: 'include' });
+      const res = await fetch('/api/google/status', { credentials: 'include', cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
-      setSheetsConnected(!!data.connected);
+      // Only overwrite on an explicit answer — a network error must not
+      // masquerade as "disconnected" (both stores share one connection).
+      if (typeof data.connected === 'boolean') setSheetsConnected(data.connected);
     } catch {
-      setSheetsConnected(false);
+      /* leave previous state */
     }
   };
 
@@ -1117,8 +1118,8 @@ export default function OrdersAdmin() {
                 <Download className="h-3.5 w-3.5"/> <span className="hidden sm:inline">{t('orders.download')}</span>
               </button>
               <button onClick={() => sheetsConnected ? openSheetsModal('new') : connectGoogle()} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all duration-200 h-8 shadow-sm">
-                <span className={`w-2 h-2 rounded-full ${sheetsConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <span className="hidden sm:inline">{sheetsConnected ? 'Sheets connected' : 'Connect Sheets'}</span>
+                <span className={`w-2 h-2 rounded-full ${sheetsConnected ? 'bg-green-500' : sheetsConnected === false ? 'bg-gray-300' : 'bg-yellow-400'}`} />
+                <span className="hidden sm:inline">{sheetsConnected ? 'Sheets connected' : sheetsConnected === false ? 'Connect Sheets' : 'Sheets'}</span>
               </button>
             </div>
           </div>
