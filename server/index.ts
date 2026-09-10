@@ -1,4 +1,5 @@
 import telemetryRouter from './routes/telemetry';
+import { prerenderForBot } from './utils/seo-prerender';
 import dotenv from 'dotenv';
 // Load env files for local/dev.
 // Important: never let dotenv override real environment variables (e.g. when we export DATABASE_URL).
@@ -2150,7 +2151,6 @@ ${urls}
         // Crawlers (Google verification, SEO) get static pre-rendered HTML
         // for public pages since the SPA shell is empty without JS.
         try {
-          const { prerenderForBot } = await import('./utils/seo-prerender');
           const staticHtml = prerenderForBot(req.path, String(req.headers['user-agent'] || ''));
           if (staticHtml) {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
