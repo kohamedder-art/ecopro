@@ -351,8 +351,33 @@ export default function OrdersAdmin() {
     }
   };
 
+  // Remember pasted sheets for quick re-pick (per browser)
+  const SHEETS_HISTORY_KEY = 'sheets-target-history';
+  const [sheetsHistory, setSheetsHistory] = useState<{ id: string; url: string }[]>(() => {
+    try {
+      const raw = localStorage.getItem(SHEETS_HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(x => x && x.id).slice(0, 8) : [];
+    } catch {
+      return [];
+    }
+  });
+  const rememberSheet = (rawInput: string) => {
+    const m = String(rawInput).match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    const id = m ? m[1] : String(rawInput).trim();
+    if (!id) return;
+    setSheetsHistory(prev => {
+      const next = [{ id, url: `https://docs.google.com/spreadsheets/d/${id}/edit` }, ...prev.filter(x => x.id !== id)].slice(0, 8);
+      try {
+        localStorage.setItem(SHEETS_HISTORY_KEY, JSON.stringify(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   const exportToSheets = async (mode: 'new' | 'all' | 'selected') => {
     if (!sheetsId.trim() || sheetsExporting) return;
+    rememberSheet(sheetsId);
     setSheetsExporting(true);
     setSheetsMsg(null);
     try {
@@ -2142,6 +2167,21 @@ export default function OrdersAdmin() {
                   className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-left focus:outline-none focus:ring-2 focus:ring-primary/30"
                   dir="ltr"
                 />
+                {sheetsHistory.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {sheetsHistory.map(h => (
+                      <button
+                        key={h.id}
+                        onClick={() => setSheetsId(h.url)}
+                        title={h.url}
+                        className="max-w-full truncate px-2.5 py-1 rounded-md border border-border bg-muted/40 text-[11px] font-mono hover:bg-muted"
+                        dir="ltr"
+                      >
+                        …{h.id.slice(-10)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-bold mb-1">Sheet name</label>
