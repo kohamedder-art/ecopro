@@ -23,19 +23,15 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-4 py-3.5 pe-10 shadow-xl transition-all duration-200 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-left-full data-[state=open]:slide-in-from-top-full data-[state=open]:zoom-in-95",
+  "group pointer-events-auto relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border bg-background px-4 py-3.5 pe-11 shadow-2xl transition-all duration-200 data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-top-full data-[state=open]:slide-in-from-top-full",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
-        destructive:
-          "destructive group border-red-500/50 bg-red-50 text-red-950 dark:bg-red-950/50 dark:text-red-100",
-        success:
-          "group border-emerald-500/40 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-100",
-        warning:
-          "group border-amber-500/40 bg-amber-50 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100",
-        info:
-          "group border-sky-500/40 bg-sky-50 text-sky-950 dark:bg-sky-950/40 dark:text-sky-100",
+        default: "text-foreground",
+        destructive: "border-red-500/50",
+        success: "border-emerald-500/40",
+        warning: "border-amber-500/40",
+        info: "border-sky-500/40",
       },
     },
     defaultVariants: {

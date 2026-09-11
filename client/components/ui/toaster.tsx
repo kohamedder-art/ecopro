@@ -9,12 +9,12 @@ import {
   ToastViewport,
 } from "@/components/ui/toast";
 
-const VARIANT_ICON: Record<string, { Icon: any; className: string; bar: string }> = {
-  success: { Icon: CheckCircle2, className: "text-emerald-500", bar: "bg-emerald-500" },
-  warning: { Icon: AlertTriangle, className: "text-amber-500", bar: "bg-amber-500" },
-  info: { Icon: Info, className: "text-sky-500", bar: "bg-sky-500" },
-  destructive: { Icon: XCircle, className: "text-red-500", bar: "bg-red-500" },
-  default: { Icon: Info, className: "text-muted-foreground", bar: "bg-primary" },
+const VARIANT_STYLE: Record<string, { Icon: any; iconWrap: string; icon: string; bar: string }> = {
+  success: { Icon: CheckCircle2, iconWrap: "bg-emerald-500/15", icon: "text-emerald-500", bar: "bg-emerald-500" },
+  warning: { Icon: AlertTriangle, iconWrap: "bg-amber-500/15", icon: "text-amber-500", bar: "bg-amber-500" },
+  info: { Icon: Info, iconWrap: "bg-sky-500/15", icon: "text-sky-500", bar: "bg-sky-500" },
+  destructive: { Icon: XCircle, iconWrap: "bg-red-500/15", icon: "text-red-500", bar: "bg-red-500" },
+  default: { Icon: Info, iconWrap: "bg-primary/10", icon: "text-primary", bar: "bg-primary" },
 };
 
 export function Toaster() {
@@ -24,12 +24,14 @@ export function Toaster() {
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         const variant = (props as any).variant || "default";
-        const { Icon, className, bar } = VARIANT_ICON[variant] || VARIANT_ICON.default;
+        const style = VARIANT_STYLE[variant] || VARIANT_STYLE.default;
         const duration = (props as any).duration ?? 4000;
         return (
           <Toast key={id} {...props}>
-            <Icon className={`h-5 w-5 shrink-0 ${className}`} />
-            <div className="grid flex-1 gap-0.5">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${style.iconWrap}`}>
+              <style.Icon className={`h-5 w-5 ${style.icon}`} />
+            </div>
+            <div className="grid flex-1 gap-0.5 py-0.5">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
                 <ToastDescription>{description}</ToastDescription>
@@ -39,7 +41,7 @@ export function Toaster() {
             <ToastClose />
             <span
               aria-hidden
-              className={`absolute bottom-0 start-0 h-0.5 w-full origin-left ${bar}`}
+              className={`absolute bottom-0 start-0 h-[3px] w-full origin-left ${style.bar}`}
               style={{ animation: `toast-progress-shrink ${duration}ms linear forwards` }}
             />
           </Toast>
