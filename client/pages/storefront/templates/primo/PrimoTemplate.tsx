@@ -575,7 +575,7 @@ const goBackToCatalog = () => {
               {/* Main Image */}
               <div className="w-full lg:flex-1 lg:h-full">
                 <div className="relative overflow-hidden lg:h-full" style={{ backgroundColor: surfaceMuted }}>
-                <div className="flex h-full" style={{ width: `${totalSlides * 100}%`, transform: `translateX(${(selectedMainImage / totalSlides) * 100}%)`, transition: 'transform 0.35s ease', touchAction: 'pan-y' }}
+                <div className="flex h-full" style={{ width: `${totalSlides * 100}%`, transform: `translateX(-${(selectedMainImage / totalSlides) * 100}%)`, transition: 'transform 0.35s ease', touchAction: 'pan-y' }}
                   onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
                   onTouchMove={e => {
                     if (touchStartX.current === null) return;
@@ -618,12 +618,12 @@ const goBackToCatalog = () => {
                 </div>
                 {totalSlides > 1 && (
                   <>
-                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage + 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm hidden md:flex items-center justify-center shadow-md hover:bg-white transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage - 1); }} className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm hidden md:flex items-center justify-center shadow-md hover:bg-white transition-colors">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="15 18 9 12 15 6"/>
                       </svg>
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage - 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm hidden md:flex items-center justify-center shadow-md hover:bg-white transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); slideTo(selectedMainImage + 1); }} className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm hidden md:flex items-center justify-center shadow-md hover:bg-white transition-colors">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"/>
                       </svg>
