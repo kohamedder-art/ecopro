@@ -271,6 +271,7 @@ export const ar = {
   "welcome.slugOk": "الرابط متاح ✓",
   "welcome.slugTaken": "الرابط محجوز، جرّب غيره",
   "welcome.slugInvalid": "حروف لاتينية صغيرة وأرقام وشرطات فقط",
+  "welcome.ownerPhone": "رقم هاتفك (للتواصل حول الطلبات)",
   "welcome.next": "التالي",
   "welcome.langTitle": "اختر لغة النظام",
   "welcome.trialTitle": "فترتك المجانية",

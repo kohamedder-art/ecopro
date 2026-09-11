@@ -261,6 +261,7 @@ export const en = {
   "welcome.slugOk": "Link available ✓",
   "welcome.slugTaken": "Link taken, try another",
   "welcome.slugInvalid": "Lowercase latin letters, numbers and hyphens only",
+  "welcome.ownerPhone": "Your phone (for order contact)",
   "welcome.next": "Next",
   "welcome.langTitle": "Choose system language",
   "welcome.trialTitle": "Your free trial",

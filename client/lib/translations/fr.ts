@@ -1271,6 +1271,7 @@ export const fr = {
   "welcome.slugOk": "Lien disponible ✓",
   "welcome.slugTaken": "Lien pris, essayez un autre",
   "welcome.slugInvalid": "Lettres latines minuscules, chiffres et traits d'union uniquement",
+  "welcome.ownerPhone": "Votre téléphone (contact commandes)",
   "welcome.next": "Suivant",
   "welcome.langTitle": "Choisissez la langue",
   "welcome.trialTitle": "Votre essai gratuit",

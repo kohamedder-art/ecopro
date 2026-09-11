@@ -19,6 +19,52 @@ const PRODUCTS_CACHE_TTL_MS = 5000; // 5 seconds for products
 let storeSettingsColumnCache: { cols: Set<string>; expires: number } | null = null;
 const SCHEMA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+const AR_SLUG_MAP: Record<string, string> = {
+  'ا': 'a', 'أ': 'a', 'إ': 'i', 'آ': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
+  'ج': 'j', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z',
+  'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+  'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+  'ه': 'h', 'و': 'w', 'ي': 'y', 'ة': 'a', 'ى': 'a', 'ؤ': 'w', 'ئ': 'y',
+};
+
+/** Clean lowercase handle from any name. Never emits uppercase/underscores. */
+function toCleanHandle(raw: string): string {
+  const out = String(raw || '')
+    .split('')
+    .map(c => AR_SLUG_MAP[c] ?? c)
+    .join('')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  return out;
+}
+
+/** Unique store handle: transliterated base + suffixes, lowercase-only fallback. */
+async function generateCleanStoreHandle(db: any, baseRaw: string, excludeId?: number | null): Promise<string> {
+  const base = toCleanHandle(baseRaw) || 'store';
+  const candidates = [base, `${base}-shop`, `${base}-store`, `${base}-dz`, `${base}-1`, `${base}-2`, `${base}-3`];
+  for (const c of candidates) {
+    const r = await db.query(
+      `SELECT 1 FROM client_store_settings WHERE (store_slug = $1 OR subdomain = $1) AND id != COALESCE($2, -1) LIMIT 1`,
+      [c, excludeId ?? null]
+    );
+    if (r.rows.length === 0) return c;
+  }
+  // Lowercase hex only — never base64url (uppercase/underscore).
+  return `store-${randomBytes(3).toString('hex')}`;
+}
+
+async function clientDisplayName(db: any, clientId: number): Promise<string> {
+  try {
+    const r = await db.query('SELECT name, email FROM clients WHERE id = $1 LIMIT 1', [clientId]);
+    const row = r.rows[0] || {};
+    return String(row.name || '').split('@')[0] || String(row.email || '').split('@')[0] || '';
+  } catch {
+    return '';
+  }
+}
+
 async function getStoreSettingsColumns(db: any): Promise<Set<string>> {
   if (storeSettingsColumnCache && storeSettingsColumnCache.expires > Date.now()) {
     return storeSettingsColumnCache.cols;
@@ -914,8 +960,9 @@ export const getStoreSettings: RequestHandler = async (req, res) => {
         });
       }
 
-      // Generate unique slug
-      const randomSlug = 'store-' + randomBytes(6).toString('base64url');
+      // Generate unique slug from the owner's name — name.store.sahla4eco.com style
+      const ownerBase = await clientDisplayName(pool, clientId);
+      const randomSlug = await generateCleanStoreHandle(pool, ownerBase, null);
       
       // Create default settings with slug
       result = await pool.query(
@@ -927,7 +974,8 @@ export const getStoreSettings: RequestHandler = async (req, res) => {
 
     // Handle legacy rows missing store_slug
     if (result.rows[0].store_slug == null) {
-      const newSlug = 'store-' + randomBytes(6).toString('base64url');
+      const ownerBase = result.rows[0].store_name || await clientDisplayName(pool, clientId);
+      const newSlug = await generateCleanStoreHandle(pool, ownerBase, result.rows[0].id);
       const updated = await pool.query(
         `UPDATE client_store_settings SET store_slug = $1 WHERE id = $2 RETURNING *`,
         [newSlug, result.rows[0].id]
@@ -1080,11 +1128,13 @@ export const updateStoreSettings: RequestHandler = async (req, res) => {
     // Wrap in retry for transient connection errors
     let existingRes = await withRetry((db) => db.query('SELECT * FROM client_store_settings WHERE id = $1 AND client_id = $2', [(req as any).activeStoreId, clientId]));
     if (existingRes.rows.length === 0) {
-      const randomSlug = 'store-' + randomBytes(6).toString('base64url');
-      existingRes = await withRetry((db) => db.query(
+      const db = await ensureConnection();
+      const ownerBase = String((updates as any).store_name || '') || await clientDisplayName(db, clientId);
+      const cleanSlug = await generateCleanStoreHandle(db, ownerBase, null);
+      existingRes = await withRetry((db2) => db2.query(
         `INSERT INTO client_store_settings (client_id, store_slug)
          VALUES ($1, $2) RETURNING *`,
-        [clientId, randomSlug]
+        [clientId, cleanSlug]
       ));
     }
     const existingRow = existingRes.rows[0];
@@ -2181,16 +2231,8 @@ export const createStore: RequestHandler = async (req, res) => {
       sourceStore = src.rows[0] || null;
     }
 
-    // Generate unique slug
-    const baseSlug = name
-      ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      : 'store';
-    let slug = baseSlug + '-' + randomBytes(4).toString('base64url');
-    // Ensure uniqueness
-    const slugCheck = await pool.query('SELECT 1 FROM client_store_settings WHERE store_slug = $1', [slug]);
-    if (slugCheck.rows.length > 0) {
-      slug = baseSlug + '-' + randomBytes(6).toString('base64url');
-    }
+    // Generate unique slug: clean base first, suffix only on conflict
+    const slug = await generateCleanStoreHandle(pool, name || 'store', null);
 
     // Create the new store row (copy template/color settings from source)
     const newStore = await pool.query(

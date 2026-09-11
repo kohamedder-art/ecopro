@@ -29,6 +29,7 @@ export default function Welcome() {
   const [step, setStep] = useState(0);
   const [storeName, setStoreName] = useState('');
   const [slug, setSlug] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const [slugState, setSlugState] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'invalid'>('idle');
   const [trialDays, setTrialDays] = useState(5);
@@ -106,6 +107,15 @@ export default function Welcome() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Save failed');
       setInitialSlug(slug.trim());
+      const digits = ownerPhone.replace(/[^0-9]/g, '');
+      if (digits) {
+        await fetch('/api/users/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ phone: digits }),
+        }).catch(() => {});
+      }
       return true;
     } catch (e: any) {
       setError(e.message || 'Save failed');
@@ -168,6 +178,16 @@ export default function Welcome() {
                 {slugState === 'ok' && slug && slug !== initialSlug && <p className="text-[11px] font-bold text-green-600 mt-1">{t('welcome.slugOk')}</p>}
                 {slugState === 'taken' && <p className="text-[11px] font-bold text-red-600 mt-1">{t('welcome.slugTaken')}</p>}
                 {slugState === 'invalid' && <p className="text-[11px] font-bold text-red-600 mt-1">{t('welcome.slugInvalid')}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">{t('welcome.ownerPhone')}</label>
+                <input
+                  value={ownerPhone}
+                  onChange={e => setOwnerPhone(e.target.value.replace(/[^0-9+ ]/g, '').slice(0, 15))}
+                  placeholder="+213 550 00 00 00"
+                  dir="ltr"
+                  className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                />
               </div>
               {error && <p className="text-xs font-bold text-red-600">{error}</p>}
               <button

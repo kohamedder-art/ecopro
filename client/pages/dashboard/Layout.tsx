@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useStaffPermissions } from "@/contexts/StaffPermissionContext";
 import { PermissionGate } from "@/components/PermissionGate";
+import { useStore } from "@/contexts/StoreContext";
 import Header from "@/components/layout/Header";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { GlobalAnnouncement } from "@/components/GlobalAnnouncement";
@@ -26,6 +27,7 @@ export default function AdminLayout() {
   const location = useLocation();
   const user = getCurrentUser();
   const { isStaff, staffUser, logout: staffLogout } = useStaffPermissions();
+  const { activeStore, loading: storesLoading } = useStore();
 
   useEffect(() => {
     // Check if user is logged in (either as client or staff)
@@ -44,6 +46,19 @@ export default function AdminLayout() {
     }
     // Clients and staff members can see the dashboard
   }, [navigate]);
+
+  // Onboarding gate: brand-new stores with no name yet must finish setup first.
+  // Veterans (named store or wizard done) are never interrupted.
+  useEffect(() => {
+    if (storesLoading || isStaff) return;
+    let done = false;
+    try {
+      done = localStorage.getItem('ecopro_onboarding_done') === '1';
+    } catch { /* ignore */ }
+    if (!done && activeStore && !activeStore.store_name) {
+      navigate('/dashboard/welcome', { replace: true });
+    }
+  }, [storesLoading, activeStore, isStaff, navigate]);
 
   const handleStaffLogout = () => {
     staffLogout();
