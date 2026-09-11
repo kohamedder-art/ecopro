@@ -555,7 +555,7 @@ const goBackToCatalog = () => {
         <main className="max-w-7xl mx-auto px-4 py-4 lg:py-6 pb-24 md:pb-6">
 
           {/* ── SPLIT LAYOUT: Images LEFT, Form RIGHT ── */}
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          <div dir="ltr" className="flex flex-col lg:flex-row gap-6 lg:gap-8">
 
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[58%] lg:h-[calc(100vh-80px)] lg:flex lg:flex-row lg:items-stretch lg:gap-3">
@@ -653,7 +653,7 @@ const goBackToCatalog = () => {
             </div>
 
             {/* RIGHT: Info + Order Form */}
-            <div className="w-full lg:w-[42%] flex flex-col gap-3">
+            <div dir="rtl" className="w-full lg:w-[42%] flex flex-col gap-3">
               {/* Product Info */}
               <div>
                 <h2 className="text-2xl font-black mb-1" style={{ color: textColor }}>{mainProduct.title}</h2>

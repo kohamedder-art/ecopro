@@ -515,7 +515,7 @@ export default function IycoTemplate({
 
         {/* ── PRODUCT SECTION (SPLIT LAYOUT) ── */}
         {mainProduct && (
-          <div className="flex flex-col lg:flex-row gap-3 lg:gap-8 pt-2 lg:pt-6">
+          <div dir="ltr" className="flex flex-col lg:flex-row gap-3 lg:gap-8 pt-2 lg:pt-6">
 
             {/* LEFT: Image Gallery */}
             <div className="w-full lg:w-[55%] flex flex-col gap-4 lg:mt-3" key={`gallery-${mainProduct?.id || 'none'}`}>
@@ -593,7 +593,7 @@ export default function IycoTemplate({
             </div>
 
             {/* RIGHT: Product Details */}
-            <div className="w-full lg:w-[45%] flex flex-col">
+            <div dir="rtl" className="w-full lg:w-[45%] flex flex-col">
 
               {/* Title */}
               <h1 className="text-3xl md:text-4xl font-black mb-3" style={{ color: '#111' }}>{mainProduct.title}</h1>

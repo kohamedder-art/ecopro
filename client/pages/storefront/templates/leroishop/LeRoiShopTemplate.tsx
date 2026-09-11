@@ -619,7 +619,7 @@ export default function LeRoiShopTemplate({
             </div>
 
             {/* Main Product Area */}
-            <div className="flex flex-col md:flex-row md:items-stretch gap-8 md:p-8 md:rounded-xl shadow-sm md:overflow-hidden" style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}>
+            <div dir="ltr" className="flex flex-col md:flex-row md:items-stretch gap-8 md:p-8 md:rounded-xl shadow-sm md:overflow-hidden" style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}>
 
               {/* Image */}
               {(() => {
@@ -713,7 +713,7 @@ export default function LeRoiShopTemplate({
               })()}
 
               {/* Details + Form */}
-              <div className="w-full md:w-1/2 flex flex-col justify-center px-4 pb-4 md:px-0 md:pb-0">
+              <div dir="rtl" className="w-full md:w-1/2 flex flex-col justify-center px-4 pb-4 md:px-0 md:pb-0">
                 <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: textColor }}>
                   {activeProduct.title}
                 </h1>
