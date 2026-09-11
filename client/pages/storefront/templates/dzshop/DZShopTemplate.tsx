@@ -647,7 +647,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
             </div>
 
-            <main className="w-full px-1.5 py-0 md:py-10 grid grid-cols-1 md:grid-cols-[5fr_3fr] gap-8 relative z-10 pt-4 md:min-h-[80vh]">
+            <main dir="ltr" className="w-full px-1.5 py-0 md:py-10 grid grid-cols-1 md:grid-cols-[5fr_3fr] gap-8 relative z-10 pt-4 md:min-h-[80vh]">
                 
                 {/* Left Column: Product Visuals */}
                 <div className="md:h-full">
@@ -779,7 +779,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 </div>
 
                 {/* Right Column: Product Details & Form */}
-                <div className="flex flex-col">
+                <div dir="rtl" className="flex flex-col">
                     <h1 className="text-2xl md:text-3xl font-extrabold mb-2 leading-snug" style={{ color: tx }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_hero_heading" onBlur={handleTextEdit('template_hero_heading')}>
                         {settings?.template_hero_heading || product?.title || "اسم المنتج المميز - جودة عالية وتصميم عصري"}
                     </h1>
