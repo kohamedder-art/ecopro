@@ -804,6 +804,49 @@ export const getStoreCategories: RequestHandler = async (req, res) => {
 };
 
 // Get store settings
+const RESERVED_HANDLES = new Set([
+  'www', 'api', 'admin', 'dashboard', 'login', 'signup', 'shop', 'checkout',
+  'billing', 'store', 'stores', 'app', 'support', 'help', 'status', 'blog',
+  'mail', 'dev', 'test', 'cdn', 'static', 'assets', 'login', 'register',
+  'auth', 'oauth', 'cart', 'order', 'orders', 'pay', 'pricing', 'terms',
+  'privacy', 'contact', 'about', 'faq',
+]);
+
+/**
+ * GET /api/client/store/check-slug?slug=xxx
+ * Check whether a store slug/subdomain handle is available.
+ */
+export const checkStoreSlug: RequestHandler = async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (user && (user.role === 'admin' || user.user_type === 'admin')) {
+      return res.status(403).json({ error: 'Admins do not have a client store' });
+    }
+    const activeStoreId = (req as any).activeStoreId;
+    const slug = String(req.query.slug || '').trim().toLowerCase();
+
+    // Format: 2-50 chars, lowercase letters, numbers, hyphens
+    if (!/^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/.test(slug) || slug.length < 2) {
+      return res.json({ available: false, reason: 'invalid' });
+    }
+    if (RESERVED_HANDLES.has(slug)) {
+      return res.json({ available: false, reason: 'reserved' });
+    }
+    const conflict = await pool.query(
+      `SELECT id FROM client_store_settings
+       WHERE (store_slug = $1 OR subdomain = $1) AND id != COALESCE($2, -1)`,
+      [slug, activeStoreId || null]
+    );
+    if (conflict.rows.length > 0) {
+      return res.json({ available: false, reason: 'taken' });
+    }
+    return res.json({ available: true });
+  } catch (error) {
+    console.error('[checkStoreSlug] error:', error);
+    return res.status(500).json({ error: 'Failed to check slug' });
+  }
+};
+
 export const getStoreSettings: RequestHandler = async (req, res) => {
   try {
     const user = (req as any).user;

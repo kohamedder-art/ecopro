@@ -194,7 +194,10 @@ export default function Signup() {
 
       setSuccess(t('signup.success'));
       trackFacebookEvent('CompleteRegistration', { source: 'signup' });
-      setTimeout(() => navigate('/dashboard'), 1500);
+      try {
+        localStorage.removeItem('ecopro_onboarding_done');
+      } catch { /* ignore */ }
+      setTimeout(() => navigate('/dashboard/welcome'), 1500);
 
     } catch (err: any) {
       console.error('Signup error:', err);

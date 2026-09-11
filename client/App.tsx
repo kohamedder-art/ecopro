@@ -39,6 +39,7 @@ const Kernel = lazy(() => import("./pages/Kernel"));
 // ── Dashboard (store owner) ──
 const AdminLayout = lazy(() => import("./pages/dashboard/Layout"));
 const AdminDashboard = lazy(() => import("./pages/dashboard/Dashboard"));
+const Welcome = lazy(() => import("./pages/dashboard/Welcome"));
 const AdminOrders = lazy(() => import("./pages/dashboard/Orders"));
 const AdminCalls = lazy(() => import("./pages/dashboard/Calls"));
 const AdminBotSettings = lazy(() => import("./pages/dashboard/BotSettings"));
@@ -261,7 +262,9 @@ function OAuthHandler() {
           }
 
           startAutoRefresh();
-          const redirectTo = user.role === 'admin' ? '/platform-admin' : '/dashboard';
+          // New OAuth users go through the welcome wizard first
+          // (it redirects to /dashboard itself when already completed).
+          const redirectTo = user.role === 'admin' ? '/platform-admin' : '/dashboard/welcome';
           console.log('[OAuth] Redirecting to:', redirectTo);
 
           // Clear query params and redirect
@@ -559,6 +562,14 @@ const App = () => (
 
                   {/* /post-item and /my-listings removed */}
                   {/* Vendor Dashboard - For clients who create stores (current "admin" panel) */}
+                  <Route
+                    path="/dashboard/welcome"
+                    element={
+                      <RequirePaidClient>
+                        <Welcome />
+                      </RequirePaidClient>
+                    }
+                  />
                   <Route
                     path="/dashboard"
                     element={

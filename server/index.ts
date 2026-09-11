@@ -1653,6 +1653,13 @@ ${urls}
     apiLimiter,
     clientStoreRoutes.updateStoreSettings
   );
+  app.get(
+    "/api/client/store/check-slug",
+    authenticate,
+    requireClient,
+    resolveActiveStore,
+    clientStoreRoutes.checkStoreSlug
+  );
   // Fast template-only update (avoids timeout on slow DB)
   app.patch(
     "/api/client/store/template",
