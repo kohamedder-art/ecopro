@@ -21,6 +21,7 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissing, setDismissing] = useState<number | null>(null);
+  const [filter, setFilter] = useState<'all' | 'unread' | 'urgent' | 'warning' | 'info'>('all');
 
   const fetchAlerts = () => {
     fetch('/api/ai/alerts', { credentials: 'include' })
@@ -61,6 +62,18 @@ export default function AlertsPage() {
   };
 
   const unreadCount = alerts.filter(a => a.status === 'unread').length;
+  const visibleAlerts = alerts.filter(a => {
+    if (filter === 'all') return true;
+    if (filter === 'unread') return a.status === 'unread';
+    return a.type === filter;
+  });
+  const tabs = [
+    { key: 'all', label: isRTL ? 'الكل' : 'All', count: alerts.length },
+    { key: 'unread', label: isRTL ? 'غير المقروء' : 'Unread', count: unreadCount },
+    { key: 'urgent', label: isRTL ? 'عاجل' : 'Urgent', count: alerts.filter(a => a.type === 'urgent').length },
+    { key: 'warning', label: isRTL ? 'تنبيه' : 'Warnings', count: alerts.filter(a => a.type === 'warning').length },
+    { key: 'info', label: isRTL ? 'معلومات' : 'Info', count: alerts.filter(a => a.type === 'info').length },
+  ] as const;
 
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -123,22 +136,50 @@ export default function AlertsPage() {
         </div>
       )}
 
+      {/* Filter tabs */}
+      {!loading && alerts.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                filter === tab.key
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow'
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              {tab.label}
+              <span className="mr-1.5 tabular-nums opacity-60">{tab.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Alerts list */}
       {!loading && alerts.length > 0 && (
         <div className="space-y-2">
-          {alerts.map(alert => (
+          {visibleAlerts.length === 0 ? (
+            <p className="text-center text-sm text-slate-400 py-10">{isRTL ? 'لا شيء في هذا القسم' : 'Nothing here'}</p>
+          ) : visibleAlerts.map((alert, i) => (
             <div
               key={alert.id}
-              className={`p-4 rounded-xl border ${typeBg(alert.type)} flex items-start gap-3 transition-all`}
+              className={`p-4 rounded-xl border ${typeBg(alert.type)} flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 ${alert.status === 'unread' ? 'shadow-sm' : 'opacity-90'}`}
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
             >
-              <div className="mt-0.5 flex-shrink-0">{typeIcon(alert.type)}</div>
+              <div className="mt-0.5 flex-shrink-0 relative">
+                {typeIcon(alert.type)}
+                {alert.status === 'unread' && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-current border-2 border-white dark:border-slate-900" />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{alert.message}</p>
+                <p className={`text-sm ${alert.status === 'unread' ? 'font-bold' : 'font-semibold'} text-slate-800 dark:text-slate-200`}>{alert.message}</p>
                 <div className="flex items-center gap-3 mt-2">
                   {alert.link && (
                     <button
                       onClick={() => navigate(alert.link!)}
-                      className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 flex items-center gap-1"
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1"
                     >
                       <ExternalLink className="w-3 h-3" />
                       {isRTL ? 'اذهب للصفحة' : 'Go to page'}
