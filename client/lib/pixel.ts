@@ -68,10 +68,17 @@ export const initFacebookPixels = initFacebook;
 export const initTikTokPixels = initTiktok;
 
 export function track(event: string, params: Record<string, any> = {}) {
+  // Never fire into uninitialized SDKs — without fbq("init") every event
+  // errors out in Pixel Helper and nothing reaches Meta anyway.
+  if (FB_IDS.size === 0 && TT_IDS.size === 0) return;
   const clean: Record<string, any> = { ...params };
   if (clean.currency != null && !/^[A-Z]{3}$/.test(String(clean.currency))) delete clean.currency;
-  if (window.fbq) window.fbq("track", event, clean);
-  if (window.ttq) window.ttq.track(event === "PageView" ? "Pageview" : event, clean);
+  if (typeof clean.value === 'string' && clean.value !== '') {
+    const n = Number(clean.value);
+    if (Number.isFinite(n)) clean.value = n;
+  }
+  if (FB_IDS.size > 0 && window.fbq) window.fbq("track", event, clean);
+  if (TT_IDS.size > 0 && window.ttq) window.ttq.track(event === "PageView" ? "Pageview" : event, clean);
 }
 export const trackFacebookEvent = track;
 export const trackPixelEvent = track;

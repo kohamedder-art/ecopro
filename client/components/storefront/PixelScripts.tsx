@@ -29,6 +29,10 @@ let ttPixelIds: string[] = [];
 let currentStoreSlug = '';
 let backendPixelTypePreference: 'facebook' | 'tiktok' | '' = '';
 let currentCurrency = 'DZD';
+// Purchase dedupe (see trackAllPixels) + PageView throttle state
+const sentPurchaseIds = new Set<string>();
+let lastPageViewUrl = '';
+let lastPageViewAt = 0;
 
 /**
  * PixelScripts - Fetches store pixel config and initialises the SDKs via the
@@ -249,6 +253,25 @@ function trackToBackend(storeSlug: string, eventName: string, params?: Record<st
 }
 
 export function trackAllPixels(eventName: string, params?: Record<string, any>) {
+  // Dedupe: one Purchase per order (fetch interceptor + template handlers
+  // otherwise fire the same order 2-3x within milliseconds).
+  const orderId = params?.order_id ? String(params.order_id) : '';
+  if (eventName === 'Purchase' && orderId) {
+    if (sentPurchaseIds.has(orderId)) return;
+    sentPurchaseIds.add(orderId);
+    if (sentPurchaseIds.size > 200) {
+      const first = sentPurchaseIds.values().next().value;
+      sentPurchaseIds.delete(first);
+    }
+  }
+  // Dedupe: one PageView per URL per 2s (route remounts double-fire).
+  if (eventName === 'PageView' && typeof window !== 'undefined') {
+    const key = window.location.href;
+    const now = Date.now();
+    if (key === lastPageViewUrl && now - lastPageViewAt < 2000) return;
+    lastPageViewUrl = key;
+    lastPageViewAt = now;
+  }
   trackFacebookEvent(eventName, params);
   trackTikTokEvent(eventName, params);
 
