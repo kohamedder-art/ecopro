@@ -35,11 +35,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const user = userStr ? JSON.parse(userStr) : null;
   const isClient = user?.user_type === 'client' || user?.role === 'admin';
 
-  const fetchStores = useCallback(async () => {
+  const fetchStores = useCallback(async (showLoading = false) => {
     if (!isClient) {
       setLoading(false);
       return;
     }
+    if (showLoading) setLoading(true);
     try {
       const res = await fetch('/api/client/stores', { credentials: 'include' });
       if (res.ok) {
@@ -91,7 +92,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Load stores and restore active store on mount
   useEffect(() => {
-    fetchStores().then(() => {
+    fetchStores(true).then(() => {
       const savedId = localStorage.getItem('activeStoreId');
       if (savedId) {
         // Will be matched after stores load
