@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { STOREFRONT_SETTINGS_KEY, STOREFRONT_TEMPLATE_KEY } from '@/lib/storefrontStorage';
 
@@ -16,6 +16,7 @@ interface StoreContextType {
   stores: Store[];
   activeStore: Store | null;
   loading: boolean;
+  storesLoaded: boolean;
   storeVersion: number;
   setActiveStore: (store: Store) => void;
   refreshStores: () => Promise<void>;
@@ -28,8 +29,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stores, setStores] = useState<Store[]>([]);
   const [activeStore, setActiveStoreState] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
+  const [storesLoaded, setStoresLoaded] = useState(false);
   const [storeVersion, setStoreVersion] = useState(0);
   const queryClient = useQueryClient();
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
   const user = userStr ? JSON.parse(userStr) : null;
@@ -38,6 +41,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const fetchStores = useCallback(async (showLoading = false) => {
     if (!isClient) {
       setLoading(false);
+      setStoresLoaded(true);
       return;
     }
     if (showLoading) setLoading(true);
@@ -45,7 +49,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/api/client/stores', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        setStores(data.stores || []);
+        const list = data.stores || [];
+        setStores(list);
+        if (list.length > 0) {
+          setStoresLoaded(true);
+          if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
+        }
       }
     } catch (e) {
       console.error('[StoreContext] Failed to fetch stores:', e);
@@ -53,6 +62,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, [isClient]);
+
+  // Retry until stores load successfully
+  const scheduleRetry = useCallback(() => {
+    if (retryTimer.current) return;
+    retryTimer.current = setTimeout(() => {
+      retryTimer.current = null;
+      fetchStores();
+    }, 2000);
+  }, [fetchStores]);
 
   const setActiveStore = useCallback((store: Store) => {
     setActiveStoreState(store);
@@ -100,6 +118,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, [fetchStores]);
 
+  // Retry if stores failed to load
+  useEffect(() => {
+    if (!loading && !storesLoaded && isClient) {
+      scheduleRetry();
+    }
+    return () => { if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; } };
+  }, [loading, storesLoaded, isClient, scheduleRetry]);
+
   // Match saved active store after stores load
   useEffect(() => {
     if (stores.length === 0 || activeStore) return;
@@ -120,7 +146,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [stores, activeStore]);
 
   return (
-    <StoreContext.Provider value={{ stores, activeStore, loading, storeVersion, setActiveStore, refreshStores: fetchStores, createStore }}>
+    <StoreContext.Provider value={{ stores, activeStore, loading, storesLoaded, storeVersion, setActiveStore, refreshStores: fetchStores, createStore }}>
       {children}
     </StoreContext.Provider>
   );

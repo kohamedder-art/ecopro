@@ -341,18 +341,14 @@ export default function Header() {
 
 // Store Switcher component (inside header dropdown)
 function StoreSwitcher() {
-  const { stores, activeStore, setActiveStore, createStore, loading, refreshStores } = useStore();
+  const { stores, activeStore, setActiveStore, createStore, storesLoaded, refreshStores } = useStore();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [fetching, setFetching] = useState(false);
 
   // Always re-fetch stores when the switcher mounts (dropdown opens)
-  useEffect(() => {
-    setFetching(true);
-    refreshStores().finally(() => setFetching(false));
-  }, [refreshStores]);
+  useEffect(() => { refreshStores(); }, [refreshStores]);
 
   const handleCreate = async () => {
     if (!newStoreName.trim()) return;
@@ -365,9 +361,8 @@ function StoreSwitcher() {
     }
   };
 
-  const showSkeleton = loading || (fetching && stores.length === 0);
-
-  if (showSkeleton) {
+  // Show skeleton only until stores have been successfully loaded at least once
+  if (!storesLoaded) {
     return (
       <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-700/50">
         <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 px-1">المتجر النشط</div>
