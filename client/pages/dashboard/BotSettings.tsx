@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Bot, Save, Loader2, MessageSquare, Check, Users, Code2, Truck, CreditCard, MapPin, Package, Navigation, ChevronDown, HelpCircle, Info } from "lucide-react";
+import { Bot, Save, Loader2, MessageSquare, Check, Users, Code2, Truck, CreditCard, MapPin, Package, Navigation, ChevronDown, HelpCircle, Zap, Send, Settings, Wand2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +26,7 @@ export default function AdminBotSettings() {
   const { activeStore } = useStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeBot, setActiveBot] = useState<'confirmation' | 'updates' | 'tracking' | null>(null);
+  const [activeSection, setActiveSection] = useState<'confirmation' | 'updates' | 'tracking' | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['provider']));
 
   const toggleSection = useCallback((key: string) => {
@@ -37,6 +37,7 @@ export default function AdminBotSettings() {
       return next;
     });
   }, []);
+
   const [settings, setSettings] = useState<BotSettings>({
     enabled: true,
     updatesEnabled: false,
@@ -57,22 +58,16 @@ export default function AdminBotSettings() {
     setLoading(true);
     try {
       const response = await fetch('/api/bot/settings', { signal });
-
       if (!response.ok) {
         const errJson = await response.json().catch(() => null);
         throw new Error(errJson?.error || `Failed to load bot settings (HTTP ${response.status})`);
       }
-
       const data = await response.json();
       setSettings(data);
     } catch (error: any) {
       if (error?.name === 'AbortError') return;
       console.error('Failed to load bot settings:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load bot settings",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to load bot settings", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -81,41 +76,24 @@ export default function AdminBotSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: any = { ...settings };
-
       const response = await fetch('/api/bot/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
       });
-
       if (response.ok) {
         const data = await response.json().catch(() => null);
         if (data?.botDisabled) {
-          toast({
-            title: "Saved (Bot disabled)",
-            description: data?.reason || 'Settings saved, but the bot remains disabled until subscription is renewed.',
-            variant: "destructive"
-          });
+          toast({ title: "Saved (Bot disabled)", description: data?.reason || 'Settings saved, but the bot remains disabled until subscription is renewed.', variant: "destructive" });
         } else {
-          toast({
-            title: "Success",
-            description: "Bot settings saved successfully"
-          });
+          toast({ title: "Success", description: "Bot settings saved successfully" });
         }
       } else {
         const errJson = await response.json().catch(() => null);
         throw new Error(errJson?.error || 'Failed to save settings');
       }
     } catch (error) {
-      console.error('Failed to save bot settings:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save bot settings",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save settings", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -124,8 +102,6 @@ export default function AdminBotSettings() {
   const updateSetting = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
-
-
 
   if (loading) {
     return (
@@ -153,23 +129,11 @@ export default function AdminBotSettings() {
     { key: '{customerPhone}', desc: t('bot.customerPhone') },
   ];
 
-  // Reusable collapsible section header
   const SectionHeader = ({ id, icon, iconBg, title, subtitle, trailing }: {
-    id: string;
-    icon: React.ReactNode;
-    iconBg: string;
-    title: string;
-    subtitle?: string;
-    trailing?: React.ReactNode;
+    id: string; icon: React.ReactNode; iconBg: string; title: string; subtitle?: string; trailing?: React.ReactNode;
   }) => (
-    <button
-      type="button"
-      onClick={() => toggleSection(id)}
-      className="w-full flex items-center gap-2.5 text-left"
-    >
-      <div className={`w-7 h-7 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-        {icon}
-      </div>
+    <button type="button" onClick={() => toggleSection(id)} className="w-full flex items-center gap-2.5 text-left">
+      <div className={`w-7 h-7 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>{icon}</div>
       <div className="flex-1 min-w-0">
         <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{title}</span>
         {subtitle && <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>}
@@ -181,431 +145,293 @@ export default function AdminBotSettings() {
 
   const cardCls = "bg-white dark:bg-[#0f1623] border border-slate-200/80 dark:border-white/[0.06] rounded-2xl";
 
+  // Feature cards config
+  const features = [
+    {
+      id: 'confirmation' as const,
+      title: isRTL ? 'تأكيد الطلبات' : 'Order Confirmation',
+      desc: isRTL ? 'يرسل رسالة ترحيب وتأكيد تلقائي للعميل عند إنشاء طلب جديد' : 'Sends welcome & confirmation message when customer places an order',
+      icon: MessageSquare,
+      color: 'emerald',
+      enabled: settings.enabled,
+      toggle: (v: boolean) => updateSetting('enabled', v),
+    },
+    {
+      id: 'updates' as const,
+      title: isRTL ? 'حملات التسويق' : 'Marketing Campaigns',
+      desc: isRTL ? 'أرسل عروض الخصم والمنتجات الجديدة لعملائك عبر رسائل تلقائية' : 'Send discounts & new products to customers via automated messages',
+      icon: Send,
+      color: 'violet',
+      enabled: Boolean(settings.updatesEnabled),
+      toggle: (v: boolean) => updateSetting('updatesEnabled', v),
+    },
+    {
+      id: 'tracking' as const,
+      title: isRTL ? 'تتبع الشحنات' : 'Shipping Tracking',
+      desc: isRTL ? 'أرسل إشعارات تلقائية للعملاء عند تحديث حالة الشحن (شحن، توصيل، فشل)' : 'Auto-notify customers on shipping status changes (shipped, delivered, failed)',
+      icon: Truck,
+      color: 'orange',
+      enabled: Boolean(settings.trackingEnabled),
+      toggle: (v: boolean) => updateSetting('trackingEnabled', v),
+    },
+  ];
+
+  const colorMap: Record<string, { bg: string; text: string; ring: string; badge: string; badgeText: string }> = {
+    emerald: { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-400 dark:ring-emerald-500', badge: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300', badgeOff: 'bg-slate-200 dark:bg-slate-700 text-slate-500' },
+    violet: { bg: 'bg-violet-50 dark:bg-violet-500/10', text: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-400 dark:ring-violet-500', badge: 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300', badgeOff: 'bg-slate-200 dark:bg-slate-700 text-slate-500' },
+    orange: { bg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-600 dark:text-orange-400', ring: 'ring-orange-400 dark:ring-orange-500', badge: 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300', badgeOff: 'bg-slate-200 dark:bg-slate-700 text-slate-500' },
+  };
+
   return (
     <div className="min-h-screen bg-transparent text-slate-900 dark:text-gray-100 p-3 sm:p-4 transition-colors duration-300">
-      <div className="max-w-6xl mx-auto flex flex-col gap-3">
+      <div className="max-w-6xl mx-auto flex flex-col gap-4">
 
-        {/* Header */}
-        <div className={`${cardCls} p-4`}>
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 dark:bg-blue-500 flex items-center justify-center shrink-0">
-                <Bot className="w-5 h-5 text-white" />
+        {/* ── Hero Header ── */}
+        <div className={`${cardCls} p-5 relative overflow-hidden`}>
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-violet-500/5 dark:from-blue-500/10 dark:to-violet-500/10" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+                <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-slate-900 dark:text-white">{t('wasselni.settings')}</h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{t('wasselni.desc')}</p>
+                <h1 className="text-lg font-bold text-slate-900 dark:text-white">{isRTL ? 'المساعد الذكي' : 'Smart Assistant'}</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-md leading-relaxed">
+                  {isRTL
+                    ? 'يتعامل مع عملائك تلقائياً — يؤكد الطلبات، يُرسل تحديثات الشحن، ويرسل حملات تسويقية لزيادة المبيعات.'
+                    : 'Handles your customers automatically — confirms orders, sends shipping updates, and runs marketing campaigns to boost sales.'}
+                </p>
               </div>
             </div>
             <button onClick={handleSave} disabled={saving}
-              className="h-9 px-5 bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50 transition-colors shrink-0">
+              className="h-10 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20 shrink-0">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {t('bot.saveChanges')}
             </button>
           </div>
-
-          {/* ── Bot Toggles inside header ── */}
-          <div className="grid grid-cols-3 gap-2">
-            {/* Confirmation bot */}
-            <div onClick={() => setActiveBot(activeBot === 'confirmation' ? null : 'confirmation')} className={`flex flex-col gap-2 p-3 rounded-xl border cursor-pointer transition-all ${activeBot === 'confirmation' ? 'ring-2 ring-emerald-400 dark:ring-emerald-500' : ''} ${
-              settings.enabled ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/30'
-            }`}>
-              <div className="flex items-center gap-2 min-w-0">
-                <div className={`w-7 h-7 rounded-lg ${settings.enabled ? 'bg-emerald-100 dark:bg-emerald-500/20' : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center shrink-0`}>
-                  <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{t('bot.confirmation')}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{t('bot.confirmationDesc')}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${settings.enabled ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20' : 'text-slate-500 bg-slate-200 dark:bg-slate-700'}`}>
-                  {settings.enabled ? t('bot.active') : t('bot.off')}
-                </span>
-                <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={settings.enabled} onCheckedChange={(v) => updateSetting('enabled', v)} />
-              </div>
-            </div>
-
-            {/* Updates bot */}
-            <div onClick={() => setActiveBot(activeBot === 'updates' ? null : 'updates')} className={`flex flex-col gap-2 p-3 rounded-xl border cursor-pointer transition-all ${activeBot === 'updates' ? 'ring-2 ring-violet-400 dark:ring-violet-500' : ''} ${
-              settings.updatesEnabled ? 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/30'
-            }`}>
-              <div className="flex items-center gap-2 min-w-0">
-                <div className={`w-7 h-7 rounded-lg ${settings.updatesEnabled ? 'bg-violet-100 dark:bg-violet-500/20' : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center shrink-0`}>
-                  <Users className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{t('bot.updates')}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{t('bot.updatesDesc')}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${settings.updatesEnabled ? 'text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-500/20' : 'text-slate-500 bg-slate-200 dark:bg-slate-700'}`}>
-                  {settings.updatesEnabled ? t('bot.active') : t('bot.off')}
-                </span>
-                <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={Boolean(settings.updatesEnabled)} onCheckedChange={(v) => updateSetting('updatesEnabled', v)} />
-              </div>
-            </div>
-
-            {/* Tracking bot */}
-            <div onClick={() => setActiveBot(activeBot === 'tracking' ? null : 'tracking')} className={`flex flex-col gap-2 p-3 rounded-xl border cursor-pointer transition-all ${activeBot === 'tracking' ? 'ring-2 ring-orange-400 dark:ring-orange-500' : ''} ${
-              settings.trackingEnabled ? 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600/30'
-            }`}>
-              <div className="flex items-center gap-2 min-w-0">
-                <div className={`w-7 h-7 rounded-lg ${settings.trackingEnabled ? 'bg-orange-100 dark:bg-orange-500/20' : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center shrink-0`}>
-                  <MapPin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{t('bot.tracking')}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{t('bot.trackingDesc')}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${settings.trackingEnabled ? 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-500/20' : 'text-slate-500 bg-slate-200 dark:bg-slate-700'}`}>
-                  {settings.trackingEnabled ? t('bot.active') : t('bot.off')}
-                </span>
-                <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={Boolean(settings.trackingEnabled)} onCheckedChange={(v) => updateSetting('trackingEnabled', v)} />
-              </div>
-            </div>
-          </div>
         </div>
 
-
-        {/* Tracking Bot Tab */}
-        {activeBot === 'tracking' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <div className="w-6 h-6 rounded-lg bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center">
-                <MapPin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+        {/* ── Feature Cards (3-column toggle grid) ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {features.map(f => {
+            const c = colorMap[f.color];
+            const Icon = f.icon;
+            const isActive = activeSection === f.id;
+            return (
+              <div key={f.id}
+                onClick={() => setActiveSection(isActive ? null : f.id)}
+                className={`${cardCls} p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${isActive ? `ring-2 ${c.ring}` : ''}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-5 h-5 ${c.text}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{f.title}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">{f.desc}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${f.enabled ? c.badge : c.badgeOff}`}>
+                      {f.enabled ? (isRTL ? 'مفعّل' : 'ON') : (isRTL ? 'معطّل' : 'OFF')}
+                    </span>
+                    <Switch dir={isRTL ? 'rtl' : 'ltr'} checked={f.enabled} onCheckedChange={f.toggle} />
+                  </div>
+                </div>
               </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-white">إعدادات بوت التتبع</span>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-              <div className="flex flex-col gap-3">
+            );
+          })}
+        </div>
 
-                {/* Tracking Status Messages */}
-                <div className={`${cardCls} p-4`}>
-                  <SectionHeader id="tracking-templates" icon={<Navigation className="w-3.5 h-3.5 text-orange-500" />}
-                    iconBg="bg-orange-50 dark:bg-orange-500/10" title={t('bot.trackingStatusMessages') || 'إشعارات التتبع التلقائية'}
-                    subtitle={t('bot.trackingStatusDesc') || 'تُرسل تلقائياً عند كل تحديث من شركة التوصيل'} />
-                  {expandedSections.has('tracking-templates') && (
-                    <div className="mt-3 space-y-3">
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
-                        <div>
-                          <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">إشعارات التتبع التلقائية</p>
-                          <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">أرسل رسالة للعميل عند كل تحديث من شركة التوصيل (Webhook)</p>
-                        </div>
-                        <Switch
-                          checked={(settings as any).delivery_notifications_enabled !== false}
-                          onCheckedChange={(v) => updateSetting('delivery_notifications_enabled' as any, v)}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
+        {/* ── Confirmation Bot Settings ── */}
+        {(activeSection === 'confirmation' || activeSection === null) && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            {/* Left: Templates */}
+            <div className="flex flex-col gap-3">
+              <div className={`${cardCls} p-4`}>
+                <SectionHeader id="confirmation-templates" icon={<MessageSquare className="w-3.5 h-3.5 text-emerald-500" />}
+                  iconBg="bg-emerald-50 dark:bg-emerald-500/10" title={isRTL ? 'قوالب رسائل الطلب' : 'Order Message Templates'}
+                  subtitle={isRTL ? 'تُرسل تلقائياً عند كل طلب جديد' : 'Sent automatically on each new order'} />
+                {expandedSections.has('confirmation-templates') && (
+                  <div className="mt-3 space-y-4">
+                    {[
+                      { key: 'templateInstantOrder', label: isRTL ? 'رسالة فورية (أول رسالة)' : 'Instant Message (first reply)', icon: Zap, color: 'emerald',
+                        fallback: `✅ تم استلام طلبك!\n\nطلب #{orderId}\nالمنتج: {productName}\nالمجموع: {totalPrice} دج\nالاسم: {customerName}\nالهاتف: {customerPhone}`,
+                        vars: ['{orderId}','{productName}','{totalPrice}','{customerName}','{customerPhone}','{address}','{quantity}','{storeName}'] },
+                      { key: 'templatePinInstructions', label: isRTL ? 'تثبيت المحادثة' : 'Pin Conversation', icon: Package, color: 'amber',
+                        fallback: '📌 قم بتثبيت هذه المحادثة لتتبع طلبك بسهولة.',
+                        vars: [] },
+                      { key: 'templateOrderConfirmation', label: isRTL ? 'تأكيد الطلب' : 'Order Confirmation', icon: Check, color: 'blue',
+                        fallback: `مرحباً {customerName}! 🌟\n\nشكراً لطلبك!\n\n📦 المنتج: {productName}\n💰 السعر: {totalPrice} دج\n📍 العنوان: {address}\n\nهل تؤكد الطلب؟`,
+                        vars: ['{orderId}','{productName}','{totalPrice}','{customerName}','{address}','{companyName}'] },
+                      { key: 'templatePayment', label: isRTL ? 'تأكيد الدفع' : 'Payment Confirmation', icon: CreditCard, color: 'purple',
+                        fallback: 'تم تأكيد طلبك #{orderId}. المبلغ المطلوب: {totalPrice} دج.',
+                        vars: ['{orderId}','{totalPrice}','{customerName}'] },
+                      { key: 'templateShipping', label: isRTL ? 'إشعار الشحن' : 'Shipping Notification', icon: Truck, color: 'orange',
+                        fallback: 'تم شحن طلبك #{orderId}. رقم التتبع: {trackingNumber}.',
+                        vars: ['{orderId}','{trackingNumber}','{customerName}','{status}'] },
+                    ].map(tmpl => (
+                      <div key={tmpl.key} className="space-y-1.5">
                         <Label className="text-xs font-semibold flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-orange-500" />
-                          قالب رسالة التتبع (يُرسل تلقائياً عند كل تحديث)
+                          <tmpl.icon className={`w-3.5 h-3.5 text-${tmpl.color}-500`} /> {tmpl.label}
                         </Label>
-                        <Textarea
-                          value={(settings as any).delivery_status_template || '🚚 تحديث حالة طلبك\n\nمرحباً {customer_name}،\nطلبك رقم *{order_id}* - {event_label}\n\n{description}\n{location_line}\nرقم التتبع: {tracking_number}\n\nشكراً لثقتك بنا 🙏'}
-                          onChange={(e) => updateSetting('delivery_status_template' as any, e.target.value)}
-                          rows={7}
-                          className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono"
-                          dir="rtl"
-                        />
-                        <p className="text-[10px] text-slate-400">المتغيرات: {'{customer_name}'} {'{order_id}'} {'{event_label}'} {'{tracking_number}'} {'{description}'} {'{location_line}'}</p>
+                        <Textarea value={(settings as any)[tmpl.key] || tmpl.fallback}
+                          onChange={(e) => updateSetting(tmpl.key, e.target.value)} rows={4}
+                          className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" dir="rtl" />
+                        {tmpl.vars.length > 0 && (
+                          <p className="text-[10px] text-slate-400">{isRTL ? 'المتغيرات:' : 'Variables:'} {tmpl.vars.join(' ')}</p>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col gap-3">
+            </div>
 
-                {/* Variables Reference */}
-                <div className={`${cardCls} p-4`}>
-                  <SectionHeader id="variables-tracking" icon={<Code2 className="w-3.5 h-3.5 text-indigo-500" />}
-                    iconBg="bg-indigo-50 dark:bg-indigo-500/10" title={t('bot.availableVariables') || 'المتغيرات المتاحة'} />
-                  {expandedSections.has('variables-tracking') && (
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {[
-                        { key: '{customer_name}', desc: 'اسم العميل' },
-                        { key: '{order_id}', desc: 'رقم الطلب' },
-                        { key: '{event_label}', desc: 'حالة التوصيل (عربي)' },
-                        { key: '{tracking_number}', desc: 'رقم التتبع' },
-                        { key: '{description}', desc: 'وصف الحدث' },
-                        { key: '{location_line}', desc: 'الموقع (إن وُجد)' },
-                        { key: '{event_type}', desc: 'نوع الحدث (إنجليزي)' },
-                      ].map((v) => (
-                        <div key={v.key} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06]">
-                          <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0">{v.key}</code>
-                          <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">{v.desc}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {/* Right: Variables + Info */}
+            <div className="flex flex-col gap-3">
+              <div className={`${cardCls} p-4`}>
+                <SectionHeader id="variables" icon={<Code2 className="w-3.5 h-3.5 text-indigo-500" />}
+                  iconBg="bg-indigo-50 dark:bg-indigo-500/10" title={isRTL ? 'المتغيرات المتاحة' : 'Available Variables'} />
+                {expandedSections.has('variables') && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {variables.map((v) => (
+                      <div key={v.key} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06]">
+                        <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0">{v.key}</code>
+                        <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">{v.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick info card */}
+              <div className={`${cardCls} p-4`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Wand2 className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{isRTL ? 'كيف يعمل؟' : 'How it works?'}</span>
                 </div>
-
+                <div className="space-y-2">
+                  {[
+                    { step: '1', text: isRTL ? 'العميل يُنشئ طلب جديد في المتجر' : 'Customer places a new order in your store' },
+                    { step: '2', text: isRTL ? 'البوت يُرسل رسالة ترحيب فورية بالعربي' : 'Bot sends an instant welcome message in Arabic' },
+                    { step: '3', text: isRTL ? 'العميل يُثبت المحادثة لسهولة التتبع' : 'Customer pins the conversation for easy tracking' },
+                    { step: '4', text: isRTL ? 'بعد الدفع يُرسل تأكيد الطلب والشحن' : 'After payment, sends order & shipping confirmation' },
+                  ].map(s => (
+                    <div key={s.step} className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">{s.step}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{s.text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Two-column layout — Confirmation + Updates tabs */}
-        {(activeBot === 'confirmation' || activeBot === 'updates' || activeBot === null) && (<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-
-          {/* ═══ LEFT COLUMN ═══ */}
-          <div className="flex flex-col gap-3">
-
-            {/* Tracking Status Messages (legacy templates kept in Updates tab for manual sends) */}
-            <div className={`${cardCls} p-4`}>
-              <SectionHeader id="tracking-templates" icon={<Navigation className="w-3.5 h-3.5 text-orange-500" />}
-                iconBg="bg-orange-50 dark:bg-orange-500/10" title={t('bot.trackingStatusMessages') || 'رسائل حالة التتبع'}
-                subtitle="قوالب الرسائل اليدوية لتحديثات الشحن" />
-              {expandedSections.has('tracking-templates') && (
-                <div className="mt-3 space-y-3">
-                  {[
-                    { key: 'templateTrackingShipped', label: t('bot.orderShipped'), color: 'blue',
-                      fallback: `📦 مرحباً {customerName}!\n\nتم شحن طلبك #{orderId}.\n🚚 شركة التوصيل: {deliveryCompany}\n📍 رقم التتبع: {trackingNumber}\n\nيمكنك تتبع طلبك من هنا: {trackingUrl}` },
-                    { key: 'templateTrackingOutForDelivery', label: t('bot.outForDelivery'), color: 'amber',
-                      fallback: `🚛 {customerName}، طلبك في الطريق!\n\nطلبك #{orderId} خرج للتوصيل.\n📍 الوصول المتوقع: {estimatedTime}\n📞 السائق سيتصل بك قريباً.` },
-                    { key: 'templateTrackingDelivered', label: t('bot.delivered'), color: 'green',
-                      fallback: `✅ تم التوصيل بنجاح!\n\nمرحباً {customerName}،\nتم توصيل طلبك #{orderId} بنجاح.\n\n🙏 شكراً لتسوقك معنا!` },
-                    { key: 'templateTrackingFailed', label: t('bot.deliveryFailed'), color: 'red',
-                      fallback: `⚠️ فشل التوصيل\n\nمرحباً {customerName}،\nلم نتمكن من توصيل طلبك #{orderId}.\n\nالسبب: {failureReason}\n📞 تواصل معنا: {supportPhone}` },
-                  ].map(tmpl => (
-                    <div key={tmpl.key} className="space-y-1.5">
+        {/* ── Tracking Bot Settings ── */}
+        {activeSection === 'tracking' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <div className="flex flex-col gap-3">
+              <div className={`${cardCls} p-4`}>
+                <SectionHeader id="tracking-templates" icon={<Navigation className="w-3.5 h-3.5 text-orange-500" />}
+                  iconBg="bg-orange-50 dark:bg-orange-500/10" title={isRTL ? 'إشعارات التتبع التلقائية' : 'Auto Tracking Notifications'}
+                  subtitle={isRTL ? 'تُرسل تلقائياً عند كل تحديث من شركة التوصيل' : 'Sent automatically on each delivery update'} />
+                {expandedSections.has('tracking-templates') && (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+                      <div>
+                        <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">{isRTL ? 'إشعارات التتبع التلقائية' : 'Auto Tracking Notifications'}</p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">{isRTL ? 'أرسل رسالة للعميل عند كل تحديث من شركة التوصيل (Webhook)' : 'Send message to customer on each delivery update (Webhook)'}</p>
+                      </div>
+                      <Switch checked={(settings as any).delivery_notifications_enabled !== false}
+                        onCheckedChange={(v) => updateSetting('delivery_notifications_enabled' as any, v)} />
+                    </div>
+                    <div className="space-y-1.5">
                       <Label className="text-xs font-semibold flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full bg-${tmpl.color}-500`} />
-                        {tmpl.label}
+                        <span className="w-2 h-2 rounded-full bg-orange-500" />
+                        {isRTL ? 'قالب رسالة التتبع' : 'Tracking Message Template'}
                       </Label>
-                      <Textarea value={(settings as any)[tmpl.key] || tmpl.fallback}
-                        onChange={(e) => updateSetting(tmpl.key as any, e.target.value)} rows={3}
-                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
-                    </div>
-                  ))}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">{t('bot.defaultDeliveryCompany')}</Label>
-                      <Input value={(settings as any).defaultDeliveryCompany || ''}
-                        onChange={(e) => updateSetting('defaultDeliveryCompany' as any, e.target.value)} placeholder="Yalidine, ZR Express..." />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium">{t('bot.trackingUrlTemplate')}</Label>
-                      <Input value={(settings as any).trackingUrlTemplate || ''}
-                        onChange={(e) => updateSetting('trackingUrlTemplate' as any, e.target.value)} placeholder="https://track.example.com/{trackingNumber}" />
+                      <Textarea
+                        value={(settings as any).delivery_status_template || '🚚 تحديث حالة طلبك\n\nمرحباً {customer_name}،\nطلبك رقم *{order_id}* - {event_label}\n\n{description}\n{location_line}\nرقم التتبع: {tracking_number}\n\nشكراً لثقتك بنا 🙏'}
+                        onChange={(e) => updateSetting('delivery_status_template' as any, e.target.value)} rows={7}
+                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" dir="rtl" />
+                      <p className="text-[10px] text-slate-400">{isRTL ? 'المتغيرات:' : 'Variables:'} {'{customer_name}'} {'{order_id}'} {'{event_label}'} {'{tracking_number}'} {'{description}'} {'{location_line}'}</p>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Variables Reference */}
-            <div className={`${cardCls} p-4`}>
-              <SectionHeader id="variables" icon={<Code2 className="w-3.5 h-3.5 text-indigo-500" />}
-                iconBg="bg-indigo-50 dark:bg-indigo-500/10" title={t('bot.availableVariables')} />
-              {expandedSections.has('variables') && (
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {[...variables,
-                    { key: '{deliveryCompany}', desc: t('bot.deliveryCompany') },
-                    { key: '{trackingUrl}', desc: t('bot.trackingUrl') },
-                    { key: '{estimatedTime}', desc: t('bot.estimatedTime') },
-                    { key: '{failureReason}', desc: t('bot.failureReason') },
-                  ].map((v) => (
-                    <div key={v.key} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06]">
-                      <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0">
-                        {v.key}
-                      </code>
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">{v.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ═══ RIGHT COLUMN ═══ */}
-          <div className="flex flex-col gap-3">
-
-            {/* Confirmation Templates */}
-            <div className={`${cardCls} p-4`}>
-              <SectionHeader id="confirmation-templates" icon={<Check className="w-3.5 h-3.5 text-emerald-500" />}
-                iconBg="bg-emerald-50 dark:bg-emerald-500/10" title={t('bot.confirmation') + ' ' + (t('bot.templates') || 'Templates')} />
-              {expandedSections.has('confirmation-templates') && (
-                <div className="mt-3 space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <MessageSquare className="w-3 h-3 text-blue-500" /> {t('bot.greetingMessage')}
-                    </Label>
-                    <p className="text-[10px] text-slate-500">{t('bot.greetingDesc')}</p>
-                    <Textarea value={settings.templateGreeting || ''} onChange={(e) => updateSetting('templateGreeting', e.target.value)}
-                      rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <Package className="w-3 h-3 text-emerald-500" /> {t('bot.instantOrder')}
-                    </Label>
-                    <p className="text-[10px] text-slate-500">{t('bot.instantOrderDesc')}</p>
-                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{productName}'}, {'{totalPrice}'}, {'{customerName}'}, {'{customerPhone}'}, {'{address}'}, {'{quantity}'}, {'{storeName}'}</p>
-                    <Textarea value={settings.templateInstantOrder || ''} onChange={(e) => updateSetting('templateInstantOrder', e.target.value)}
-                      rows={8} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <MapPin className="w-3 h-3 text-amber-500" /> {t('bot.pinInstructions')}
-                    </Label>
-                    <p className="text-[10px] text-slate-500">{t('bot.pinInstructionsDesc')}</p>
-                    <Textarea value={settings.templatePinInstructions || ''} onChange={(e) => updateSetting('templatePinInstructions', e.target.value)}
-                      rows={4} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <Check className="w-3 h-3 text-green-500" /> {t('bot.orderConfirmation')}
-                    </Label>
-                    <p className="text-[10px] text-slate-500">{t('bot.orderConfirmationDesc')}</p>
-                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{productName}'}, {'{totalPrice}'}, {'{customerName}'}, {'{address}'}, {'{companyName}'}</p>
-                    <Textarea value={settings.templateOrderConfirmation} onChange={(e) => updateSetting('templateOrderConfirmation', e.target.value)}
-                      rows={4} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <CreditCard className="w-3 h-3 text-purple-500" /> {t('bot.paymentConfirmation')}
-                    </Label>
-                    <Textarea value={settings.templatePayment} onChange={(e) => updateSetting('templatePayment', e.target.value)}
-                      rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
-                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{totalPrice}'}, {'{customerName}'}</p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <Truck className="w-3 h-3 text-orange-500" /> {t('bot.shippingNotification')}
-                    </Label>
-                    <Textarea value={settings.templateShipping} onChange={(e) => updateSetting('templateShipping', e.target.value)}
-                      rows={3} className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs" />
-                    <p className="text-[10px] text-muted-foreground/70">المتغيرات المتاحة: {'{orderId}'}, {'{trackingNumber}'}, {'{customerName}'}, {'{status}'}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Customer Bot / Campaigns */}
-            <div className={`${cardCls} overflow-hidden`}>
-              <div className="p-4">
-                <SectionHeader id="campaigns" icon={<Users className="w-3.5 h-3.5 text-violet-500" />}
-                  iconBg="bg-violet-50 dark:bg-violet-500/10" title={t('bot.updates') || 'Customer Campaigns'} />
-              </div>
-              {expandedSections.has('campaigns') && (
-                <CustomerBot embedded={true} />
-              )}
-            </div>
-          </div>
-        </div>)}
-
-        {/* ── Help & FAQ Section ── */}
-        <div className="mt-8 p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center">
-              <HelpCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <h3 className="font-bold text-slate-900 dark:text-white">{isRTL ? 'كيف تعمل البوتات؟' : 'How do bots work?'}</h3>
-          </div>
-          
-          <div className="space-y-2">
-            <details className="group">
-              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو البوت التجاري؟' : 'What is the Order Confirmation Bot?'}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                {isRTL 
-                  ? 'يرسل البوت رسائل تأكيد الطلب تلقائياً عندما يقوم العميل بإنشاء طلب جديد. يمكنك تخصيص الرسالة لتتضمن اسم العميل، تفاصيل المنتج، السعر، والعنوان.'
-                  : 'The bot automatically sends order confirmation messages when a customer creates a new order. You can customize the message to include the customer name, product details, price, and address.'}
-              </div>
-            </details>
-
-            <details className="group">
-              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت التحديثات؟' : 'What is the Updates Bot?'}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                {isRTL 
-                  ? 'ينشئ البوت حملات تسويقية للعملاء - مثل إرسال عروض الخصم أو إشعارات وصول منتجات جديدة لتشجيعهم على العودة للتسوق مرة أخرى. يمكنك اختيار من تريد إرسال الحملة له، مثلاً الإرسال لكل العملاء.'
-                  : 'The bot creates marketing campaigns for customers - like sending discount offers or new product arrival notifications to encourage them to come back and shop again. You can choose who to send the campaign to, for example all customers.'}
-              </div>
-            </details>
-
-            <details className="group">
-              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هو بوت التتبع والتوصيل؟' : 'What is the Tracking & Delivery Bot?'}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                {isRTL 
-                  ? 'يرسل البوت إشعارات للعملاء عند تغيير حالة الطلب - مثل تأكيد الدفع، الشحن، أو التسليم. يساعد هذا العملاء على متابعة طلباتهم في الوقت الفعلي. كما يقدم معلومات تتبع الشحن، فعند إضافة رقم تتبع للطلب، يستطيع العملاء الاستعلام عن موقع شحنتهم في أي وقت.'
-                  : 'The bot sends notifications to customers when order status changes - like payment confirmation, shipping, or delivery. This helps customers track their orders in real-time. It also provides shipping tracking information — when you add a tracking number, customers can check their shipment location at any time.'}
-              </div>
-            </details>
-
-            <details className="group">
-              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'ما هي المتغيرات المتاحة في القوالب؟' : 'What variables are available in templates?'}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                {isRTL ? (
-                  <>
-                    يمكنك استخدام هذه المتغيرات في قوالب الرسائل:
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{customerName}'}</code> - اسم العميل</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{orderId}'}</code> - رقم الطلب</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{productName}'}</code> - اسم المنتج</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{totalPrice}'}</code> - السعر الإجمالي</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{address}'}</code> - عنوان التوصيل</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{trackingNumber}'}</code> - رقم التتبع</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{companyName}'}</code> - اسم المتجر</li>
-                    </ul>
-                  </>
-                ) : (
-                  <>
-                    You can use these variables in your message templates:
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{customerName}'}</code> - Customer name</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{orderId}'}</code> - Order ID</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{productName}'}</code> - Product name</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{totalPrice}'}</code> - Total price</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{address}'}</code> - Delivery address</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{trackingNumber}'}</code> - Tracking number</li>
-                      <li><code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{'{companyName}'}</code> - Store name</li>
-                    </ul>
-                  </>
                 )}
               </div>
-            </details>
-
-            <details className="group">
-              <summary className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">{isRTL ? 'كيف يمكنني تخصيص الرسائل؟' : 'How can I customize messages?'}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="p-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                {isRTL 
-                  ? 'اكتب رسالتك بالشكل الذي تريده في مربع النص. استخدم المتغيرات بين الأقواس المتموجة للبيانات الديناميكية. يمكنك استخدام الرموز التعبيرية (Emojis) لجعل الرسائل أكثر جاذبية وودية.'
-                  : 'Write your message as you want it in the text box. Use variables between curly braces for dynamic data. You can use emojis to make messages more engaging and friendly.'}
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className={`${cardCls} p-4`}>
+                <SectionHeader id="variables-tracking" icon={<Code2 className="w-3.5 h-3.5 text-indigo-500" />}
+                  iconBg="bg-indigo-50 dark:bg-indigo-500/10" title={isRTL ? 'المتغيرات المتاحة' : 'Available Variables'} />
+                {expandedSections.has('variables-tracking') && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {[
+                      { key: '{customer_name}', desc: isRTL ? 'اسم العميل' : 'Customer name' },
+                      { key: '{order_id}', desc: isRTL ? 'رقم الطلب' : 'Order ID' },
+                      { key: '{event_label}', desc: isRTL ? 'حالة التوصيل' : 'Delivery status' },
+                      { key: '{tracking_number}', desc: isRTL ? 'رقم التتبع' : 'Tracking number' },
+                      { key: '{description}', desc: isRTL ? 'وصف الحدث' : 'Event description' },
+                      { key: '{location_line}', desc: isRTL ? 'الموقع' : 'Location' },
+                    ].map((v) => (
+                      <div key={v.key} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06]">
+                        <code className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0">{v.key}</code>
+                        <span className="text-slate-500 dark:text-slate-400 text-[10px] truncate">{v.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </details>
+            </div>
+          </div>
+        )}
+
+        {/* ── Marketing Campaigns ── */}
+        {activeSection === 'updates' && (
+          <div className={`${cardCls} overflow-hidden`}>
+            <div className="p-4">
+              <SectionHeader id="campaigns" icon={<Users className="w-3.5 h-3.5 text-violet-500" />}
+                iconBg="bg-violet-50 dark:bg-violet-500/10" title={isRTL ? 'حملات التسويق' : 'Marketing Campaigns'} />
+            </div>
+            {expandedSections.has('campaigns') && <CustomerBot embedded={true} />}
+          </div>
+        )}
+
+        {/* ── Help & FAQ ── */}
+        <div className={`${cardCls} p-5`}>
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <HelpCircle className="w-4.5 h-4.5 text-slate-500 dark:text-slate-400" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">{isRTL ? 'الأسئلة الشائعة' : 'FAQ'}</h3>
+          </div>
+          <div className="space-y-2">
+            {[
+              { q: isRTL ? 'هل البوت يرد باللغة العربية؟' : 'Does the bot reply in Arabic?', a: isRTL ? 'نعم، جميع الرسائل افتراضياً بالعربي. يمكنك تخصيص أي رسالة باللغة التي تريدها.' : 'Yes, all messages are in Arabic by default. You can customize any message in the language you want.' },
+              { q: isRTL ? 'هل يمكنني تعطيل بوت معين؟' : 'Can I disable a specific bot?', a: isRTL ? 'نعم، كل بوت له مفتاح تفعيل مستقل. يمكنك تشغيل تأكيد الطلبات وتعطيل الحملات مثلاً.' : 'Yes, each bot has its own toggle. You can enable order confirmation and disable campaigns for example.' },
+              { q: isRTL ? 'ماذا يحدث إذا لم يُؤكد العميل الطلب؟' : 'What happens if the customer does not confirm?', a: isRTL ? 'البوت يُرسل تذكيراً تلقائياً بعد فترة. يمكنك تعديل وقت التذكير من إعدادات الحملات.' : 'The bot sends an automatic reminder after a period. You can adjust reminder timing from campaign settings.' },
+              { q: isRTL ? 'كيف أضيف رقم واتساب أو تيليجرام؟' : 'How to connect WhatsApp or Telegram?', a: isRTL ? 'اذهب إلى إعدادات البوت وفعّل المنصة التي تريدها. اتبع خطوات التوصيل لكل منصة.' : 'Go to bot settings and enable the platform you want. Follow the connection steps for each platform.' },
+            ].map((item, i) => (
+              <details key={i} className="group">
+                <summary className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.06] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <span className="font-semibold text-xs text-slate-700 dark:text-slate-200">{item.q}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 transition-transform group-open:rotate-180 shrink-0" />
+                </summary>
+                <div className="p-3 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{item.a}</div>
+              </details>
+            ))}
           </div>
         </div>
 
         {/* Floating Save */}
         <div className={`fixed bottom-4 ${isRTL ? 'left-4' : 'right-4'}`}>
           <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg transition-all disabled:opacity-60">
-            {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{t('bot.saving')}</> : <><Save className="h-4 w-4" />{t('bot.saveChanges')}</>}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-60">
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><Save className="h-4 w-4" />{t('bot.saveChanges')}</>}
           </button>
         </div>
       </div>
