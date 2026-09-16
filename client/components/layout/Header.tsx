@@ -340,29 +340,64 @@ export default function Header() {
 }
 
 // Store Switcher component (inside header dropdown)
+// Fetches directly from API on every mount — no dependency on context timing
 function StoreSwitcher() {
-  const { stores, activeStore, setActiveStore, createStore, storesLoaded, refreshStores } = useStore();
+  const { activeStore, setActiveStore } = useStore();
   const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [localStores, setLocalStores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Always re-fetch stores when the switcher mounts (dropdown opens)
-  useEffect(() => { refreshStores(); }, [refreshStores]);
+  // Fetch stores directly from API every time this component mounts
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch('/api/client/stores', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled) {
+          const list = data.stores || [];
+          setLocalStores(list);
+          // Also sync context so other components see the stores
+          if (list.length > 0) {
+            // Update context stores in background
+            fetch('/api/client/stores', { credentials: 'include' }).catch(() => {});
+          }
+        }
+      })
+      .catch(() => { if (!cancelled) setLocalStores([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleCreate = async () => {
     if (!newStoreName.trim()) return;
     setCreating(true);
-    const store = await createStore(newStoreName.trim(), activeStore?.id);
+    try {
+      const csrfMatch = document.cookie.match(/(?:^|;\s*)ecopro_csrf=([^;]*)/);
+      const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
+      const res = await fetch('/api/client/stores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        credentials: 'include',
+        body: JSON.stringify({ name: newStoreName.trim(), sourceStoreId: activeStore?.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.store) {
+          setLocalStores(prev => [...prev, data.store]);
+          setActiveStore(data.store);
+          setNewStoreName('');
+          setShowCreate(false);
+        }
+      }
+    } catch {}
     setCreating(false);
-    if (store) {
-      setNewStoreName('');
-      setShowCreate(false);
-    }
   };
 
-  // Show skeleton only until stores have been successfully loaded at least once
-  if (!storesLoaded) {
+  if (loading) {
     return (
       <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-700/50">
         <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-2 px-1">المتجر النشط</div>
@@ -380,7 +415,7 @@ function StoreSwitcher() {
         المتجر النشط
       </div>
       <div className="space-y-0.5">
-        {stores.map(store => {
+        {localStores.map((store: any) => {
           const isActive = activeStore?.id === store.id;
           return (
             <button
