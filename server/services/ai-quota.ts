@@ -27,7 +27,7 @@ interface QuotaStatus {
 // visible in the UI) but finish the month for a normal active store.
 const MONTHLY_LIMITS: Record<UserType, number> = {
   owner: 1000, // dashboard assistant chats (~33/day)
-  customer: 3000, // auto-replies to customers (~100/day)
+  customer: 5000, // auto-replies to customers (~165/day)
 };
 
 // ─── Day pass: paid 24h extension after the monthly allowance is gone ───
@@ -41,17 +41,24 @@ const DAILY_LIMITS: Record<UserType, number> = {
 
 /**
  * Active (unexpired) day pass for a store, if any.
+ * Returns null if the table doesn't exist yet (migration pending) —
+ * a missing table must never break quota checks.
  */
 export async function getActivePass(clientId: number): Promise<{ id: number; endsAt: Date } | null> {
-  const pool = await ensureConnection();
-  const result = await pool.query(
-    `SELECT id, ends_at as "endsAt"
-      FROM ai_passes
-      WHERE client_id = $1 AND status = 'active' AND ends_at > NOW()
-      ORDER BY ends_at DESC LIMIT 1`,
-    [clientId]
-  );
-  return result.rows[0] || null;
+  try {
+    const pool = await ensureConnection();
+    const result = await pool.query(
+      `SELECT id, ends_at as "endsAt"
+        FROM ai_passes
+        WHERE client_id = $1 AND status = 'active' AND ends_at > NOW()
+        ORDER BY ends_at DESC LIMIT 1`,
+      [clientId]
+    );
+    return result.rows[0] || null;
+  } catch (err: any) {
+    if (err?.code === '42P01') return null; // undefined_table: migration not applied yet
+    throw err;
+  }
 }
 
 /**
