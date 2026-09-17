@@ -30,13 +30,33 @@ const MONTHLY_LIMITS: Record<UserType, number> = {
   customer: 3000, // auto-replies to customers (~100/day)
 };
 
+// ─── Day pass: paid 24h extension after the monthly allowance is gone ───
+export const DAY_PASS_PRICE_DZD = 200;
+export const DAY_PASS_DURATION_HOURS = 24;
+
 const DAILY_LIMITS: Record<UserType, number> = {
   owner: 500,
   customer: 200,
 };
 
 /**
+ * Active (unexpired) day pass for a store, if any.
+ */
+export async function getActivePass(clientId: number): Promise<{ id: number; endsAt: Date } | null> {
+  const pool = await ensureConnection();
+  const result = await pool.query(
+    `SELECT id, ends_at as "endsAt"
+      FROM ai_passes
+      WHERE client_id = $1 AND status = 'active' AND ends_at > NOW()
+      ORDER BY ends_at DESC LIMIT 1`,
+    [clientId]
+  );
+  return result.rows[0] || null;
+}
+
+/**
  * Check quota: monthly allowance (binding) + daily request cap (abuse guard).
+ * An active day pass re-opens the monthly allowance for 24h (daily cap stays).
  */
 export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
   const pool = await ensureConnection();
@@ -58,8 +78,15 @@ export async function checkQuota(clientId: number, userType: UserType): Promise<
   const monthlyRemaining = Math.max(0, monthlyLimit - monthUsed);
   const dailyRemaining = Math.max(0, dailyLimit - dayUsed);
 
+  // Active day pass re-opens the monthly allowance (abuse cap still applies).
+  let passActive = false;
+  if (monthlyRemaining <= 0) {
+    const pass = await getActivePass(clientId);
+    passActive = !!pass;
+  }
+
   // Binding limit is whichever runs out first; monthly is the advertised one.
-  const remaining = Math.min(monthlyRemaining, dailyRemaining);
+  const remaining = passActive ? dailyRemaining : Math.min(monthlyRemaining, dailyRemaining);
 
   // Next reset = 1st of next month (what the UI promises).
   const now = new Date();
@@ -119,6 +146,9 @@ export async function getQuotaSummary(clientId: number): Promise<{
   customerUsed: number;
   customerLimit: number;
   periodStart: Date;
+  passActive: boolean;
+  passEndsAt: Date | null;
+  dayPassPriceDzd: number;
 }> {
   const pool = await ensureConnection();
 
@@ -133,6 +163,7 @@ export async function getQuotaSummary(clientId: number): Promise<{
 
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const pass = await getActivePass(clientId);
 
   return {
     ownerUsed: Number(result.rows[0].owner_msgs),
@@ -140,6 +171,9 @@ export async function getQuotaSummary(clientId: number): Promise<{
     customerUsed: Number(result.rows[0].customer_msgs),
     customerLimit: MONTHLY_LIMITS.customer,
     periodStart,
+    passActive: !!pass,
+    passEndsAt: pass ? pass.endsAt : null,
+    dayPassPriceDzd: DAY_PASS_PRICE_DZD,
   };
 }
 

@@ -26,7 +26,8 @@ export interface CreateCheckoutSessionParams {
   userId: number;
   userEmail: string;
   userPhone?: string;
-  subscriptionId: number;
+  /** Null for non-subscription purchases (e.g. AI day pass) */
+  subscriptionId: number | null;
   description?: string;
   metadata?: Record<string, any>;
   /** Custom amount in cents (optional - defaults to SUBSCRIPTION_PRICE_CENTS) */
@@ -259,6 +260,74 @@ export function verifyWebhookSignature(
 }
 
 /**
+ * Handle webhook payment completed for an AI day pass (200 DZD / 24h).
+ * Activates (or extends) a 24h pass for the store; separate from subscriptions.
+ */
+async function handleAiDayPassCompleted(
+  payload: RedotPayWebhookPayload
+): Promise<void> {
+  const { session_id, transaction_id, amount, status, metadata } = payload.data;
+
+  if (status !== 'completed') {
+    console.log('[RedotPay] AI day pass not completed, ignoring:', status);
+    return;
+  }
+
+  const clientId = Number(metadata?.client_id);
+  const userId = Number(metadata?.user_id);
+  if (!clientId || !userId) {
+    throw new Error(`AI day pass missing metadata: client_id=${metadata?.client_id}, user_id=${metadata?.user_id}`);
+  }
+
+  // Idempotency: skip already-processed transactions
+  const existing = await pool.query('SELECT id FROM payments WHERE transaction_id = $1', [transaction_id]);
+  if (existing.rows.length > 0) {
+    console.log('[RedotPay] AI day pass already processed:', transaction_id);
+    return;
+  }
+
+  const checkoutSession = await pool.query(
+    'SELECT id FROM checkout_sessions WHERE redotpay_session_id = $1',
+    [session_id]
+  );
+  const checkoutSessionId = checkoutSession.rows[0]?.id || null;
+
+  const paymentRes = await pool.query(
+    `INSERT INTO payments
+      (user_id, subscription_id, checkout_session_id, amount, currency, status, transaction_id, payment_method, provider_response, paid_at)
+      VALUES ($1, NULL, $2, $3, $4, 'completed', $5, 'redotpay', $6, $7)
+      RETURNING id`,
+    [
+      userId,
+      checkoutSessionId,
+      amount / 100,
+      payload.data.currency || 'DZD',
+      transaction_id,
+      JSON.stringify(payload.data),
+      new Date(payload.data.paid_at || payload.timestamp),
+    ]
+  );
+  const paymentId = paymentRes.rows[0]?.id || null;
+
+  // Activate: new pass starts now, or extends the currently active one.
+  await pool.query(
+    `INSERT INTO ai_passes (client_id, user_id, starts_at, ends_at, amount, currency, payment_id, checkout_session_id, status)
+     VALUES (
+       $1, $2, NOW(),
+       GREATEST(NOW(), COALESCE((SELECT MAX(ends_at) FROM ai_passes WHERE client_id = $1 AND status = 'active' AND ends_at > NOW()), NOW())) + INTERVAL '24 hours',
+       $3, 'DZD', $4, $5, 'active'
+     )`,
+    [clientId, userId, amount / 100, paymentId, checkoutSessionId]
+  );
+
+  if (checkoutSessionId) {
+    await pool.query('UPDATE checkout_sessions SET status = $1, updated_at = NOW() WHERE id = $2', ['completed', checkoutSessionId]);
+  }
+
+  console.log('[RedotPay] AI day pass activated:', { clientId, transactionId: transaction_id });
+}
+
+/**
  * Handle webhook payment completed event
  */
 export async function handlePaymentCompleted(
@@ -267,6 +336,12 @@ export async function handlePaymentCompleted(
   const { session_id, transaction_id, amount, status, metadata } = payload.data;
 
   try {
+    // ── AI day pass (200 DZD / 24h): no subscription involved ──
+    if (metadata?.type === 'ai_day_pass') {
+      await handleAiDayPassCompleted(payload);
+      return;
+    }
+
     // Verify amount matches expected subscription price from platform settings
     const priceRes = await pool.query(
       `SELECT setting_value FROM platform_settings WHERE setting_key = 'subscription_price'`

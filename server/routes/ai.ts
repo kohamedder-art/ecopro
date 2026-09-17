@@ -48,7 +48,8 @@ import {
   verifyAlertOwnership,
 } from '../utils/alert-service';
 import { getOmniOverview } from '../services/omni-intelligence';
-import { getQuotaSummary } from '../services/ai-quota';
+import { getQuotaSummary, DAY_PASS_PRICE_DZD } from '../services/ai-quota';
+import { createCheckoutSession } from '../utils/redotpay';
 import { handleCustomerMessage } from '../services/customer-ai';
 import { sendTelegramMessage } from '../utils/bot-messaging';
 import { sendWhatsAppTextMessage } from './whatsapp-cloud';
@@ -120,6 +121,49 @@ router.get('/quota', authenticate, requireClient, async (req: Request, res: Resp
   } catch (err) {
     console.error('[AI quota error]', err);
     return res.status(500).json({ error: 'Failed to fetch quota data' });
+  }
+});
+
+/**
+ * POST /api/ai/day-pass/checkout
+ * Creates a RedotPay checkout for a 200 DZD / 24h AI day pass.
+ * Activated by the RedotPay webhook (metadata.type = 'ai_day_pass').
+ * Returns { checkoutUrl, amount, currency }.
+ */
+router.post('/day-pass/checkout', authenticate, requireClient, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const userResult = await pool.query('SELECT email FROM clients WHERE id = $1', [user.id]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    // One pending pass-checkout at a time (avoid double charges on double-click).
+    const pending = await pool.query(
+      `SELECT id FROM checkout_sessions
+        WHERE user_id = $1 AND status = 'pending' AND expires_at > NOW()
+          AND metadata->>'type' = 'ai_day_pass' LIMIT 1`,
+      [user.id]
+    );
+    if (pending.rows.length > 0) {
+      return res.status(409).json({ error: 'A day-pass payment is already pending. Complete it or wait for expiry.' });
+    }
+
+    const session = await createCheckoutSession({
+      userId: user.id,
+      userEmail: userResult.rows[0].email,
+      subscriptionId: null,
+      amountCents: DAY_PASS_PRICE_DZD * 100,
+      description: `AI day pass - 24h unlimited AI (${DAY_PASS_PRICE_DZD} DZD)`,
+      metadata: { type: 'ai_day_pass', user_id: user.id, client_id: user.id },
+    });
+
+    return res.json({
+      checkoutUrl: session.checkoutUrl,
+      amount: DAY_PASS_PRICE_DZD,
+      currency: 'DZD',
+    });
+  } catch (err) {
+    console.error('[AI day-pass checkout error]', err);
+    return res.status(500).json({ error: 'Failed to create checkout session' });
   }
 });
 
