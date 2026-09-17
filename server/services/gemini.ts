@@ -496,7 +496,7 @@ async function callAI(
   temperature: number = 0.7,
   _model?: string,
   maxTokens?: number
-): Promise<{ text: string; tokensInput: number; tokensOutput: number; totalTokens: number; costUsd: number }> {
+): Promise<{ text: string; tokensInput: number; tokensOutput: number; totalTokens: number; costUsd: number; modelUsed?: string }> {
   if (images) {
     console.warn('[AI] Bridge does not support images, falling back to text-only call');
   }
@@ -523,7 +523,7 @@ async function callAI(
   const text = data?.choices?.[0]?.message?.content || data?.answer || '';
   if (!text) throw new Error('Empty response from bridge');
 
-  return { text: text.trim(), tokensInput: 0, tokensOutput: 0, totalTokens: 0, costUsd: 0 };
+  return { text: text.trim(), tokensInput: 0, tokensOutput: 0, totalTokens: 0, costUsd: 0, modelUsed: data?.model || undefined };
 }
 
 // ─── Search-grounded generation (no native search — uses prompt-based approach) ─
@@ -631,7 +631,7 @@ export async function generateText(
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: 'bridge',
+      modelUsed: aiResponse.modelUsed || 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,
@@ -685,7 +685,7 @@ export async function generateTextWithSearch(
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: 'bridge',
+      modelUsed: aiResponse.modelUsed || 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,
@@ -722,7 +722,7 @@ export async function generateJSON<T = any>(
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: 'bridge',
+      modelUsed: aiResponse.modelUsed || 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,
@@ -784,7 +784,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown fences.`;
       clientId: ctx.clientId,
       userType: ctx.userType,
       platformChatId: ctx.platformChatId,
-      modelUsed: 'bridge',
+      modelUsed: aiResponse.modelUsed || 'bridge',
       tokensInput: aiResponse.tokensInput,
       tokensOutput: aiResponse.tokensOutput,
       totalTokens: aiResponse.totalTokens,

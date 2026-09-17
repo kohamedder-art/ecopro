@@ -3,7 +3,8 @@
  *
  * Sits on top of `opencode serve`. Each store owner on Sahla4Eco
  * gets their own opencode session. Messages are routed through
- * opencode's HTTP API using free models (nemotron-3.5-lightning-free default).
+ * opencode's HTTP API using free models with auto-fallback:
+ * big-pickle → mimo-v2.5-free → ling-3.0-flash-fin-free (plan agent).
  *
  * Usage:
  *   # Terminal 1: start opencode headless server
@@ -26,8 +27,22 @@ const PRODUCTION_URL = process.env.PRODUCTION_URL || 'http://localhost:8080';
 
 const OPENCODE_BASE = `http://${OPENCODE_HOST}:${OPENCODE_PORT}`;
 const DEFAULT_AGENT = 'plan';
-const DEFAULT_MODEL = { providerID: 'opencode', modelID: 'nemotron-3.5-lightning-free' };
+// Model fallback chain (fastest first). Free Zen models rotate without notice —
+// if one 404s/is retired, the bridge auto-retries the next instead of failing.
+// Override with: MODEL_ORDER=big-pickle,mimo-v2.5-free,ling-3.0-flash-fin-free
+const DEFAULT_MODELS = (process.env.MODEL_ORDER || 'big-pickle,mimo-v2.5-free,ling-3.0-flash-fin-free')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+  .map(modelID => ({ providerID: 'opencode', modelID }));
 const AUTH_HEADER = 'Basic ' + Buffer.from(`${OPENCODE_USER}:${OPENCODE_PASS}`).toString('base64');
+
+// Errors that mean "this model is unusable" → try the next model in chain.
+// Anything else (timeout, opencode down) fails fast instead of tripling latency.
+function isModelError(err) {
+  const msg = String(err?.message || '');
+  return /model|not found|404|401|403|429|unsupported|deleted|retired|disabled|unknown/i.test(msg);
+}
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -144,7 +159,7 @@ const server = http.createServer(async (req, res) => {
         await ocFetch('POST', `/session/${sessionId}/message`, {
           parts: [{ type: 'text', text: contextMsg }],
           agent: DEFAULT_AGENT,
-          model: DEFAULT_MODEL,
+          model: DEFAULT_MODELS[0],
           noReply: true,
         });
       }
@@ -154,13 +169,29 @@ const server = http.createServer(async (req, res) => {
       // ECOPRO_ACTION JSON parsed server-side, so the read-only 'plan' agent
       // is used (never file/shell tools). Agent + model can be overridden
       // per request: { agent, model: { providerID, modelID } }.
-      const model = body.model || DEFAULT_MODEL;
+      // Without override, walk the fallback chain (big-pickle → mimo → ling-flash).
       const agent = body.agent || DEFAULT_AGENT;
-      const reply = await ocFetch('POST', `/session/${sessionId}/message`, {
-        parts: [{ type: 'text', text: question }],
-        agent,
-        model,
-      });
+      const chain = body.model ? [body.model] : DEFAULT_MODELS;
+      let reply = null;
+      let usedModel = null;
+      let lastErr = null;
+      for (const model of chain) {
+        try {
+          reply = await ocFetch('POST', `/session/${sessionId}/message`, {
+            parts: [{ type: 'text', text: question }],
+            agent,
+            model,
+          });
+          usedModel = model.modelID || model;
+          break;
+        } catch (e) {
+          lastErr = e;
+          // Only fail over for model problems; opencode-down/timeout fails fast.
+          if (chain.length === 1 || !isModelError(e)) throw e;
+          console.log(`[Bridge] Model ${model.modelID} failed (${String(e.message).slice(0, 80)}), trying next...`);
+        }
+      }
+      if (!reply) throw lastErr || new Error('All models failed');
 
       // Extract text from response parts
       const textParts = reply.parts?.filter(p => p.type === 'text').map(p => p.text) || [];
@@ -174,6 +205,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         answer,
         session_id: sessionId,
+        model: usedModel,
         usage: reply.usage || null,
       });
     }
@@ -235,10 +267,10 @@ server.listen(BRIDGE_PORT, '0.0.0.0', () => {
       await ocFetch('POST', `/session/${warm.id}/message`, {
         parts: [{ type: 'text', text: 'مرحبا' }],
         agent: DEFAULT_AGENT,
-        model: DEFAULT_MODEL,
+        model: DEFAULT_MODELS[0],
         noReply: true,
       });
-      console.log('  🔥 Warm-up complete, model is loaded');
+      console.log(`  🔥 Warm-up complete (model: ${DEFAULT_MODELS[0]?.modelID})`);
     } catch (e) {
       console.log('  Warm-up skipped (first request may be slow):', e.message.slice(0, 60));
     }
