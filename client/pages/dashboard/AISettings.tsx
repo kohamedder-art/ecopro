@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, MessageCircle, Smartphone, Globe, Camera, Shield, Pen, FileText, Send, BarChart3, RefreshCw, Plus, Trash2, Pencil, Palette, Brain, Sparkles, Loader2, CheckCircle2, AlertCircle, User, Tag, BookOpen, Heart, ShoppingCart, SmilePlus, X, ChevronDown } from "lucide-react";
+import { Bot, MessageCircle, Smartphone, Globe, Camera, Shield, FileText, Send, RefreshCw, Plus, Trash2, Pencil, Palette, Brain, Sparkles, Loader2, User, Tag, X } from "lucide-react";
 
 interface AISettings {
   ai_chat_enabled: boolean;
@@ -119,6 +119,8 @@ interface PlatformToggle {
   desc: string;
 }
 
+type TabId = 'auto-reply' | 'persona' | 'permissions' | 'product' | 'advanced';
+
 export default function AISettingsPage() {
   const { t, locale } = useTranslation();
   const { toast } = useToast();
@@ -127,14 +129,13 @@ export default function AISettingsPage() {
   const [quota, setQuota] = useState<QuotaSummary | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'auto-reply' | 'permissions' | 'product' | 'advanced' | 'persona'>('auto-reply');
+  const [activeTab, setActiveTab] = useState<TabId>('auto-reply');
   const [persona, setPersona] = useState<PersonaConfig>(DEFAULT_PERSONA);
   const [personaSaving, setPersonaSaving] = useState(false);
   const [personaLoading, setPersonaLoading] = useState(false);
 
   // Test chat state
   const [testMessage, setTestMessage] = useState('');
-  const [testResponse, setTestResponse] = useState('');
   const [testLoading, setTestLoading] = useState(false);
   const [testChat, setTestChat] = useState<{role: 'user'|'ai', text: string}[]>([]);
 
@@ -220,38 +221,39 @@ export default function AISettingsPage() {
   const handleTestSend = async () => {
     if (!testMessage.trim()) return;
     setTestLoading(true);
-    setTestChat(prev => [...prev, { role: 'user', text: testMessage }]);
-    setTestResponse('');
+    const msg = testMessage;
+    setTestChat(prev => [...prev, { role: 'user', text: msg }]);
+    setTestMessage('');
     try {
       const res = await fetch('/api/ai/persona/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message: testMessage }),
+        body: JSON.stringify({ message: msg }),
       });
       const data = await res.json();
       if (data.answer) {
         setTestChat(prev => [...prev, { role: 'ai', text: data.answer }]);
-        setTestResponse(data.answer);
       }
     } catch {
       setTestChat(prev => [...prev, { role: 'ai', text: isRTL ? 'حدث خطأ' : 'An error occurred' }]);
     } finally {
       setTestLoading(false);
-      setTestMessage('');
     }
   };
 
   const handleCustomerTestSend = async () => {
     if (!customerTestMessage.trim()) return;
     setCustomerTestLoading(true);
-    setCustomerTestChat(prev => [...prev, { role: 'user', text: customerTestMessage }]);
+    const msg = customerTestMessage;
+    setCustomerTestChat(prev => [...prev, { role: 'user', text: msg }]);
+    setCustomerTestMessage('');
     try {
       const res = await fetch('/api/ai/test-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message: customerTestMessage, chatId: customerTestChatId }),
+        body: JSON.stringify({ message: msg, chatId: customerTestChatId }),
       });
       const data = await res.json();
       if (data.answer) {
@@ -261,258 +263,282 @@ export default function AISettingsPage() {
       setCustomerTestChat(prev => [...prev, { role: 'ai', text: isRTL ? 'حدث خطأ' : 'An error occurred' }]);
     } finally {
       setCustomerTestLoading(false);
-      setCustomerTestMessage('');
     }
   };
 
-  const TabButton = ({ id, label, icon }: { id: typeof activeTab; label: string; icon: React.ReactNode }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
-        activeTab === id
-          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
-          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-
-  const ToggleRow = ({ checked, onChange, label, desc, icon }: { checked: boolean; onChange: () => void; label: string; desc: string; icon: React.ReactNode }) => (
-    <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 hover:border-slate-200 dark:hover:border-slate-600 transition-all">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-200/50 dark:border-purple-800/30 flex items-center justify-center flex-shrink-0">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{label}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</p>
-        </div>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} className="flex-shrink-0 ml-3" />
-    </div>
-  );
-
   const platforms: PlatformToggle[] = [
-    { key: 'ai_reply_messenger', icon: <MessageCircle className="w-4 h-4 text-blue-600" />, label: 'Facebook Messenger', desc: 'الرد على رسائل الفيسبوك' },
-    { key: 'ai_reply_whatsapp', icon: <Smartphone className="w-4 h-4 text-green-600" />, label: 'WhatsApp', desc: 'الرد على رسائل واتساب' },
-    { key: 'ai_reply_telegram', icon: <Send className="w-4 h-4 text-blue-500" />, label: 'Telegram', desc: 'الرد على رسائل تيليجرام' },
-    { key: 'ai_reply_instagram', icon: <Camera className="w-4 h-4 text-pink-600" />, label: 'Instagram', desc: 'الرد على رسائل إنستغرام' },
-    { key: 'ai_reply_viber', icon: <Globe className="w-4 h-4 text-purple-600" />, label: 'Viber', desc: 'الرد على رسائل Viber' },
+    { key: 'ai_reply_messenger', icon: <MessageCircle className="w-3.5 h-3.5 text-blue-600" />, label: 'Facebook Messenger', desc: 'الرد على رسائل الفيسبوك' },
+    { key: 'ai_reply_whatsapp', icon: <Smartphone className="w-3.5 h-3.5 text-green-600" />, label: 'WhatsApp', desc: 'الرد على رسائل واتساب' },
+    { key: 'ai_reply_telegram', icon: <Send className="w-3.5 h-3.5 text-blue-500" />, label: 'Telegram', desc: 'الرد على رسائل تيليجرام' },
+    { key: 'ai_reply_instagram', icon: <Camera className="w-3.5 h-3.5 text-pink-600" />, label: 'Instagram', desc: 'الرد على رسائل إنستغرام' },
+    { key: 'ai_reply_viber', icon: <Globe className="w-3.5 h-3.5 text-purple-600" />, label: 'Viber', desc: 'الرد على رسائل Viber' },
   ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <span className="h-8 w-8 animate-spin border-[3px] border-primary border-t-transparent rounded-full" />
+          <span className="text-sm text-muted-foreground font-medium">{isRTL ? 'جاري تحميل إعدادات الذكاء الاصطناعي...' : 'Loading AI settings...'}</span>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Brain className="w-6 h-6 text-purple-500" />
-            {isRTL ? 'الذكاء الاصطناعي' : 'AI Settings'}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {isRTL ? 'تحكم في إعدادات الذكاء الاصطناعي لمتجرك' : 'Control your store\'s AI settings'}
-          </p>
-        </div>
-        <Button onClick={save} disabled={saving} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/25">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <CheckCircle2 className="w-4 h-4 ml-2" />}
-          {isRTL ? 'حفظ' : 'Save'}
-        </Button>
-      </div>
+  // ── Derived overview (KPI row, same pattern as MarketingAnalytics) ──
+  const platformsActive = platforms.filter(p => settings.storefront_assistant && (settings[p.key] as boolean)).length;
+  const ownerPct = quota && quota.ownerLimit > 0 ? Math.min(100, (quota.ownerUsed / quota.ownerLimit) * 100) : 0;
+  const customerPct = quota && quota.customerLimit > 0 ? Math.min(100, (quota.customerUsed / quota.customerLimit) * 100) : 0;
+  const personaDone = Boolean(persona.persona_name && persona.greeting_template);
 
-      {/* Monthly Usage */}
-      {quota && (
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-500/5 to-slate-600/5 border border-slate-200/50 dark:border-slate-700/50">
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-slate-500" />
-            {isRTL ? 'استخدام الشهر الحالي' : 'Monthly Usage'}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-500">{isRTL ? 'مساعد المتجر' : 'Store Owner AI'}</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">{quota.ownerUsed.toLocaleString()} / {quota.ownerLimit.toLocaleString()}</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all" style={{ width: `${Math.min(100, (quota.ownerUsed / quota.ownerLimit) * 100)}%` }} />
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-500">{isRTL ? 'الرد على العملاء' : 'Customer Auto-Reply'}</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">{quota.customerUsed.toLocaleString()} / {quota.customerLimit.toLocaleString()}</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all" style={{ width: `${Math.min(100, (quota.customerUsed / quota.customerLimit) * 100)}%` }} />
-              </div>
-            </div>
+  const kpis = [
+    {
+      label: isRTL ? 'الرد التلقائي' : 'Auto-Reply',
+      value: settings.storefront_assistant ? (isRTL ? 'مفعّل' : 'ON') : (isRTL ? 'متوقف' : 'OFF'),
+      icon: <Bot className="w-3.5 h-3.5 text-white" />,
+      gradient: settings.storefront_assistant ? 'from-emerald-500 to-emerald-600' : 'from-slate-400 to-slate-500',
+      shadow: 'shadow-emerald-500/20',
+      valueColor: settings.storefront_assistant ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground',
+      sub: `${platformsActive}/5 ${isRTL ? 'منصات' : 'platforms'}`,
+    },
+    {
+      label: isRTL ? 'مساعد اللوحة' : 'Dashboard AI',
+      value: settings.ai_chat_enabled ? (isRTL ? 'مفعّل' : 'ON') : (isRTL ? 'متوقف' : 'OFF'),
+      icon: <Brain className="w-3.5 h-3.5 text-white" />,
+      gradient: 'from-violet-500 to-violet-600', shadow: 'shadow-violet-500/20',
+      sub: isRTL ? 'فقاعة المساعدة' : 'Help bubble',
+    },
+    {
+      label: isRTL ? 'استهلاك المالك' : 'Owner usage',
+      value: quota ? `${Math.round(ownerPct)}%` : '—',
+      icon: <FileText className="w-3.5 h-3.5 text-white" />,
+      gradient: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-500/20',
+      sub: quota ? `${quota.ownerUsed.toLocaleString()} / ${quota.ownerLimit.toLocaleString()}` : undefined,
+    },
+    {
+      label: isRTL ? 'ردود العملاء' : 'Customer replies',
+      value: quota ? `${Math.round(customerPct)}%` : '—',
+      icon: <MessageCircle className="w-3.5 h-3.5 text-white" />,
+      gradient: 'from-cyan-500 to-cyan-600', shadow: 'shadow-cyan-500/20',
+      sub: quota ? `${quota.customerUsed.toLocaleString()} / ${quota.customerLimit.toLocaleString()}` : undefined,
+    },
+    {
+      label: isRTL ? 'الحارس' : 'Guardian',
+      value: settings.guardian_enabled ? (isRTL ? 'مفعّل' : 'ON') : (isRTL ? 'متوقف' : 'OFF'),
+      icon: <Shield className="w-3.5 h-3.5 text-white" />,
+      gradient: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-500/20',
+      sub: isRTL ? 'تنبيهات المخزون والطلبات' : 'Stock & order alerts',
+    },
+    {
+      label: isRTL ? 'الشخصية' : 'Persona',
+      value: personaDone ? (isRTL ? 'جاهزة' : 'Ready') : (isRTL ? 'ناقصة' : 'Setup'),
+      icon: <User className="w-3.5 h-3.5 text-white" />,
+      gradient: 'from-pink-500 to-rose-500', shadow: 'shadow-pink-500/20',
+      valueColor: personaDone ? undefined : 'text-amber-600 dark:text-amber-400',
+      sub: isRTL ? 'اسم + تحية' : 'Name + greeting',
+    },
+  ];
+
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'auto-reply', label: isRTL ? 'الرد التلقائي' : 'Auto-Reply' },
+    { id: 'persona', label: isRTL ? 'شخصية المساعد' : 'Persona' },
+    { id: 'permissions', label: isRTL ? 'الصلاحيات' : 'Permissions' },
+    { id: 'product', label: isRTL ? 'المنتجات' : 'Products' },
+    { id: 'advanced', label: isRTL ? 'متقدم' : 'Advanced' },
+  ];
+
+  const SectionTitle = ({ bar = 'from-primary to-accent', children }: { bar?: string; children: React.ReactNode }) => (
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`inline-block w-1 h-4 rounded-full bg-gradient-to-b ${bar}`} />
+      <span className="text-sm font-bold text-foreground">{children}</span>
+    </div>
+  );
+
+  const ToggleRow = ({ checked, onChange, label, desc, icon }: { checked: boolean; onChange: () => void; label: string; desc: string; icon: React.ReactNode }) => (
+    <div className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg border border-border/40 hover:border-primary/30 transition-colors">
+      <div className="w-7 h-7 rounded-lg bg-card border border-border/60 flex items-center justify-center shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-foreground truncate">{label}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} className="shrink-0" />
+    </div>
+  );
+
+  const ChatBox = ({ messages, emptyText, loading: chatLoading }: { messages: {role:'user'|'ai',text:string}[]; emptyText: string; loading: boolean }) => (
+    <div className="h-[220px] overflow-y-auto space-y-2 p-3 rounded-lg bg-muted/40 border border-border/40">
+      {messages.length === 0 && (
+        <p className="text-[11px] text-muted-foreground text-center py-10">{emptyText}</p>
+      )}
+      {messages.map((msg, i) => (
+        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+            msg.role === 'user'
+              ? 'bg-primary text-white rounded-br-sm'
+              : 'bg-card text-foreground rounded-bl-sm border border-border/60 shadow-sm'
+          }`}>
+            {msg.text}
+          </div>
+        </div>
+      ))}
+      {chatLoading && (
+        <div className="flex justify-start">
+          <div className="px-3 py-2 rounded-xl rounded-bl-sm bg-card border border-border/60 shadow-sm">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
           </div>
         </div>
       )}
+    </div>
+  );
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <TabButton id="auto-reply" label={isRTL ? 'الرد التلقائي' : 'Auto-Reply'} icon={<MessageCircle className="w-4 h-4" />} />
-        <TabButton id="permissions" label={isRTL ? 'الصلاحيات' : 'Permissions'} icon={<Shield className="w-4 h-4" />} />
-        <TabButton id="product" label={isRTL ? 'المنتجات' : 'Products'} icon={<FileText className="w-4 h-4" />} />
-        <TabButton id="advanced" label={isRTL ? 'خيارات متقدمة' : 'Advanced'} icon={<Sparkles className="w-4 h-4" />} />
-        <TabButton id="persona" label={isRTL ? 'شخصية المساعد' : 'AI Persona'} icon={<User className="w-4 h-4" />} />
+  return (
+    <div className="min-h-screen bg-background px-3 sm:px-5 lg:px-6 py-4 space-y-3" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* ── Header (same as MarketingAnalytics) ── */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/25">
+            <Brain className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {isRTL ? 'الذكاء الاصطناعي' : 'AI Settings'}
+            </h1>
+            <p className="text-[11px] text-muted-foreground font-medium">
+              {isRTL ? '3 خطوات: فعّل الرد ← خصّص الشخصية ← جرّب' : '3 steps: enable → customize → test'}
+            </p>
+          </div>
+        </div>
+        <Button onClick={save} disabled={saving} className="bg-primary hover:bg-primary/90 text-white shadow-sm shadow-primary/30 h-8 text-xs font-bold px-4">
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1" /> : null}
+          {isRTL ? 'حفظ الإعدادات' : 'Save'}
+        </Button>
+      </div>
+
+      {/* ── Row 1: KPI Cards (same as MarketingAnalytics) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {kpis.map((k, i) => (
+          <div key={i} className="bg-card rounded-xl border border-border p-3 hover:border-primary/30 transition-all duration-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${k.gradient} flex items-center justify-center shadow ${k.shadow}`}>
+                {k.icon}
+              </div>
+              <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">{k.label}</span>
+            </div>
+            <p className={`text-lg font-black tabular-nums leading-none ${k.valueColor || 'text-foreground'}`}>{k.value}</p>
+            {k.sub && <p className="text-[10px] mt-1 font-medium text-muted-foreground">{k.sub}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Tabs (same segmented style as Analytics days filter) ── */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="bg-muted/40 p-1 rounded-lg border border-border/40 flex gap-1 overflow-x-auto max-w-full">
+          {tabs.map(tb => (
+            <button key={tb.id} onClick={() => setActiveTab(tb.id)}
+              className={`px-3 h-7 rounded-md text-xs font-bold transition-all duration-200 whitespace-nowrap ${
+                activeTab === tb.id
+                  ? 'bg-primary text-white shadow-sm shadow-primary/30'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background'
+              }`}>
+              {tb.label}
+            </button>
+          ))}
+        </div>
+        {activeTab === 'persona' && (
+          <Button onClick={savePersona} disabled={personaSaving} size="sm" className="bg-primary hover:bg-primary/90 text-white shadow-sm h-7 text-xs font-bold">
+            {personaSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1" /> : null}
+            {isRTL ? 'حفظ الشخصية' : 'Save persona'}
+          </Button>
+        )}
       </div>
 
       {/* ── AUTO-REPLY TAB ── */}
       {activeTab === 'auto-reply' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Master toggle */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-500/5 to-indigo-500/5 border border-purple-200/50 dark:border-purple-800/30">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-purple-500" />
-                    {isRTL ? 'الرد التلقائي على العملاء' : 'Customer Auto-Reply'}
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    {isRTL ? 'الذكاء الاصطناعي يرد تلقائياً على رسائل العملاء في جميع المنصات' : 'AI automatically replies to customers across all platforms'}
-                  </p>
-                </div>
-                <Switch checked={settings.storefront_assistant} onCheckedChange={() => toggle('storefront_assistant')} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 bg-card rounded-xl border border-border p-4 shadow-sm">
+            <SectionTitle bar="from-emerald-500 to-teal-500">
+              {isRTL ? 'الرد التلقائي على العملاء' : 'Customer Auto-Reply'}
+            </SectionTitle>
+            <div className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg border border-border/40 mb-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-foreground">{isRTL ? 'تفعيل الرد التلقائي' : 'Enable auto-reply'}</p>
+                <p className="text-[11px] text-muted-foreground">{isRTL ? 'الذكاء الاصطناعي يرد تلقائياً على رسائل العملاء في جميع المنصات المفعّلة' : 'AI replies automatically on all enabled platforms'}</p>
               </div>
-              {/* Per-platform toggles */}
-              <div className={`grid ${settings.storefront_assistant ? 'grid-cols-1 sm:grid-cols-2 gap-2' : 'hidden'}`}>
+              <Switch checked={settings.storefront_assistant} onCheckedChange={() => toggle('storefront_assistant')} />
+            </div>
+            {settings.storefront_assistant ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {platforms.map(p => (
-                  <div key={p.key} className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50">
-                    <div className="flex items-center gap-2.5">
-                      {p.icon}
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{p.label}</span>
+                  <div key={p.key} className="flex items-center gap-2 bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
+                    <div className="w-7 h-7 rounded-lg bg-card border border-border/60 flex items-center justify-center shrink-0">{p.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-foreground truncate">{p.label}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{p.desc}</p>
                     </div>
-                    <Switch checked={settings[p.key] as boolean} onCheckedChange={() => toggle(p.key)} />
+                    <Switch checked={settings[p.key] as boolean} onCheckedChange={() => toggle(p.key)} className="shrink-0" />
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground text-center py-6">
+                {isRTL ? 'الرد التلقائي متوقف — فعّله ليبدأ المساعد بالرد على زبائنك' : 'Auto-reply is off — enable it to let AI answer customers'}
+              </p>
+            )}
+            <div className="mt-3">
+              <label className="text-xs font-bold text-foreground mb-1 block">{isRTL ? 'تعليمات للمساعد' : 'AI instructions'}</label>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                {isRTL ? 'مثال: "التوصيل متاح لجميع الولايات، الدفع عند الاستلام"' : 'e.g. "Delivery nationwide, cash on delivery"'}
+              </p>
+              <Textarea
+                value={settings.ai_instructions}
+                onChange={e => updateInstructions(e.target.value)}
+                placeholder={isRTL ? 'اكتب تعليماتك هنا...' : 'Write your instructions here...'}
+                className="min-h-[80px] text-xs"
+              />
             </div>
+          </div>
 
-            <div className="space-y-4">
-              {/* Instructions */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">
-                  {isRTL ? 'تعليمات الذكاء الاصطناعي' : 'AI Instructions'}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                  {isRTL ? 'أخبر الذكاء الاصطناعي كيف يتعامل مع عملائك — مثلاً: "قل للزبون أن التوصيل متاح لجميع الولايات"' : 'Tell the AI how to treat your customers — e.g., "Inform customers delivery is available nationwide"'}
-                </p>
-                <Textarea
-                  value={settings.ai_instructions}
-                  onChange={e => updateInstructions(e.target.value)}
-                  placeholder={isRTL ? 'اكتب تعليماتك هنا...' : 'Write your instructions here...'}
-                  className="min-h-[100px] text-sm"
-                />
-              </div>
-
-              {/* Guardian */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-200/50 dark:border-amber-800/30 flex items-center justify-center">
-                    <AlertCircle className="w-4 h-4 text-amber-600" />
+          <div className="space-y-3">
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+              <SectionTitle bar="from-blue-500 to-cyan-500">{isRTL ? 'استخدام الشهر' : 'Monthly usage'}</SectionTitle>
+              {quota ? (
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-foreground">{isRTL ? 'مساعد المتجر' : 'Store AI'}</span>
+                      <span className="text-xs font-black text-foreground tabular-nums">{quota.ownerUsed.toLocaleString()} / {quota.ownerLimit.toLocaleString()}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all" style={{ width: `${ownerPct}%` }} />
+                    </div>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'حارس المتجر' : 'Store Guardian'}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'تنبيهات تلقائية عن الطلبات المعلقة والمخزون المنخفض' : 'Automatic alerts for stale orders and low stock'}</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-foreground">{isRTL ? 'الرد على العملاء' : 'Customer replies'}</span>
+                      <span className="text-xs font-black text-foreground tabular-nums">{quota.customerUsed.toLocaleString()} / {quota.customerLimit.toLocaleString()}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all" style={{ width: `${customerPct}%` }} />
+                    </div>
                   </div>
                 </div>
-                <Switch checked={settings.guardian_enabled} onCheckedChange={() => toggle('guardian_enabled')} />
-              </div>
-
-              {/* AI Chat (store owner) */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border border-indigo-200/50 dark:border-indigo-800/30 flex items-center justify-center">
-                    <Brain className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'المساعد الذكي (لوحة التحكم)' : 'AI Assistant (Dashboard)'}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'فقاعة المساعد الذكي في لوحة التحكم للاستشارات' : 'Floating AI chat bubble in your dashboard for advice'}</p>
-                  </div>
-                </div>
-                <Switch checked={settings.ai_chat_enabled} onCheckedChange={() => toggle('ai_chat_enabled')} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── PERMISSIONS TAB ── */}
-      {activeTab === 'permissions' && (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {isRTL ? 'الصلاحيات التي يملكها الذكاء الاصطناعي لتنفيذ الإجراءات في متجرك' : 'Permissions the AI has to execute actions in your store'}
-          </p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="space-y-3">
-              <ToggleRow checked={settings.action_order_status} onChange={() => toggle('action_order_status')} label={isRTL ? 'تعديل حالة الطلبات' : 'Change Order Status'} desc={isRTL ? 'تحديث حالة الطلب (مؤكد، ملغي، تم التوصيل...)' : 'Update order status (confirmed, cancelled, delivered...)'} icon={<RefreshCw className="w-4 h-4 text-rose-500" />} />
-              <ToggleRow checked={settings.action_create_product} onChange={() => toggle('action_create_product')} label={isRTL ? 'إضافة منتجات جديدة' : 'Create Products'} desc={isRTL ? 'إضافة منتجات جديدة للمتجر' : 'Add new products to your store'} icon={<Plus className="w-4 h-4 text-emerald-500" />} />
-              <ToggleRow checked={settings.action_edit_product} onChange={() => toggle('action_edit_product')} label={isRTL ? 'تعديل المنتجات' : 'Edit Products'} desc={isRTL ? 'تعديل الأسعار، المخزون، الوصف والعناوين' : 'Edit prices, stock, descriptions, and titles'} icon={<Pencil className="w-4 h-4 text-blue-500" />} />
-            </div>
-            <div className="space-y-3">
-              <ToggleRow checked={settings.action_delete_product} onChange={() => toggle('action_delete_product')} label={isRTL ? 'حذف المنتجات' : 'Delete Products'} desc={isRTL ? 'إلغاء تفعيل المنتجات من المتجر' : 'Deactivate products from your store'} icon={<Trash2 className="w-4 h-4 text-red-500" />} />
-              <ToggleRow checked={settings.action_store_design} onChange={() => toggle('action_store_design')} label={isRTL ? 'تعديل التصميم' : 'Edit Store Design'} desc={isRTL ? 'تغيير الألوان، الخطوط، والنصوص في المتجر' : 'Change colors, fonts, and store text'} icon={<Palette className="w-4 h-4 text-purple-500" />} />
-              <ToggleRow checked={settings.action_bot_control} onChange={() => toggle('action_bot_control')} label={isRTL ? 'التحكم في البوت' : 'Control Bot'} desc={isRTL ? 'تشغيل وإيقاف البوت عبر الأوامر الصوتية' : 'Enable/disable the bot via voice commands'} icon={<Bot className="w-4 h-4 text-amber-500" />} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── PRODUCT TAB ── */}
-      {activeTab === 'product' && (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {isRTL ? 'أتمتة كتابة محتوى المنتجات باستخدام الذكاء الاصطناعي' : 'Automate product content writing with AI'}
-          </p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <ToggleRow checked={settings.auto_descriptions} onChange={() => toggle('auto_descriptions')} label={isRTL ? 'وصف المنتجات تلقائياً' : 'Auto-Generate Descriptions'} desc={isRTL ? 'الذكاء الاصطناعي يكتب وصفاً لكل منتج جديد تضيفه' : 'AI writes a description for every new product you add'} icon={<FileText className="w-4 h-4 text-indigo-500" />} />
-            <ToggleRow checked={settings.auto_alt_text} onChange={() => toggle('auto_alt_text')} label={isRTL ? 'وصف الصور تلقائياً' : 'Auto-Generate Image Alt Text'} desc={isRTL ? 'نصوص بديلة للصور لتحسين ظهور متجرك في محركات البحث' : 'Alt text for images to improve your store\'s SEO'} icon={<Camera className="w-4 h-4 text-sky-500" />} />
-          </div>
-        </div>
-      )}
-
-      {/* ── ADVANCED TAB ── */}
-      {activeTab === 'advanced' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* Broadcast Composer */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-200/50 dark:border-orange-800/30 flex items-center justify-center">
-                  <Send className="w-4 h-4 text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'كاتب الحملات التسويقية' : 'Broadcast Composer'}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'صياغة رسائل الحملات التسويقية بالذكاء الاصطناعي' : 'AI composes marketing campaign messages'}</p>
-                </div>
-              </div>
-              <Switch checked={settings.broadcast_composer} onCheckedChange={() => toggle('broadcast_composer')} />
+              ) : (
+                <p className="text-[11px] text-muted-foreground text-center py-4">{isRTL ? 'لا توجد بيانات استخدام' : 'No usage data'}</p>
+              )}
             </div>
 
-            {/* Storefront Assistant */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 border border-purple-200/50 dark:border-purple-800/30 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-purple-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{isRTL ? 'توصيات الردود (Chat)' : 'Reply Suggestions (Chat)'}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{isRTL ? 'اقتراحات ردود جاهزة في شاشة المحادثات' : 'Ready-made reply suggestions in the chat screen'}</p>
-                </div>
-              </div>
-              <Switch checked={settings.reply_suggestions} onCheckedChange={() => toggle('reply_suggestions')} />
+            <div className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-2">
+              <SectionTitle bar="from-violet-500 to-purple-500">{isRTL ? 'خدمات سريعة' : 'Quick services'}</SectionTitle>
+              <ToggleRow checked={settings.guardian_enabled} onChange={() => toggle('guardian_enabled')}
+                label={isRTL ? 'حارس المتجر' : 'Store Guardian'}
+                desc={isRTL ? 'تنبيهات الطلبات المعلقة والمخزون' : 'Stale orders & low stock alerts'}
+                icon={<Shield className="w-3.5 h-3.5 text-amber-500" />} />
+              <ToggleRow checked={settings.ai_chat_enabled} onChange={() => toggle('ai_chat_enabled')}
+                label={isRTL ? 'مساعد اللوحة' : 'Dashboard assistant'}
+                desc={isRTL ? 'فقاعة المساعدة داخل لوحة التحكم' : 'Help bubble inside dashboard'}
+                icon={<Brain className="w-3.5 h-3.5 text-indigo-500" />} />
             </div>
           </div>
         </div>
@@ -520,365 +546,332 @@ export default function AISettingsPage() {
 
       {/* ── PERSONA TAB ── */}
       {activeTab === 'persona' && (
-        <div className="space-y-4">
+        <>
           {personaLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-purple-500" /></div>
+            <div className="flex items-center justify-center py-16">
+              <span className="h-8 w-8 animate-spin border-[3px] border-primary border-t-transparent rounded-full" />
+            </div>
           ) : (
-            <>
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <User className="w-5 h-5 text-purple-500" />
-                    {isRTL ? 'شخصية المساعد الذكي' : 'AI Assistant Persona'}
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                    {isRTL ? 'كيف يتحدث المساعد الذكي مع عملائك' : 'How your AI assistant talks to customers'}
-                  </p>
-                </div>
-                <Button onClick={savePersona} disabled={personaSaving} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-purple-500/25">
-                  {personaSaving ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <CheckCircle2 className="w-4 h-4 ml-2" />}
-                  {isRTL ? 'حفظ' : 'Save'}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* LEFT COLUMN */}
-                <div className="space-y-4">
-                  {/* Identity */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-purple-500" /> {isRTL ? 'الهوية' : 'Identity'}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'الاسم' : 'Name'}</label>
-                        <Input value={persona.persona_name} onChange={e => updatePersona('persona_name', e.target.value)} className="text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'النبرة' : 'Tone'}</label>
-                        <Select value={persona.tone} onValueChange={v => updatePersona('tone', v)}>
-                          <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="professional">{isRTL ? 'مهنية' : 'Professional'}</SelectItem>
-                            <SelectItem value="friendly">{isRTL ? 'ودودة' : 'Friendly'}</SelectItem>
-                            <SelectItem value="casual">{isRTL ? 'عادية' : 'Casual'}</SelectItem>
-                            <SelectItem value="luxury">{isRTL ? 'فاخرة' : 'Luxury'}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'اللغة' : 'Language'}</label>
-                        <Select value={persona.primary_language} onValueChange={v => updatePersona('primary_language', v)}>
-                          <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ar">العربية</SelectItem>
-                            <SelectItem value="fr">Français</SelectItem>
-                            <SelectItem value="en">English</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-violet-500 to-purple-500">{isRTL ? 'الهوية' : 'Identity'}</SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'الاسم' : 'Name'}</label>
+                      <Input value={persona.persona_name} onChange={e => updatePersona('persona_name', e.target.value)} className="text-xs h-8" />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'ملاحظات عن الشخصية' : 'Personality Note'}</label>
-                      <Textarea value={persona.personality_note} onChange={e => updatePersona('personality_note', e.target.value)}
-                        placeholder={isRTL ? 'مثال: نحن علامة تجارية فاخرة، كن راقياً في الرد' : 'e.g. We are a luxury brand, be elegant'}
-                        className="text-sm min-h-[60px]" />
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'النبرة' : 'Tone'}</label>
+                      <Select value={persona.tone} onValueChange={v => updatePersona('tone', v)}>
+                        <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="professional">{isRTL ? 'مهنية' : 'Professional'}</SelectItem>
+                          <SelectItem value="friendly">{isRTL ? 'ودودة' : 'Friendly'}</SelectItem>
+                          <SelectItem value="casual">{isRTL ? 'عادية' : 'Casual'}</SelectItem>
+                          <SelectItem value="luxury">{isRTL ? 'فاخرة' : 'Luxury'}</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'نوع النشاط' : 'Business Type'}</label>
-                      <Input value={persona.business_type} onChange={e => updatePersona('business_type', e.target.value)}
-                        placeholder={isRTL ? 'مثال: تجزئة، جملة، منتجات يدوية' : 'retail, wholesale, handmade'} className="text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'مجالات الخبرة' : 'Expertise Areas'}</label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {persona.expertise_areas.map((area, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300">
-                            {area}
-                            <button onClick={() => updatePersona('expertise_areas', persona.expertise_areas.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input placeholder={isRTL ? 'أضف مجالاً...' : 'Add area...'} className="text-sm flex-1"
-                          onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.trim(); if (v) { updatePersona('expertise_areas', [...persona.expertise_areas, v]); (e.target as HTMLInputElement).value = ''; } } }} />
-                      </div>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'اللغة' : 'Language'}</label>
+                      <Select value={persona.primary_language} onValueChange={v => updatePersona('primary_language', v)}>
+                        <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ar">العربية</SelectItem>
+                          <SelectItem value="fr">Français</SelectItem>
+                          <SelectItem value="en">English</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+                  <div className="mt-2">
+                    <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'ملاحظة عن الشخصية' : 'Personality note'}</label>
+                    <Textarea value={persona.personality_note} onChange={e => updatePersona('personality_note', e.target.value)}
+                      placeholder={isRTL ? 'مثال: علامة فاخرة، رد برقي' : 'e.g. luxury brand, elegant tone'}
+                      className="text-xs min-h-[56px]" />
+                  </div>
+                  <div className="mt-2">
+                    <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'نوع النشاط' : 'Business type'}</label>
+                    <Input value={persona.business_type} onChange={e => updatePersona('business_type', e.target.value)}
+                      placeholder={isRTL ? 'تجزئة، جملة، يدوي...' : 'retail, wholesale...'} className="text-xs h-8" />
+                  </div>
+                  <div className="mt-2">
+                    <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'مجالات الخبرة (Enter للإضافة)' : 'Expertise (Enter to add)'}</label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {persona.expertise_areas.map((area, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">
+                          {area}
+                          <button onClick={() => updatePersona('expertise_areas', persona.expertise_areas.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                        </span>
+                      ))}
+                    </div>
+                    <Input placeholder={isRTL ? 'أضف مجالاً...' : 'Add area...'} className="text-xs h-8"
+                      onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.trim(); if (v) { updatePersona('expertise_areas', [...persona.expertise_areas, v]); (e.target as HTMLInputElement).value = ''; } } }} />
+                  </div>
+                </div>
 
-                  {/* Story & Philosophy */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-emerald-500" /> {isRTL ? 'القصة والفلسفة' : 'Story & Philosophy'}
-                    </h3>
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-emerald-500 to-teal-500">{isRTL ? 'القصة والفلسفة' : 'Story & philosophy'}</SectionTitle>
+                  <div className="space-y-2">
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'قصة المتجر' : 'Store Story'}</label>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'قصة المتجر' : 'Store story'}</label>
                       <Textarea value={persona.store_story} onChange={e => updatePersona('store_story', e.target.value)}
-                        placeholder={isRTL ? 'مثال: بدأنا رحلتنا في 2020 بهدف توفير منتجات عضوية...' : 'Our journey...'} className="text-sm min-h-[60px]" />
+                        placeholder={isRTL ? 'بدأنا في 2020 بهدف...' : 'Our journey...'} className="text-xs min-h-[56px]" />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'فلسفة المنتجات' : 'Product Philosophy'}</label>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'فلسفة المنتجات' : 'Product philosophy'}</label>
                       <Textarea value={persona.product_philosophy} onChange={e => updatePersona('product_philosophy', e.target.value)}
-                        placeholder={isRTL ? 'مثال: نبيع فقط المنتجات العضوية الطبيعية...' : 'We only sell organic...'} className="text-sm min-h-[60px]" />
+                        placeholder={isRTL ? 'نبيع فقط...' : 'We only sell...'} className="text-xs min-h-[56px]" />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'نقاط القوة' : 'Unique Selling Points'}</label>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'نقاط القوة (Enter للإضافة)' : 'USPs (Enter to add)'}</label>
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {persona.unique_selling_points.map((usp, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                          <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                             {usp}
                             <button onClick={() => updatePersona('unique_selling_points', persona.unique_selling_points.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
                           </span>
                         ))}
                       </div>
-                      <Input placeholder={isRTL ? 'أضف نقطة قوة...' : 'Add USP...'} className="text-sm"
+                      <Input placeholder={isRTL ? 'أضف نقطة قوة...' : 'Add USP...'} className="text-xs h-8"
                         onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.trim(); if (v) { updatePersona('unique_selling_points', [...persona.unique_selling_points, v]); (e.target as HTMLInputElement).value = ''; } } }} />
                     </div>
                   </div>
+                </div>
 
-                  {/* Sales Behavior */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <ShoppingCart className="w-4 h-4 text-amber-500" /> {isRTL ? 'سلوك البيع' : 'Sales Behavior'}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{isRTL ? 'اقتراح منتجات إضافية' : 'Upsell'}</span>
-                        <Switch checked={persona.upsell_enabled} onCheckedChange={v => updatePersona('upsell_enabled', v)} />
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{isRTL ? 'اقتراح منتجات مكملة' : 'Cross-sell'}</span>
-                        <Switch checked={persona.cross_sell_enabled} onCheckedChange={v => updatePersona('cross_sell_enabled', v)} />
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{isRTL ? 'خلق إلحاح (بقي فقط X)' : 'Urgency'}</span>
-                        <Switch checked={persona.urgency_enabled} onCheckedChange={v => updatePersona('urgency_enabled', v)} />
-                      </div>
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-amber-500 to-orange-500">{isRTL ? 'سلوك البيع' : 'Sales behavior'}</SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                    <div className="flex items-center justify-between bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
+                      <span className="text-xs font-bold text-foreground">{isRTL ? 'Upsell' : 'Upsell'}</span>
+                      <Switch checked={persona.upsell_enabled} onCheckedChange={v => updatePersona('upsell_enabled', v)} />
+                    </div>
+                    <div className="flex items-center justify-between bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
+                      <span className="text-xs font-bold text-foreground">{isRTL ? 'Cross-sell' : 'Cross-sell'}</span>
+                      <Switch checked={persona.cross_sell_enabled} onCheckedChange={v => updatePersona('cross_sell_enabled', v)} />
+                    </div>
+                    <div className="flex items-center justify-between bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
+                      <span className="text-xs font-bold text-foreground">{isRTL ? 'إلحاح' : 'Urgency'}</span>
+                      <Switch checked={persona.urgency_enabled} onCheckedChange={v => updatePersona('urgency_enabled', v)} />
+                    </div>
+                  </div>
+                  <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'سياسة الخصم' : 'Discount policy'}</label>
+                  <Textarea value={persona.discount_policy} onChange={e => updatePersona('discount_policy', e.target.value)}
+                    placeholder={isRTL ? 'مثال: لا خصم فوق 10% بدون موافقة' : 'Max 10% without approval'}
+                    className="text-xs min-h-[56px] mb-2" />
+                  <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'سياسة المنافسين' : 'Competitor policy'}</label>
+                  <Select value={persona.competitor_policy} onValueChange={v => updatePersona('competitor_policy', v)}>
+                    <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ignore">{isRTL ? 'تجاهل' : 'Ignore'}</SelectItem>
+                      <SelectItem value="acknowledge_neutral">{isRTL ? 'اعتراف محايد' : 'Acknowledge (neutral)'}</SelectItem>
+                      <SelectItem value="dont_mention">{isRTL ? 'لا تذكرهم' : "Don't mention"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-pink-500 to-rose-500">{isRTL ? 'التواصل' : 'Communication'}</SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                    <div className="bg-muted/40 px-3 py-2 rounded-lg border border-border/40">
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'إيموجي' : 'Emoji'}</label>
+                      <Switch checked={persona.use_emojis} onCheckedChange={v => updatePersona('use_emojis', v)} />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'سياسة الخصم' : 'Discount Policy'}</label>
-                      <Textarea value={persona.discount_policy} onChange={e => updatePersona('discount_policy', e.target.value)}
-                        placeholder={isRTL ? 'مثال: لا تقدم خصماً أكثر من 10% بدون موافقة المدير' : 'Never offer more than 10% without manager approval'}
-                        className="text-sm min-h-[60px]" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'سياسة المنافسين' : 'Competitor Policy'}</label>
-                      <Select value={persona.competitor_policy} onValueChange={v => updatePersona('competitor_policy', v)}>
-                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'نمط الإيموجي' : 'Emoji style'}</label>
+                      <Select value={persona.emoji_style} onValueChange={v => updatePersona('emoji_style', v)}>
+                        <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ignore">{isRTL ? 'تجاهل' : 'Ignore'}</SelectItem>
-                          <SelectItem value="acknowledge_neutral">{isRTL ? 'اعتراف محايد' : 'Acknowledge (neutral)'}</SelectItem>
-                          <SelectItem value="dont_mention">{isRTL ? 'لا تذكرهم' : "Don't mention"}</SelectItem>
+                          <SelectItem value="none">{isRTL ? 'بدون' : 'None'}</SelectItem>
+                          <SelectItem value="minimal">{isRTL ? 'بسيط' : 'Minimal'}</SelectItem>
+                          <SelectItem value="moderate">{isRTL ? 'معتدل' : 'Moderate'}</SelectItem>
+                          <SelectItem value="heavy">{isRTL ? 'كثير' : 'Heavy'}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'طول الرد' : 'Length'}</label>
+                      <Select value={persona.response_length} onValueChange={v => updatePersona('response_length', v)}>
+                        <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="short">{isRTL ? 'قصير' : 'Short'}</SelectItem>
+                          <SelectItem value="medium">{isRTL ? 'متوسط' : 'Medium'}</SelectItem>
+                          <SelectItem value="detailed">{isRTL ? 'مفصل' : 'Detailed'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
+                  <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'تحية' : 'Greeting'}</label>
+                  <Input value={persona.greeting_template} onChange={e => updatePersona('greeting_template', e.target.value)}
+                    placeholder={isRTL ? 'أهلاً بك في متجرنا! كيف نخدمك؟' : 'Welcome! How can we help?'} className="text-xs h-8 mb-2" />
+                  <label className="text-[11px] font-bold text-muted-foreground mb-1 block">{isRTL ? 'ختام' : 'Closing'}</label>
+                  <Input value={persona.closing_template} onChange={e => updatePersona('closing_template', e.target.value)}
+                    placeholder={isRTL ? 'شكراً لتسوقك معنا!' : 'Thanks for shopping!'} className="text-xs h-8" />
                 </div>
 
-                {/* RIGHT COLUMN */}
-                <div className="space-y-4">
-                  {/* Communication */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <SmilePlus className="w-4 h-4 text-pink-500" /> {isRTL ? 'التواصل' : 'Communication'}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'استخدام الإيموجي' : 'Emoji Usage'}</label>
-                        <Switch checked={persona.use_emojis} onCheckedChange={v => updatePersona('use_emojis', v)} />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'نمط الإيموجي' : 'Emoji Style'}</label>
-                        <Select value={persona.emoji_style} onValueChange={v => updatePersona('emoji_style', v)}>
-                          <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">{isRTL ? 'بدون' : 'None'}</SelectItem>
-                            <SelectItem value="minimal">{isRTL ? 'بسيط' : 'Minimal'}</SelectItem>
-                            <SelectItem value="moderate">{isRTL ? 'معتدل' : 'Moderate'}</SelectItem>
-                            <SelectItem value="heavy">{isRTL ? 'كثير' : 'Heavy'}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'طول الرد' : 'Response Length'}</label>
-                        <Select value={persona.response_length} onValueChange={v => updatePersona('response_length', v)}>
-                          <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="short">{isRTL ? 'قصير' : 'Short'}</SelectItem>
-                            <SelectItem value="medium">{isRTL ? 'متوسط' : 'Medium'}</SelectItem>
-                            <SelectItem value="detailed">{isRTL ? 'مفصل' : 'Detailed'}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'تحية مخصصة' : 'Custom Greeting'}</label>
-                      <Input value={persona.greeting_template} onChange={e => updatePersona('greeting_template', e.target.value)}
-                        placeholder={isRTL ? 'مثال: أهلاً بك في متجرنا! كيف نقدر نخدمك؟' : 'Welcome to our store! How can we help?'} className="text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">{isRTL ? 'ختام مخصص' : 'Custom Closing'}</label>
-                      <Input value={persona.closing_template} onChange={e => updatePersona('closing_template', e.target.value)}
-                        placeholder={isRTL ? 'مثال: وشكراً لتسوقك معنا، دايماً في خدمتك!' : 'Thank you for shopping with us!'} className="text-sm" />
-                    </div>
-                  </div>
-
-                  {/* FAQ Entries */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <Heart className="w-4 h-4 text-blue-500" /> {isRTL ? 'الأسئلة المتكررة' : 'FAQ'}
-                    </h3>
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-blue-500 to-indigo-500">{isRTL ? 'الأسئلة المتكررة' : 'FAQ'}</SectionTitle>
+                  <div className="space-y-2">
                     {persona.faq_entries.map((faq, i) => (
-                      <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50 space-y-2">
+                      <div key={i} className="p-3 rounded-lg bg-muted/40 border border-border/40 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-500">{isRTL ? `سؤال ${i + 1}` : `Q${i + 1}`}</span>
+                          <span className="text-[11px] font-bold text-muted-foreground">{isRTL ? `سؤال ${i + 1}` : `Q${i + 1}`}</span>
                           <button onClick={() => updatePersona('faq_entries', persona.faq_entries.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                         <Input value={faq.q} onChange={e => { const copy = [...persona.faq_entries]; copy[i] = { ...copy[i], q: e.target.value }; updatePersona('faq_entries', copy); }}
-                          placeholder={isRTL ? 'السؤال...' : 'Question...'} className="text-sm" />
+                          placeholder={isRTL ? 'السؤال...' : 'Question...'} className="text-xs h-8 bg-card" />
                         <Textarea value={faq.a} onChange={e => { const copy = [...persona.faq_entries]; copy[i] = { ...copy[i], a: e.target.value }; updatePersona('faq_entries', copy); }}
-                          placeholder={isRTL ? 'الإجابة...' : 'Answer...'} className="text-sm min-h-[50px]" />
+                          placeholder={isRTL ? 'الإجابة...' : 'Answer...'} className="text-xs min-h-[48px] bg-card" />
                       </div>
                     ))}
-                    <Button variant="outline" size="sm" onClick={() => updatePersona('faq_entries', [...persona.faq_entries, { q: '', a: '' }])}>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => updatePersona('faq_entries', [...persona.faq_entries, { q: '', a: '' }])}>
                       <Plus className="w-3.5 h-3.5 ml-1" /> {isRTL ? 'إضافة سؤال' : 'Add FAQ'}
                     </Button>
                   </div>
+                </div>
 
-                  {/* Common Objections */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-red-500" /> {isRTL ? 'الاعتراضات الشائعة' : 'Common Objections'}
-                    </h3>
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-red-500 to-orange-500">{isRTL ? 'الاعتراضات الشائعة' : 'Objections'}</SectionTitle>
+                  <div className="space-y-2">
                     {persona.common_objections.map((obj, i) => (
-                      <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-700/50 space-y-2">
+                      <div key={i} className="p-3 rounded-lg bg-muted/40 border border-border/40 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-500">{isRTL ? `اعتراض ${i + 1}` : `Objection ${i + 1}`}</span>
+                          <span className="text-[11px] font-bold text-muted-foreground">{isRTL ? `اعتراض ${i + 1}` : `Objection ${i + 1}`}</span>
                           <button onClick={() => updatePersona('common_objections', persona.common_objections.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                         <Input value={obj.q} onChange={e => { const copy = [...persona.common_objections]; copy[i] = { ...copy[i], q: e.target.value }; updatePersona('common_objections', copy); }}
-                          placeholder={isRTL ? 'مثال: السعر مرتفع' : 'e.g. Price is too high'} className="text-sm" />
+                          placeholder={isRTL ? 'مثال: السعر مرتفع' : 'Price too high'} className="text-xs h-8 bg-card" />
                         <Textarea value={obj.a} onChange={e => { const copy = [...persona.common_objections]; copy[i] = { ...copy[i], a: e.target.value }; updatePersona('common_objections', copy); }}
-                          placeholder={isRTL ? 'مثال: السعر يشمل توصيل ومضمون 100%' : 'e.g. The price includes free delivery and is 100% guaranteed'}
-                          className="text-sm min-h-[50px]" />
+                          placeholder={isRTL ? 'مثال: السعر يشمل التوصيل...' : 'Includes delivery...'}
+                          className="text-xs min-h-[48px] bg-card" />
                       </div>
                     ))}
-                    <Button variant="outline" size="sm" onClick={() => updatePersona('common_objections', [...persona.common_objections, { q: '', a: '' }])}>
-                      <Plus className="w-3.5 h-3.5 ml-1" /> {isRTL ? 'إضافة اعتراض' : 'Add Objection'}
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => updatePersona('common_objections', [...persona.common_objections, { q: '', a: '' }])}>
+                      <Plus className="w-3.5 h-3.5 ml-1" /> {isRTL ? 'إضافة اعتراض' : 'Add objection'}
                     </Button>
                   </div>
-
-                  {/* Forbidden Topics */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <X className="w-4 h-4 text-red-500" /> {isRTL ? 'مواضيع ممنوعة' : 'Forbidden Topics'}
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {persona.forbidden_topics.map((topic, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300">
-                          {topic}
-                          <button onClick={() => updatePersona('forbidden_topics', persona.forbidden_topics.filter((_, j) => j !== i))} className="hover:text-red-700"><X className="w-3 h-3" /></button>
-                        </span>
-                      ))}
-                    </div>
-                    <Input placeholder={isRTL ? 'أضف موضوعاً ممنوعاً...' : 'Add forbidden topic...'} className="text-sm"
-                      onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.trim(); if (v) { updatePersona('forbidden_topics', [...persona.forbidden_topics, v]); (e.target as HTMLInputElement).value = ''; } } }} />
-                  </div>
-
-                  {/* Test Chat */}
-                  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                      <Send className="w-4 h-4 text-green-500" /> {isRTL ? 'تجربة المساعد' : 'Test Your AI Assistant'}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {isRTL ? 'جرب كيف سيرد المساعد على عملائك بعد الحفظ' : 'Test how the AI will respond to customers after saving'}
-                    </p>
-
-                    {/* Chat messages */}
-                    <div className="max-h-[300px] overflow-y-auto space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50">
-                      {testChat.length === 0 && (
-                        <p className="text-xs text-slate-400 text-center py-8">{isRTL ? 'أرسل رسالة لبدء التجربة' : 'Send a message to start testing'}</p>
-                      )}
-                      {testChat.map((msg, i) => (
-                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-xs ${
-                            msg.role === 'user'
-                              ? 'bg-purple-600 text-white rounded-br-sm'
-                              : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm shadow-sm border border-slate-100 dark:border-slate-700/50'
-                          }`}>
-                            {msg.text}
-                          </div>
-                        </div>
-                      ))}
-                      {testLoading && (
-                        <div className="flex justify-start">
-                          <div className="px-3 py-2 rounded-2xl rounded-bl-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                            <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
-          </div>
-
-          {/* ── Customer AI Test Chat ── */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-3">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <Send className="w-4 h-4 text-green-500" /> {isRTL ? 'تجربة الرد على العملاء' : 'Test Customer AI'}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isRTL ? 'أرسل رسالة كأنك زبون وشوف كيفيرد المساعد' : 'Send a message as a customer and see how the AI responds'}
-            </p>
-            <div className="max-h-[300px] overflow-y-auto space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50">
-              {customerTestChat.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-8">{isRTL ? 'أرسل رسالة لبدء الاختبار' : 'Send a message to start testing'}</p>
-              )}
-              {customerTestChat.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-xs ${
-                    msg.role === 'user'
-                      ? 'bg-purple-600 text-white rounded-br-sm'
-                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm shadow-sm border border-slate-100 dark:border-slate-700/50'
-                  }`}>
-                    {msg.text}
-                  </div>
                 </div>
-              ))}
-              {customerTestLoading && (
-                <div className="flex justify-start">
-                  <div className="px-3 py-2 rounded-2xl rounded-bl-sm bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 shadow-sm">
-                    <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Input value={customerTestMessage} onChange={e => setCustomerTestMessage(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCustomerTestSend(); } }}
-                placeholder={isRTL ? 'اكتب رسالة زبون...' : 'Type a customer message...'} className="text-sm flex-1" />
-              <Button onClick={handleCustomerTestSend} disabled={customerTestLoading || !customerTestMessage.trim()} size="sm"
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                {customerTestLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-                    </div>
 
-                    {/* Input */}
-                    <div className="flex gap-2">
-                      <Input value={testMessage} onChange={e => setTestMessage(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTestSend(); } }}
-                        placeholder={isRTL ? 'اكتب رسالة زبون...' : 'Type a customer message...'} className="text-sm flex-1" />
-                      <Button onClick={handleTestSend} disabled={testLoading || !testMessage.trim()} size="sm"
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                        {testLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                      </Button>
-                    </div>
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <SectionTitle bar="from-slate-400 to-slate-500">{isRTL ? 'مواضيع ممنوعة' : 'Forbidden topics'}</SectionTitle>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {persona.forbidden_topics.map((topic, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-500/10 text-red-600 dark:text-red-400">
+                        {topic}
+                        <button onClick={() => updatePersona('forbidden_topics', persona.forbidden_topics.filter((_, j) => j !== i))} className="hover:text-red-700"><X className="w-3 h-3" /></button>
+                      </span>
+                    ))}
                   </div>
+                  <Input placeholder={isRTL ? 'أضف موضوعاً + Enter' : 'Add topic + Enter'} className="text-xs h-8"
+                    onKeyDown={e => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value.trim(); if (v) { updatePersona('forbidden_topics', [...persona.forbidden_topics, v]); (e.target as HTMLInputElement).value = ''; } } }} />
                 </div>
               </div>
-            </>
+            </div>
           )}
+        </>
+      )}
+
+      {/* ── PERMISSIONS TAB ── */}
+      {activeTab === 'permissions' && (
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <SectionTitle bar="from-red-500 to-rose-500">{isRTL ? 'صلاحيات الذكاء الاصطناعي' : 'AI permissions'}</SectionTitle>
+          <p className="text-[11px] text-muted-foreground mb-3">
+            {isRTL ? 'اختر ما يستطيع المساعد فعله في متجرك — للمبتدئين اترك الافتراضي' : 'Choose what AI can do — beginners can keep defaults'}
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <ToggleRow checked={settings.action_order_status} onChange={() => toggle('action_order_status')} label={isRTL ? 'تعديل حالة الطلبات' : 'Change order status'} desc={isRTL ? 'مؤكد، ملغي، تم التوصيل...' : 'Confirmed, cancelled, delivered...'} icon={<RefreshCw className="w-3.5 h-3.5 text-rose-500" />} />
+            <ToggleRow checked={settings.action_create_product} onChange={() => toggle('action_create_product')} label={isRTL ? 'إضافة منتجات' : 'Create products'} desc={isRTL ? 'إضافة منتجات جديدة' : 'Add new products'} icon={<Plus className="w-3.5 h-3.5 text-emerald-500" />} />
+            <ToggleRow checked={settings.action_edit_product} onChange={() => toggle('action_edit_product')} label={isRTL ? 'تعديل المنتجات' : 'Edit products'} desc={isRTL ? 'السعر، المخزون، الوصف' : 'Price, stock, description'} icon={<Pencil className="w-3.5 h-3.5 text-blue-500" />} />
+            <ToggleRow checked={settings.action_delete_product} onChange={() => toggle('action_delete_product')} label={isRTL ? 'حذف المنتجات' : 'Delete products'} desc={isRTL ? 'إلغاء تفعيل المنتجات' : 'Deactivate products'} icon={<Trash2 className="w-3.5 h-3.5 text-red-500" />} />
+            <ToggleRow checked={settings.action_store_design} onChange={() => toggle('action_store_design')} label={isRTL ? 'تعديل التصميم' : 'Edit design'} desc={isRTL ? 'الألوان، الخطوط، النصوص' : 'Colors, fonts, text'} icon={<Palette className="w-3.5 h-3.5 text-purple-500" />} />
+            <ToggleRow checked={settings.action_bot_control} onChange={() => toggle('action_bot_control')} label={isRTL ? 'التحكم في البوت' : 'Control bot'} desc={isRTL ? 'تشغيل/إيقاف بالأوامر' : 'Enable/disable via commands'} icon={<Bot className="w-3.5 h-3.5 text-amber-500" />} />
+          </div>
         </div>
       )}
+
+      {/* ── PRODUCT TAB ── */}
+      {activeTab === 'product' && (
+        <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+          <SectionTitle bar="from-indigo-500 to-violet-500">{isRTL ? 'أتمتة محتوى المنتجات' : 'Product automation'}</SectionTitle>
+          <p className="text-[11px] text-muted-foreground mb-3">
+            {isRTL ? 'الذكاء الاصطناعي يكتب عنك أوصاف المنتجات والصور' : 'AI writes descriptions and image text for you'}
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <ToggleRow checked={settings.auto_descriptions} onChange={() => toggle('auto_descriptions')} label={isRTL ? 'وصف المنتجات تلقائياً' : 'Auto descriptions'} desc={isRTL ? 'وصف لكل منتج جديد' : 'Description for each new product'} icon={<FileText className="w-3.5 h-3.5 text-indigo-500" />} />
+            <ToggleRow checked={settings.auto_alt_text} onChange={() => toggle('auto_alt_text')} label={isRTL ? 'وصف الصور تلقائياً' : 'Auto alt-text'} desc={isRTL ? 'تحسين الظهور في البحث' : 'Better SEO'} icon={<Camera className="w-3.5 h-3.5 text-sky-500" />} />
+          </div>
+        </div>
+      )}
+
+      {/* ── ADVANCED TAB ── */}
+      {activeTab === 'advanced' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+            <SectionTitle bar="from-orange-500 to-amber-500">{isRTL ? 'أدوات متقدمة' : 'Advanced tools'}</SectionTitle>
+            <div className="space-y-2">
+              <ToggleRow checked={settings.broadcast_composer} onChange={() => toggle('broadcast_composer')}
+                label={isRTL ? 'كاتب الحملات' : 'Broadcast composer'}
+                desc={isRTL ? 'صياغة رسائل الحملات' : 'Compose campaign messages'}
+                icon={<Send className="w-3.5 h-3.5 text-orange-500" />} />
+              <ToggleRow checked={settings.reply_suggestions} onChange={() => toggle('reply_suggestions')}
+                label={isRTL ? 'اقتراحات الردود' : 'Reply suggestions'}
+                desc={isRTL ? 'ردود جاهزة في المحادثات' : 'Ready replies in chat'}
+                icon={<Sparkles className="w-3.5 h-3.5 text-purple-500" />} />
+            </div>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+            <SectionTitle bar="from-emerald-500 to-teal-500">{isRTL ? 'جرّب المساعد' : 'Test assistant'}</SectionTitle>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              {isRTL ? 'احفظ أولاً ثم أرسل رسالة كزبون' : 'Save first, then send a test message'}
+            </p>
+            <ChatBox messages={testChat} emptyText={isRTL ? 'أرسل رسالة لبدء التجربة' : 'Send a message to start'} loading={testLoading} />
+            <div className="flex gap-2 mt-2">
+              <Input value={testMessage} onChange={e => setTestMessage(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTestSend(); } }}
+                placeholder={isRTL ? 'اكتب رسالة...' : 'Type a message...'} className="text-xs h-8 flex-1" />
+              <Button onClick={handleTestSend} disabled={testLoading || !testMessage.trim()} size="sm" className="h-8 bg-primary text-white">
+                {testLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              </Button>
+            </div>
+            <div className="mt-3 pt-3 border-t border-border/40">
+              <p className="text-xs font-bold text-foreground mb-2">{isRTL ? 'تجربة رد العملاء' : 'Customer reply test'}</p>
+              <ChatBox messages={customerTestChat} emptyText={isRTL ? 'أرسل رسالة كزبون...' : 'Send as customer...'} loading={customerTestLoading} />
+              <div className="flex gap-2 mt-2">
+                <Input value={customerTestMessage} onChange={e => setCustomerTestMessage(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCustomerTestSend(); } }}
+                  placeholder={isRTL ? 'رسالة زبون...' : 'Customer message...'} className="text-xs h-8 flex-1" />
+                <Button onClick={handleCustomerTestSend} disabled={customerTestLoading || !customerTestMessage.trim()} size="sm" className="h-8 bg-primary text-white">
+                  {customerTestLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bottom helper for new users ── */}
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {[
+            { n: '1', t: isRTL ? 'فعّل الرد التلقائي واختر المنصات' : 'Enable auto-reply + platforms', c: 'from-emerald-500 to-teal-500' },
+            { n: '2', t: isRTL ? 'اكتب اسم المساعد + تحية + تعليمات' : 'Set name + greeting + instructions', c: 'from-violet-500 to-purple-500' },
+            { n: '3', t: isRTL ? 'جرّب واحفظ' : 'Test and save', c: 'from-blue-500 to-cyan-500' },
+          ].map(s => (
+            <div key={s.n} className="flex items-center gap-2 flex-1 min-w-[180px]">
+              <span className={`w-5 h-5 rounded-lg bg-gradient-to-br ${s.c} flex items-center justify-center text-[10px] font-black text-white shrink-0`}>{s.n}</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">{s.t}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Tag className="w-3.5 h-3.5" />
+            {isRTL ? 'نصيحة: اترك الصلاحيات الافتراضية في البداية' : 'Tip: keep default permissions at first'}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
