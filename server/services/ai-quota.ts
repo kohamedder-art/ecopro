@@ -1,9 +1,13 @@
 /**
  * AI Quota Management
  *
- * With local AI models (opencode bridge), usage costs are effectively $0.
- * No dollar budget — but daily request caps prevent abuse.
- * Usage is logged for display.
+ * Monthly message allowances per store (VIP-style finite limits):
+ * - Displayed in AI Settings so owners see real consumption + % bar.
+ * - Enforced in checkQuota: when the monthly allowance is gone, the AI
+ *   answers with a friendly "limit reached" message instead of calling
+ *   the bridge (see gemini.ts denial texts).
+ * Daily request caps stay as an abuse guard on top.
+ * Usage is logged in ai_usage_logs for display/history.
  */
 
 import { ensureConnection } from '../utils/database';
@@ -18,33 +22,54 @@ interface QuotaStatus {
   userType: UserType;
 }
 
+// ─── Monthly allowances (messages / store / calendar month) ───
+// Tune these two numbers to taste. They should feel scarce (finite,
+// visible in the UI) but finish the month for a normal active store.
+const MONTHLY_LIMITS: Record<UserType, number> = {
+  owner: 1000, // dashboard assistant chats (~33/day)
+  customer: 3000, // auto-replies to customers (~100/day)
+};
+
 const DAILY_LIMITS: Record<UserType, number> = {
   owner: 500,
   customer: 200,
 };
 
 /**
- * Check daily request quota — prevents abuse without costing money.
+ * Check quota: monthly allowance (binding) + daily request cap (abuse guard).
  */
 export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
   const pool = await ensureConnection();
-  const limit = DAILY_LIMITS[userType];
+  const monthlyLimit = MONTHLY_LIMITS[userType];
+  const dailyLimit = DAILY_LIMITS[userType];
 
   const result = await pool.query(
-    `SELECT COUNT(*)::int as req_count
-     FROM ai_usage_logs
-     WHERE client_id = $1 AND user_type = $2 AND created_at > NOW() - INTERVAL '24 hours'`,
+    `SELECT
+       COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW()))::int as month_count,
+       COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours')::int as day_count
+      FROM ai_usage_logs
+      WHERE client_id = $1 AND user_type = $2`,
     [clientId, userType]
   );
 
-  const used = result.rows[0]?.req_count || 0;
-  const remaining = Math.max(0, limit - used);
+  const monthUsed = result.rows[0]?.month_count || 0;
+  const dayUsed = result.rows[0]?.day_count || 0;
+
+  const monthlyRemaining = Math.max(0, monthlyLimit - monthUsed);
+  const dailyRemaining = Math.max(0, dailyLimit - dayUsed);
+
+  // Binding limit is whichever runs out first; monthly is the advertised one.
+  const remaining = Math.min(monthlyRemaining, dailyRemaining);
+
+  // Next reset = 1st of next month (what the UI promises).
+  const now = new Date();
+  const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
   return {
     allowed: remaining > 0,
     remaining,
-    limit,
-    resetDate: null,
+    limit: monthlyLimit,
+    resetDate,
     userType,
   };
 }
@@ -84,8 +109,9 @@ export async function recordUsage(params: {
 }
 
 /**
- * Get quota usage summary for display.
- * Returns unlimited limits since AI is local/free.
+ * Get quota usage summary for display (AI Settings page).
+ * Counts MESSAGES in the current calendar month — finite VIP-style
+ * allowances, so the progress bars actually move.
  */
 export async function getQuotaSummary(clientId: number): Promise<{
   ownerUsed: number;
@@ -98,22 +124,22 @@ export async function getQuotaSummary(clientId: number): Promise<{
 
   const result = await pool.query(
     `SELECT
-       COALESCE(SUM(CASE WHEN user_type = 'owner' THEN total_tokens ELSE 0 END), 0) as owner_tokens,
-       COALESCE(SUM(CASE WHEN user_type = 'customer' THEN total_tokens ELSE 0 END), 0) as customer_tokens
-     FROM ai_usage_logs
-     WHERE client_id = $1`,
+       COUNT(*) FILTER (WHERE user_type = 'owner')::int as owner_msgs,
+       COUNT(*) FILTER (WHERE user_type = 'customer')::int as customer_msgs
+      FROM ai_usage_logs
+      WHERE client_id = $1 AND created_at >= date_trunc('month', NOW())`,
     [clientId]
   );
 
-  const ownerUsed = Number(result.rows[0].owner_tokens);
-  const customerUsed = Number(result.rows[0].customer_tokens);
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   return {
-    ownerUsed,
-    ownerLimit: 999_999_999,
-    customerUsed,
-    customerLimit: 999_999_999,
-    periodStart: new Date(0),
+    ownerUsed: Number(result.rows[0].owner_msgs),
+    ownerLimit: MONTHLY_LIMITS.owner,
+    customerUsed: Number(result.rows[0].customer_msgs),
+    customerLimit: MONTHLY_LIMITS.customer,
+    periodStart,
   };
 }
 
