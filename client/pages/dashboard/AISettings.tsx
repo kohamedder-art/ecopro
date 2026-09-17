@@ -552,7 +552,7 @@ export default function AISettingsPage() {
               ) : (
                 <p className="text-[11px] text-muted-foreground text-center py-4">{isRTL ? 'لا توجد بيانات استخدام' : 'No usage data'}</p>
               )}
-              {/* ── Day pass (200 DZD / 24h) ── */}
+              {/* ── Day pass (200 DZD / 24h): price always visible, buy box when running low ── */}
               {quota?.passActive && quota.passEndsAt ? (
                 <div className="mt-3 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 rounded-lg">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -562,7 +562,7 @@ export default function AISettingsPage() {
                       : `Day pass active until ${new Date(quota.passEndsAt).toLocaleString()}`}
                   </p>
                 </div>
-              ) : (ownerPct >= 70 || customerPct >= 70) && (
+              ) : (ownerPct >= 70 || customerPct >= 70) ? (
                 <div className="mt-3 bg-muted/40 border border-border/40 px-3 py-2 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow shadow-amber-500/20 shrink-0">
@@ -578,6 +578,18 @@ export default function AISettingsPage() {
                   <Button onClick={buyDayPass} disabled={buyingPass} size="sm" className="w-full mt-2 h-8 text-xs font-bold bg-primary hover:bg-primary/90 text-white">
                     {buyingPass ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1" /> : null}
                     {isRTL ? `تفعيل اليوم الإضافي — ${quota?.dayPassPriceDzd || 200} دج` : `Activate day pass — ${quota?.dayPassPriceDzd || 200} DZD`}
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-3 flex items-center gap-2 px-1">
+                  <Sparkles className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <p className="text-[11px] text-muted-foreground flex-1">
+                    {isRTL
+                      ? `عند نفاد الحصة: يوم إضافي (24 ساعة، ردود غير محدودة) بـ ${quota?.dayPassPriceDzd || 200} دج`
+                      : `When allowance runs out: extra day (24h, unlimited replies) for ${quota?.dayPassPriceDzd || 200} DZD`}
+                  </p>
+                  <Button onClick={buyDayPass} disabled={buyingPass} variant="ghost" size="sm" className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary shrink-0">
+                    {buyingPass ? <Loader2 className="w-3 h-3 animate-spin" /> : (isRTL ? 'تفعيل' : 'Get it')}
                   </Button>
                 </div>
               )}
