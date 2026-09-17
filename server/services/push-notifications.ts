@@ -161,16 +161,18 @@ export async function sendPushNotification(clientId: number, title: string, body
 
 export async function insertInAppNotification(
   clientId: number, type: string, title: string, body: string, orderId?: number
-) {
+): Promise<number | null> {
   try {
     const pool = await ensureConnection();
-    await pool.query(
+    const res = await pool.query(
       `INSERT INTO mobile_notifications (client_id, type, title, body, order_id, is_read, created_at)
-       VALUES ($1, $2, $3, $4, $5, false, NOW())`,
+       VALUES ($1, $2, $3, $4, $5, false, NOW()) RETURNING id`,
       [clientId, type, title, body, orderId || null]
     );
+    return res.rows[0]?.id != null ? Number(res.rows[0].id) : null;
   } catch (error) {
     console.error('[push] insert notification error:', error);
+    return null;
   }
 }
 
@@ -208,9 +210,17 @@ export async function notifyOrderCreated(clientId: number, orderId: number, cust
   } catch {}
   const title = storeName ? `طلب جديد · ${storeName}` : 'طلب جديد';
   const body = `تم استلام طلب جديد من ${customerName}`;
+  // Persist first so the native push can carry the row id — the APK skips
+  // poll-notify for ids it already showed via FCM (no double notification).
+  const notifId = await insertInAppNotification(clientId, 'new_order', title, body, orderId);
+  const extra = {
+    type: 'new_order', order_id: String(orderId),
+    ...(sid ? { store_id: String(sid) } : {}),
+    ...(storeName ? { store_name: storeName } : {}),
+    ...(notifId ? { notif_id: String(notifId) } : {}),
+  };
   await Promise.all([
-    insertInAppNotification(clientId, 'new_order', title, body, orderId),
-    sendPushNotification(clientId, title, body, { type: 'new_order', order_id: String(orderId), ...(sid ? { store_id: String(sid) } : {}), ...(storeName ? { store_name: storeName } : {}) }),
+    sendPushNotification(clientId, title, body, extra),
     sendNtfyNotification(clientId, title, body),
   ]);
 }
@@ -227,9 +237,9 @@ export async function notifyOrderStatusChanged(clientId: number, orderId: number
   const label = statusLabels[status] || status;
   const title = 'تحديث الطلب';
   const body = `الطلب رقم #${orderId}: ${label}`;
+  const notifId = await insertInAppNotification(clientId, 'status_update', title, body, orderId);
   await Promise.all([
-    insertInAppNotification(clientId, 'status_update', title, body, orderId),
-    sendPushNotification(clientId, title, body, { type: 'status_update', order_id: String(orderId) }),
+    sendPushNotification(clientId, title, body, { type: 'status_update', order_id: String(orderId), ...(notifId ? { notif_id: String(notifId) } : {}) }),
     sendNtfyNotification(clientId, title, body),
   ]);
 }
