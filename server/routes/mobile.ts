@@ -257,6 +257,9 @@ router.post('/orders/:id/status', updateOrderStatus);
 router.patch('/orders/:id/status', updateOrderStatus);
 router.get('/notifications', getNotifications);
 router.patch('/notifications/read-all', markNotificationsRead);
+// The APK sends POST (see sahla4eco-mobile/src/api/auth.ts markNotificationsRead).
+// Without this alias, "mark all read" 404s and notifications come back unread after every restart.
+router.post('/notifications/read-all', markNotificationsRead);
 
 // In-memory cache for Expo API result
 let expoBuildCache: { url: string; version: string; expiresAt: number } | null = null;
