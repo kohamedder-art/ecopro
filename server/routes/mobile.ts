@@ -4,8 +4,27 @@ import { notifyOrderStatusChanged } from '../services/push-notifications';
 
 const router = Router();
 
-const getStats: RequestHandler = async (req, res) => {
+/**
+ * GET /api/mobile/stores — the account's storefronts (for the store filter).
+ */
+const getStores: RequestHandler = async (req, res) => {
   try {
+    const pool = await ensureConnection();
+    const clientId = (req as any).user?.id;
+    if (!clientId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+    const result = await pool.query(
+      `SELECT id, COALESCE(NULLIF(store_name, ''), 'المتجر') as name
+       FROM client_store_settings WHERE client_id = $1 ORDER BY id`,
+      [clientId]
+    );
+    res.json(result.rows.map(r => ({ id: Number(r.id), name: String(r.name) })));
+  } catch (error) {
+    console.error('[mobile] stores error:', error);
+    res.status(500).json({ error: 'Failed to fetch stores' });
+  }
+};
+
+const getStats: RequestHandler = async (req, res) => {  try {
     const pool = await ensureConnection();
     const clientId = (req as any).user?.id;
     if (!clientId) { res.status(401).json({ error: 'Unauthorized' }); return; }
@@ -60,9 +79,11 @@ const getOrders: RequestHandler = async (req, res) => {
       `SELECT o.id, o.customer_name, o.customer_phone, o.total_price,
               o.status, o.quantity, o.created_at, o.shipping_wilaya_id,
               o.order_source, o.source_platform, o.delivery_type, o.tracking_number,
+              o.store_id, COALESCE(s.store_name, '') as store_name,
               COALESCE(p.title, 'منتج محذوف') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products p ON o.product_id = p.id
+       LEFT JOIN client_store_settings s ON s.id = o.store_id
        WHERE ${where}
        ORDER BY o.created_at DESC LIMIT $${params.length + 1}`,
       [...params, limit]
@@ -87,6 +108,8 @@ const getOrders: RequestHandler = async (req, res) => {
       status: r.status, status_label: statusLabels[r.status] || r.status,
       quantity: r.quantity, created_at: r.created_at,
       wilaya_id: r.shipping_wilaya_id, product_title: r.product_title,
+      store_id: r.store_id != null ? Number(r.store_id) : null,
+      store_name: r.store_name || null,
       order_source: r.order_source, source_platform: r.source_platform,
       order_source_label: sourceLabels[r.order_source] || r.order_source,
       source_platform_label: platformLabels[r.source_platform] || r.source_platform,
@@ -113,9 +136,11 @@ const getOrderDetail: RequestHandler = async (req, res) => {
               o.shipping_wilaya_id, o.shipping_commune_id, o.shipping_address,
               o.variant_name, o.delivery_type, o.tracking_number,
               o.order_source, o.source_platform,
+              o.store_id, COALESCE(s.store_name, '') as store_name,
               COALESCE(p.title, 'منتج محذوف') as product_title
        FROM store_orders o
        LEFT JOIN client_store_products p ON o.product_id = p.id
+       LEFT JOIN client_store_settings s ON s.id = o.store_id
        WHERE o.id = $1 AND o.client_id = $2 AND o.deleted_at IS NULL`,
       [id, clientId]
     );
@@ -155,6 +180,8 @@ const getOrderDetail: RequestHandler = async (req, res) => {
       product_title: order.product_title, total_price: parseFloat(order.total_price),
       currency: 'DZD', status: order.status,
       status_label: statusLabels[order.status] || order.status,
+      store_id: order.store_id != null ? Number(order.store_id) : null,
+      store_name: order.store_name || null,
       wilaya_id: order.shipping_wilaya_id, commune_id: order.shipping_commune_id,
       address: order.shipping_address, quantity: order.quantity,
       variant_name: order.variant_name, notes: order.notes,
@@ -251,6 +278,7 @@ const markNotificationsRead: RequestHandler = async (req, res) => {
 };
 
 router.get('/stats', getStats);
+router.get('/stores', getStores);
 router.get('/orders', getOrders);
 router.get('/orders/:id', getOrderDetail);
 router.post('/orders/:id/status', updateOrderStatus);

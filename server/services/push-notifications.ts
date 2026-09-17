@@ -191,12 +191,26 @@ export async function sendNtfyNotification(clientId: number, title: string, body
   }
 }
 
-export async function notifyOrderCreated(clientId: number, orderId: number, customerName: string) {
-  const title = 'طلب جديد';
+export async function notifyOrderCreated(clientId: number, orderId: number, customerName: string, storeId?: number | null) {
+  // Resolve the store from the order itself when not given (multi-store aware).
+  let sid = storeId ?? null;
+  let storeName = '';
+  try {
+    const pool = await ensureConnection();
+    if (!sid) {
+      const o = await pool.query(`SELECT store_id FROM store_orders WHERE id = $1 AND client_id = $2`, [orderId, clientId]);
+      sid = o.rows[0]?.store_id != null ? Number(o.rows[0].store_id) : null;
+    }
+    if (sid) {
+      const r = await pool.query(`SELECT store_name FROM client_store_settings WHERE id = $1 AND client_id = $2`, [sid, clientId]);
+      storeName = r.rows[0]?.store_name || '';
+    }
+  } catch {}
+  const title = storeName ? `طلب جديد · ${storeName}` : 'طلب جديد';
   const body = `تم استلام طلب جديد من ${customerName}`;
   await Promise.all([
     insertInAppNotification(clientId, 'new_order', title, body, orderId),
-    sendPushNotification(clientId, title, body, { type: 'new_order', order_id: String(orderId) }),
+    sendPushNotification(clientId, title, body, { type: 'new_order', order_id: String(orderId), ...(sid ? { store_id: String(sid) } : {}), ...(storeName ? { store_name: storeName } : {}) }),
     sendNtfyNotification(clientId, title, body),
   ]);
 }
