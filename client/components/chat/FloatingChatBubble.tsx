@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { X, Zap, Sparkles, Send, Loader2, Check, AlertTriangle, Copy, ChevronRight, ExternalLink, Paperclip, MessageCircle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useStore } from '@/contexts/StoreContext';
 import { useTranslation } from '@/lib/i18n';
 import { safeJsonParse } from '@/utils/safeJson';
 import { apiFetch } from '@/lib/api';
@@ -58,6 +59,9 @@ export default function FloatingChatBubble() {
   const { unreadMessagesCount } = useNotifications();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // Active storefront — tells the owner AI WHICH store this chat is about.
+  const { activeStore } = useStore();
+  const activeStoreId: number | null = activeStore?.id ?? null;
 
   const user = typeof window !== 'undefined' ? safeJsonParse(localStorage.getItem('user'), null as any) : null;
   const isAdmin = user?.role === 'admin' || user?.user_type === 'admin';
@@ -231,6 +235,7 @@ export default function FloatingChatBubble() {
           question: q || 'What do you see in this image? Describe it in detail.',
           history: aiMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
         };
+        if (activeStoreId) body.storeId = activeStoreId;
         if (attachedImg) body.imageUrl = attachedImg;
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -345,7 +350,7 @@ export default function FloatingChatBubble() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
-          body: JSON.stringify(pendingAction),
+          body: JSON.stringify({ ...pendingAction, ...(activeStoreId ? { storeId: activeStoreId } : {}) }),
         });
         const data = await res.json();
         setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}`, createdAt: Date.now() }]);
@@ -359,7 +364,7 @@ export default function FloatingChatBubble() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
           credentials: 'include',
-          body: JSON.stringify(pendingAction),
+          body: JSON.stringify({ ...pendingAction, ...(activeStoreId ? { storeId: activeStoreId } : {}) }),
         });
         const data = await res.json();
         setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ ${data.message}` : `Could not complete: ${data.error}`, createdAt: Date.now() }]);
@@ -375,7 +380,7 @@ export default function FloatingChatBubble() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         credentials: 'include',
-        body: JSON.stringify({ orderId: pendingAction.orderId, newStatus: pendingAction.newStatus }),
+        body: JSON.stringify({ orderId: pendingAction.orderId, newStatus: pendingAction.newStatus, ...(activeStoreId ? { storeId: activeStoreId } : {}) }),
       });
       const data = await res.json();
       setAiMessages(prev => [...prev, { role: 'assistant', content: res.ok ? `✓ Done — ${data.message}` : `Could not update the order: ${data.error}`, createdAt: Date.now() }]);

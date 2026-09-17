@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { useStore } from "@/contexts/StoreContext";
 import { Bot, MessageCircle, Smartphone, Globe, Camera, Shield, FileText, Send, RefreshCw, Plus, Trash2, Pencil, Palette, Brain, Sparkles, Loader2, User, Tag, X } from "lucide-react";
 
 interface AISettings {
@@ -127,6 +128,8 @@ type TabId = 'auto-reply' | 'persona' | 'permissions' | 'product' | 'advanced';
 export default function AISettingsPage() {
   const { t, locale } = useTranslation();
   const { toast } = useToast();
+  const { activeStore } = useStore();
+  const activeStoreId: number | null = activeStore?.id ?? null;
   const isRTL = locale === 'ar';
   const [settings, setSettings] = useState<AISettings>(DEFAULT);
   const [quota, setQuota] = useState<QuotaSummary | null>(null);
@@ -251,7 +254,7 @@ export default function AISettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, ...(activeStoreId ? { storeId: activeStoreId } : {}) }),
       });
       const data = await res.json();
       if (data.answer) {
@@ -275,7 +278,7 @@ export default function AISettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ message: msg, chatId: customerTestChatId }),
+        body: JSON.stringify({ message: msg, chatId: customerTestChatId, ...(activeStoreId ? { storeId: activeStoreId } : {}) }),
       });
       const data = await res.json();
       if (data.answer) {

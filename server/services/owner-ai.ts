@@ -23,6 +23,7 @@ import { ensureConnection } from '../utils/database';
 import { encryptData } from '../utils/encryption';
 import { importCompanyPrices, priceImportSupport } from './courier-pricing';
 import { generateText, GeminiContent } from './gemini';
+import { resolveStore, looksLikeWrite, askWhichStoreMessage } from './store-scope';
 import { checkRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
 
 // ═══════════════════════════════════════════════════════════════
@@ -209,26 +210,38 @@ export function extractEmbeddedAction(text: string): { action: any | null; clean
 export async function handleOwnerMessage(
   clientId: number,
   question: string,
-  prevHistory: GeminiContent[] = []
+  prevHistory: GeminiContent[] = [],
+  opts?: { storeId?: number | null }
 ): Promise<{ answer: string; action: any | null }> {
   // Rate limit
   if (!checkRateLimit(`owner:${clientId}`, RATE_LIMITS.store_owner)) {
     return { answer: getRateLimitMessage(getRateLimitResetTime(`owner:${clientId}`), 'store_owner', 'ar'), action: null };
   }
 
-  // Load slim context
-  const ctx = await loadSlimContext(clientId);
+  // Resolve WHICH store (dashboard sends activeStoreId; fallback = first store).
+  const store = await resolveStore(clientId, opts?.storeId ?? null);
+  if (!store.storeId) return { answer: 'لم يتم العثور على بيانات المتجر.', action: null };
+  const storeId = store.storeId;
+
+  // Safety gate: multi-store + no explicit store + write intent → ask WHICH store first.
+  // Never execute a write against an assumed store.
+  if (store.multi && store.ambiguous && looksLikeWrite(question)) {
+    return { answer: askWhichStoreMessage(store.all), action: null };
+  }
+
+  // Load slim context for THIS store
+  const ctx = await loadSlimContext(clientId, storeId);
   if (!ctx) return { answer: 'لم يتم العثور على بيانات المتجر.', action: null };
 
   // Load owner memory card (persistent facts) + merge into prompt context
   const ownerFacts = await loadOwnerFacts(clientId);
   const factsSummary = buildOwnerFactsSummary(ownerFacts);
 
-  // Build user prompt
-  const prompt = buildUserPrompt(ctx, prevHistory, question, factsSummary);
+  // Build user prompt (names the current store; lists all stores when multi)
+  const prompt = buildUserPrompt(ctx, prevHistory, question, factsSummary, store.multi ? store.all.map((s) => s.name) : undefined);
 
   try {
-    const response = await generateText('store_owner', prompt, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT + '\n' + ACTION_INSTRUCTIONS);
+    const response = await generateText('store_owner', prompt, { storeId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT + '\n' + ACTION_INSTRUCTIONS);
 
     // Parse action (balanced-brace: works with nested JSON + trailing text)
     let answer = response;
@@ -239,8 +252,8 @@ export async function handleOwnerMessage(
 
     // Handle search_store_data inline
     if (action?.type === 'search_store_data') {
-      const toolResult = await executeSearch(clientId, action.dataType, action.query);
-      const followUp = await generateText('store_owner', `البيانات المطلوبة:\n${toolResult}\n\nالسؤال الأصلي: "${question}"`, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT);
+      const toolResult = await executeSearch(clientId, action.dataType, action.query, storeId);
+      const followUp = await generateText('store_owner', `البيانات المطلوبة:\n${toolResult}\n\nالسؤال الأصلي: "${question}"`, { storeId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT);
       answer = followUp;
       action = null;
     }
@@ -254,8 +267,8 @@ export async function handleOwnerMessage(
 
     const topic = detectTopic(question);
 
-    // Save conversation (non-blocking)
-    saveOwnerHistory(clientId, question, answer, topic).catch(() => {});
+    // Save conversation (non-blocking, per store)
+    saveOwnerHistory(clientId, question, answer, topic, storeId).catch(() => {});
 
     // Save owner memory-card facts extracted from this message (non-blocking)
     const ownerMsgFacts = extractOwnerFactsFromMessage(question, ownerFacts);
@@ -274,14 +287,21 @@ export async function handleOwnerMessage(
 // EXECUTE ACTIONS (called from routes/ai.ts)
 // ═══════════════════════════════════════════════════════════════
 
-export async function executeAction(clientId: number, action: any): Promise<{ success: boolean; message: string; data?: any }> {
+export async function executeAction(clientId: number, action: any, storeId?: number): Promise<{ success: boolean; message: string; data?: any }> {
   const p = await ensureConnection();
+  // Store scope: every read/write below is limited to THIS store
+  // (NULL store_id = pre-multi-store legacy rows, claimed by the resolved store).
+  const sid = storeId;
+  const hasStore = typeof sid === 'number';
   try {
     switch (action.type) {
       // ═══ PRODUCTS ═══
       case 'search_products': {
         const q = `%${action.query || ''}%`;
-        const res = await p.query(`SELECT id, title, price, stock_quantity, category, status FROM client_store_products WHERE client_id = $1 AND (title ILIKE $2 OR category ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q]);
+        const params: any[] = [clientId, q];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, title, price, stock_quantity, category, status FROM client_store_products WHERE client_id = $1${scope} AND (title ILIKE $2 OR category ILIKE $2) ORDER BY created_at DESC LIMIT 10`, params);
         if (!res.rows.length) return { success: true, message: 'لا توجد منتجات تطابق البحث.', data: [] };
         const list = res.rows.map((r: any) => `#${r.id} | ${r.title} | ${r.price} دج | مخزون: ${r.stock_quantity ?? 'N/A'} | ${r.status}`).join('\n');
         return { success: true, message: `نتائج البحث:\n${list}`, data: res.rows };
@@ -289,15 +309,19 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'get_product': {
         const { productId } = action;
         if (!productId) return { success: false, message: 'معرف المنتج مطلوب' };
-        const res = await p.query(`SELECT id, title, price, stock_quantity, category, description, status FROM client_store_products WHERE id = $1 AND client_id = $2`, [productId, clientId]);
-        if (!res.rows.length) return { success: false, message: `المنتج #${productId} غير موجود` };
+        const params: any[] = [productId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, title, price, stock_quantity, category, description, status FROM client_store_products WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (!res.rows.length) return { success: false, message: `المنتج #${productId} غير موجود في هذا المتجر` };
         const r = res.rows[0];
         return { success: true, message: `**${r.title}**\n- السعر: ${r.price} دج\n- المخزون: ${r.stock_quantity ?? 'N/A'}\n- الفئة: ${r.category || 'بدون'}\n- الحالة: ${r.status}\n- الوصف: ${r.description || 'بدون'}`, data: r };
       }
       case 'create_product': {
         const { title, price, stock, category, description } = action;
         if (!title || !price) return { success: false, message: 'الاسم والسعر مطلوبان' };
-        const res = await p.query(`INSERT INTO client_store_products (client_id, title, price, stock_quantity, category, description, status) VALUES ($1, $2, $3, $4, $5, $6, 'active') RETURNING id`, [clientId, title, price, stock || 0, category || null, description || null]);
+        if (!hasStore) return { success: false, message: 'حدد المتجر أولاً قبل إضافة منتج' };
+        const res = await p.query(`INSERT INTO client_store_products (client_id, store_id, title, price, stock_quantity, category, description, status) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING id`, [clientId, sid, title, price, stock || 0, category || null, description || null]);
         return { success: true, message: `تم إضافة المنتج "${title}" (ID: ${res.rows[0].id})`, data: { productId: res.rows[0].id } };
       }
       case 'edit_product': {
@@ -306,19 +330,31 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         const allowed = ['price', 'stock_quantity', 'title', 'description', 'status', 'category'];
         if (!allowed.includes(field)) return { success: false, message: `الحقل "${field}" غير مدعوم` };
         const dbField = field === 'stock' ? 'stock_quantity' : field;
-        await p.query(`UPDATE client_store_products SET ${dbField} = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3`, [value, productId, clientId]);
+        const params: any[] = [value, productId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const upd = await p.query(`UPDATE client_store_products SET ${dbField} = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3${scope}`, params);
+        if (upd.rowCount === 0) return { success: false, message: `المنتج #${productId} غير موجود في هذا المتجر` };
         return { success: true, message: `تم تعديل ${field} للمنتج #${productId}` };
       }
       case 'delete_product': {
         const { productId } = action;
         if (!productId) return { success: false, message: 'معرف المنتج مطلوب' };
-        await p.query(`UPDATE client_store_products SET status = 'archived' WHERE id = $1 AND client_id = $2`, [productId, clientId]);
+        const params: any[] = [productId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const upd = await p.query(`UPDATE client_store_products SET status = 'archived' WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (upd.rowCount === 0) return { success: false, message: `المنتج #${productId} غير موجود في هذا المتجر` };
         return { success: true, message: `تم حذف المنتج #${productId}` };
       }
       case 'archive_product': {
         const { productId } = action;
         if (!productId) return { success: false, message: 'معرف المنتج مطلوب' };
-        await p.query(`UPDATE client_store_products SET status = 'archived' WHERE id = $1 AND client_id = $2`, [productId, clientId]);
+        const params: any[] = [productId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const upd = await p.query(`UPDATE client_store_products SET status = 'archived' WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (upd.rowCount === 0) return { success: false, message: `المنتج #${productId} غير موجود في هذا المتجر` };
         return { success: true, message: `تم أرشفة المنتج #${productId}` };
       }
 
@@ -327,7 +363,8 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         const q = `%${action.query || ''}%`;
         let sql = `SELECT id, customer_name, customer_phone, total_price, status, delivery_status, created_at FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`;
         const params: any[] = [clientId];
-        if (action.query) { sql += ` AND (id::text ILIKE $2 OR customer_name ILIKE $2 OR customer_phone ILIKE $2)`; params.push(q); }
+        if (hasStore) { params.push(sid); sql += ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        if (action.query) { sql += ` AND (id::text ILIKE $${params.length + 1} OR customer_name ILIKE $${params.length + 1} OR customer_phone ILIKE $${params.length + 1})`; params.push(q); }
         if (action.status) { sql += ` AND status = $${params.length + 1}`; params.push(action.status); }
         sql += ` ORDER BY created_at DESC LIMIT 10`;
         const res = await p.query(sql, params);
@@ -338,8 +375,11 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'get_order': {
         const { orderId } = action;
         if (!orderId) return { success: false, message: 'معرف الطلب مطلوب' };
-        const res = await p.query(`SELECT id, customer_name, customer_phone, total_price, status, delivery_status, delivery_company, shipping_address, wilaya, notes, created_at FROM store_orders WHERE id = $1 AND client_id = $2`, [orderId, clientId]);
-        if (!res.rows.length) return { success: false, message: `الطلب #${orderId} غير موجود` };
+        const params: any[] = [orderId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, customer_name, customer_phone, total_price, status, delivery_status, delivery_company, shipping_address, wilaya, notes, created_at FROM store_orders WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (!res.rows.length) return { success: false, message: `الطلب #${orderId} غير موجود في هذا المتجر` };
         const r = res.rows[0];
         return { success: true, message: `**الطلب #${r.id}**\n- الزبون: ${r.customer_name || 'N/A'}\n- الهاتف: ${r.customer_phone || 'N/A'}\n- المبلغ: ${r.total_price} دج\n- الحالة: ${r.status}\n- التوصيل: ${r.delivery_status || 'N/A'}\n- الولاية: ${r.wilaya || 'N/A'}\n- العنوان: ${r.shipping_address || 'N/A'}\n- التاريخ: ${new Date(r.created_at).toLocaleDateString('ar-DZ')}`, data: r };
       }
@@ -348,11 +388,20 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!orderId || !newStatus) return { success: false, message: 'بيانات ناقصة' };
         const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned', 'fake', 'no_answer_1', 'no_answer_2', 'no_answer_3'];
         if (!validStatuses.includes(newStatus)) return { success: false, message: `حالة غير صالحة. الحالات المتاحة: ${validStatuses.join(', ')}` };
+        // Verify the order belongs to THIS store before touching it.
+        const ownParams: any[] = [orderId, clientId];
+        let ownScope = '';
+        if (hasStore) { ownParams.push(sid); ownScope = ` AND (store_id = $${ownParams.length} OR store_id IS NULL)`; }
+        const own = await p.query(`SELECT id FROM store_orders WHERE id = $1 AND client_id = $2${ownScope}`, ownParams);
+        if (!own.rows.length) return { success: false, message: `الطلب #${orderId} غير موجود في هذا المتجر` };
         await p.query(`UPDATE store_orders SET status = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3`, [newStatus, orderId, clientId]);
         return { success: true, message: `تم تغيير حالة الطلب #${orderId} إلى ${newStatus}` };
       }
       case 'get_order_stats': {
-        const res = await p.query(`SELECT status, COUNT(*) as count FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL GROUP BY status`, [clientId]);
+        const params: any[] = [clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT status, COUNT(*) as count FROM store_orders WHERE client_id = $1${scope} AND deleted_at IS NULL GROUP BY status`, params);
         const total = res.rows.reduce((s: number, r: any) => s + Number(r.count), 0);
         const stats = res.rows.map((r: any) => `- ${r.status}: ${r.count}`).join('\n');
         return { success: true, message: `**إحصائيات الطلبات**\n- الإجمالي: ${total}\n${stats}`, data: res.rows };
@@ -361,7 +410,10 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       // ═══ CUSTOMERS ═══
       case 'search_customers': {
         const q = `%${action.query || ''}%`;
-        const res = await p.query(`SELECT customer_name, customer_phone, COUNT(*) as order_count, SUM(total_price) as total_spent FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND (customer_name ILIKE $2 OR customer_phone ILIKE $2) GROUP BY customer_name, customer_phone ORDER BY order_count DESC LIMIT 10`, [clientId, q]);
+        const params: any[] = [clientId, q];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT customer_name, customer_phone, COUNT(*) as order_count, SUM(total_price) as total_spent FROM store_orders WHERE client_id = $1${scope} AND deleted_at IS NULL AND (customer_name ILIKE $2 OR customer_phone ILIKE $2) GROUP BY customer_name, customer_phone ORDER BY order_count DESC LIMIT 10`, params);
         if (!res.rows.length) return { success: true, message: 'لا يوجد زبائن يطابقون البحث.', data: [] };
         const list = res.rows.map((c: any) => `${c.customer_name || 'N/A'} | ${c.customer_phone || 'N/A'} | ${c.order_count} طلبات | ${Number(c.total_spent).toLocaleString('ar-DZ')} دج`).join('\n');
         return { success: true, message: `الزبائن:\n${list}`, data: res.rows };
@@ -369,17 +421,24 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'get_customer': {
         const { customerPhone } = action;
         if (!customerPhone) return { success: false, message: 'رقم الهاتف مطلوب' };
-        const res = await p.query(`SELECT customer_name, customer_phone, COUNT(*) as order_count, SUM(total_price) as total_spent FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone = $2 GROUP BY customer_name, customer_phone`, [clientId, customerPhone]);
+        const params: any[] = [clientId, customerPhone];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT customer_name, customer_phone, COUNT(*) as order_count, SUM(total_price) as total_spent FROM store_orders WHERE client_id = $1${scope} AND deleted_at IS NULL AND customer_phone = $2 GROUP BY customer_name, customer_phone`, params);
         if (!res.rows.length) return { success: false, message: `لا يوجد زبون بهذا الرقم` };
         const r = res.rows[0];
-        const orders = await p.query(`SELECT id, total_price, status, created_at FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone = $2 ORDER BY created_at DESC LIMIT 5`, [clientId, customerPhone]);
+        const orders = await p.query(`SELECT id, total_price, status, created_at FROM store_orders WHERE client_id = $1${scope} AND deleted_at IS NULL AND customer_phone = $2 ORDER BY created_at DESC LIMIT 5`, params);
         const orderList = orders.rows.map((o: any) => `  #${o.id} | ${o.total_price} دج | ${o.status} | ${new Date(o.created_at).toLocaleDateString('ar-DZ')}`).join('\n');
         return { success: true, message: `**${r.customer_name || 'N/A'}** (${r.customer_phone})\n- الطلبات: ${r.order_count}\n- الإجمالي: ${Number(r.total_spent).toLocaleString('ar-DZ')} دج\n- آخر 5 طلبات:\n${orderList}`, data: r };
       }
 
       // ═══ STORE SETTINGS ═══
       case 'get_store_settings': {
-        const res = await p.query(`SELECT store_name, store_description, currency_code, owner_name, owner_email, is_public, template, store_slug, primary_color, secondary_color FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+        const params: any[] = [clientId];
+        let where = `WHERE client_id = $1`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $1`; }
+        else where += ` LIMIT 1`;
+        const res = await p.query(`SELECT store_name, store_description, currency_code, owner_name, owner_email, is_public, template, store_slug, primary_color, secondary_color FROM client_store_settings ${where}`, params);
         if (!res.rows.length) return { success: false, message: 'إعدادات المتجر غير موجودة' };
         const r = res.rows[0];
         return { success: true, message: `**إعدادات المتجر**\n- الاسم: ${r.store_name || 'بدون'}\n- الوصف: ${r.store_description || 'بدون'}\n- العملة: ${r.currency_code || 'DZD'}\n- المالك: ${r.owner_name || 'بدون'}\n- الإيميل: ${r.owner_email || 'بدون'}\n- القالب: ${r.template || 'books'}\n- الرابط: ${r.store_slug || 'بدون'}\n- اللون الأساسي: ${r.primary_color || '#f97316'}\n- اللون الثانوي: ${r.secondary_color || '#8B7355'}\n- عام: ${r.is_public ? 'نعم' : 'لا'}`, data: r };
@@ -389,13 +448,22 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!field || value === undefined) return { success: false, message: 'الحقل والقيمة مطلوبان' };
         const allowed = ['store_name', 'store_description', 'currency_code', 'owner_name', 'owner_email', 'is_public', 'store_slug', 'subdomain', 'custom_domain'];
         if (!allowed.includes(field)) return { success: false, message: `الحقل "${field}" غير مدعوم. الحقول المتاحة: ${allowed.join(', ')}` };
-        await p.query(`UPDATE client_store_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2`, [value, clientId]);
+        // Target THIS store's row only — never the whole account.
+        const params: any[] = [value, clientId];
+        let where = `WHERE client_id = $2`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $2`; }
+        const upd = await p.query(`UPDATE client_store_settings SET ${field} = $1, updated_at = NOW() ${where}`, params);
+        if (upd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         return { success: true, message: `تم تحديث ${field}` };
       }
 
       // ═══ STORE DESIGN ═══
       case 'get_store_design': {
-        const res = await p.query(`SELECT template, primary_color, secondary_color, store_name, store_description, store_logo, banner_url, hero_main_url, hero_tile1_url, hero_tile2_url, template_bg_image, template_bg_color, template_accent_color, template_hero_heading, template_hero_subtitle, template_button_text, template_font_family, template_border_radius, store_slug, subdomain, is_public, template_settings FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+        const params: any[] = [clientId];
+        let where = `WHERE client_id = $1`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $1`; }
+        else where += ` LIMIT 1`;
+        const res = await p.query(`SELECT template, primary_color, secondary_color, store_name, store_description, store_logo, banner_url, hero_main_url, hero_tile1_url, hero_tile2_url, template_bg_image, template_bg_color, template_accent_color, template_hero_heading, template_hero_subtitle, template_button_text, template_font_family, template_border_radius, store_slug, subdomain, is_public, template_settings FROM client_store_settings ${where}`, params);
         if (!res.rows.length) return { success: false, message: 'إعدادات المتجر غير موجودة' };
         const r = res.rows[0];
         const ts = r.template_settings && typeof r.template_settings === 'object' ? r.template_settings : {};
@@ -435,9 +503,17 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
           'store_slug', 'subdomain', 'is_public', 'owner_name', 'owner_email', 'currency_code',
         ]);
         if (directCols.has(field)) {
-          await p.query(`UPDATE client_store_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2`, [String(value).slice(0, 500), clientId]);
+          const params: any[] = [String(value).slice(0, 500), clientId];
+          let where = `WHERE client_id = $2`;
+          if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $2`; }
+          const upd = await p.query(`UPDATE client_store_settings SET ${field} = $1, updated_at = NOW() ${where}`, params);
+          if (upd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         } else {
-          await p.query(`UPDATE client_store_settings SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb, updated_at = NOW() WHERE client_id = $2`, [JSON.stringify({ [field]: value }), clientId]);
+          const params: any[] = [JSON.stringify({ [field]: value }), clientId];
+          let where = `WHERE client_id = $2`;
+          if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $2`; }
+          const upd = await p.query(`UPDATE client_store_settings SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb, updated_at = NOW() ${where}`, params);
+          if (upd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         }
         return { success: true, message: `تم تحديث ${field} ✅` };
       }
@@ -477,10 +553,14 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         }
         if (fields.length === 0 && Object.keys(jsonbObj).length === 0) return { success: false, message: 'لا توجد حقول صالحة للتحديث' };
         values.push(clientId);
-        const jsonbParam = paramIdx;
+        const clientParam = paramIdx;
         values.push(JSON.stringify(jsonbObj));
-        const sql = `UPDATE client_store_settings SET ${fields.length ? fields.map((f, i) => f).join(', ') + ', ' : ''}template_settings = COALESCE(template_settings, '{}'::jsonb) || $${jsonbParam}::jsonb, updated_at = NOW() WHERE client_id = $${jsonbParam + 1}`;
-        await p.query(sql, values);
+        const jsonbParam = paramIdx + 1;
+        let batchWhere = `WHERE client_id = $${clientParam}`;
+        if (hasStore) { values.push(sid); batchWhere = `WHERE id = $${values.length} AND client_id = $${clientParam}`; }
+        const sql = `UPDATE client_store_settings SET ${fields.length ? fields.map((f, i) => f).join(', ') + ', ' : ''}template_settings = COALESCE(template_settings, '{}'::jsonb) || $${jsonbParam}::jsonb, updated_at = NOW() ${batchWhere}`;
+        const batchUpd = await p.query(sql, values);
+        if (batchUpd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         return { success: true, message: `تم تحديث ${changed.length} حقل: ${changed.join(', ')} ✅`, data: { updated: changed } };
       }
       case 'switch_template': {
@@ -488,26 +568,50 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!template) return { success: false, message: 'اسم القالب مطلوب' };
         const validTemplates = ['books', 'minimal', 'mega', 'grocery', 'pro', 'tech', 'modern'];
         if (!validTemplates.includes(template)) return { success: false, message: `قالب غير صالح. المتاح: ${validTemplates.join(', ')}` };
-        await p.query(`UPDATE client_store_settings SET template = $1, updated_at = NOW() WHERE client_id = $2`, [template, clientId]);
+        const params: any[] = [template, clientId];
+        let where = `WHERE client_id = $2`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $2`; }
+        const upd = await p.query(`UPDATE client_store_settings SET template = $1, updated_at = NOW() ${where}`, params);
+        if (upd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         return { success: true, message: `تم تغيير القالب إلى "${template}" ✅` };
       }
       case 'get_delivery_config': {
-        const res = await p.query(`SELECT free_delivery_threshold FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+        const params: any[] = [clientId];
+        let where = `WHERE client_id = $1`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $1`; }
+        else where += ` LIMIT 1`;
+        const res = await p.query(`SELECT free_delivery_threshold FROM client_store_settings ${where}`, params);
         const threshold = res.rows[0]?.free_delivery_threshold;
         return { success: true, message: `**إعدادات التوصيل**\n- الحد الأقصى للتوصيل المجاني: ${threshold ? threshold + ' دج' : 'غير محدد'}`, data: { free_delivery_threshold: threshold } };
       }
       case 'update_free_delivery_threshold': {
         const { amount } = action;
         if (amount === undefined) return { success: false, message: 'المبلغ مطلوب' };
-        await p.query(`UPDATE client_store_settings SET free_delivery_threshold = $1, updated_at = NOW() WHERE client_id = $2`, [amount, clientId]);
+        const params: any[] = [amount, clientId];
+        let where = `WHERE client_id = $2`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $2`; }
+        const upd = await p.query(`UPDATE client_store_settings SET free_delivery_threshold = $1, updated_at = NOW() ${where}`, params);
+        if (upd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         return { success: true, message: `تم تحديث حد التوصيل المجاني إلى ${amount} دج` };
       }
 
       // ═══ BOT SETTINGS ═══
       case 'get_bot_settings': {
-        const res = await p.query(`SELECT greeting_message, enable_telegram, enable_messenger, enable_whatsapp, telegram_bot_username FROM bot_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
-        if (!res.rows.length) return { success: true, message: 'لا توجد إعدادات بوت مُعدّة.', data: null };
-        const r = res.rows[0];
+        const params: any[] = [clientId];
+        // Prefer THIS store's bot row, fall back to any account row (legacy single-bot).
+        let rows: any[] = [];
+        if (hasStore) {
+          try {
+            const r = await p.query(`SELECT greeting_message, enable_telegram, enable_messenger, enable_whatsapp, telegram_bot_username FROM bot_settings WHERE client_id = $1 AND store_id = $2 LIMIT 1`, [clientId, sid]);
+            rows = r.rows;
+          } catch {}
+        }
+        if (!rows.length) {
+          const res = await p.query(`SELECT greeting_message, enable_telegram, enable_messenger, enable_whatsapp, telegram_bot_username FROM bot_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+          rows = res.rows;
+        }
+        if (!rows.length) return { success: true, message: 'لا توجد إعدادات بوت مُعدّة.', data: null };
+        const r = rows[0];
         return { success: true, message: `**إعدادات البوت**\n- التحية: ${r.greeting_message || 'بدون'}\n- تيليجرام: ${r.enable_telegram ? 'مفعّل' : 'معطّل'} ${r.telegram_bot_username ? '@' + r.telegram_bot_username : ''}\n- ماسنجر: ${r.enable_messenger ? 'مفعّل' : 'معطّل'}\n- واتساب: ${r.enable_whatsapp ? 'مفعّل' : 'معطّل'}`, data: r };
       }
       case 'update_bot_settings': {
@@ -515,17 +619,30 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!field || value === undefined) return { success: false, message: 'الحقل والقيمة مطلوبان' };
         const allowed = ['greeting_message', 'enable_telegram', 'enable_messenger', 'enable_whatsapp'];
         if (!allowed.includes(field)) return { success: false, message: `الحقل "${field}" غير مدعوم` };
-        await p.query(`UPDATE bot_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2`, [value, clientId]);
+        // Prefer THIS store's row. Legacy callers (no store) keep account-wide behavior.
+        // Never fall back across stores: a missing row means "not configured", not "update everything".
+        if (hasStore) {
+          let upd = { rowCount: 0 };
+          try {
+            upd = await p.query(`UPDATE bot_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2 AND (store_id = $3 OR store_id IS NULL)`, [value, clientId, sid]);
+          } catch { upd = { rowCount: 0 }; }
+          if (upd.rowCount === 0) return { success: false, message: 'لا توجد إعدادات بوت لهذا المتجر — أنشئها من صفحة البوت أولاً' };
+        } else {
+          const fb = await p.query(`UPDATE bot_settings SET ${field} = $1, updated_at = NOW() WHERE client_id = $2`, [value, clientId]);
+          if (fb.rowCount === 0) return { success: false, message: 'لا توجد إعدادات بوت مُعدّة' };
+        }
         return { success: true, message: `تم تحديث ${field}` };
       }
 
       // ═══ ANALYTICS ═══
       case 'get_dashboard_stats': {
+        const sParams: any[] = hasStore ? [clientId, sid] : [clientId];
+        const sScope = hasStore ? ` AND (store_id = $2 OR store_id IS NULL)` : '';
         const [ordersRes, revenueRes, productsRes, customersRes] = await Promise.all([
-          p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`, [clientId]),
-          p.query(`SELECT COALESCE(SUM(total_price), 0) as this_month, (SELECT COALESCE(SUM(total_price), 0) FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '60 days' AND created_at < CURRENT_DATE - INTERVAL '30 days') as last_month FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, [clientId]),
-          p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as active FROM client_store_products WHERE client_id = $1`, [clientId]),
-          p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL`, [clientId]),
+          p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1${sScope} AND deleted_at IS NULL`, sParams),
+          p.query(`SELECT COALESCE(SUM(total_price), 0) as this_month, (SELECT COALESCE(SUM(total_price), 0) FROM store_orders WHERE client_id = $1${sScope} AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '60 days' AND created_at < CURRENT_DATE - INTERVAL '30 days') as last_month FROM store_orders WHERE client_id = $1${sScope} AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, sParams),
+          p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'active') as active FROM client_store_products WHERE client_id = $1${sScope}`, sParams),
+          p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1${sScope} AND deleted_at IS NULL AND customer_phone IS NOT NULL`, sParams),
         ]);
         const o = ordersRes.rows[0];
         const r = revenueRes.rows[0];
@@ -537,10 +654,12 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       }
       case 'get_analytics': {
         const period = action.period === '90d' ? '90 days' : action.period === '7d' ? '7 days' : '30 days';
+        const aParams: any[] = hasStore ? [clientId, sid] : [clientId];
+        const aScope = hasStore ? ` AND (store_id = $2 OR store_id IS NULL)` : '';
         const [revenueRes, topProducts, recentOrders] = await Promise.all([
-          p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as orders FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '${period}'`, [clientId]),
-          p.query(`SELECT p.title, COUNT(o.id) as sales, SUM(o.total_price) as revenue FROM client_store_products p JOIN store_orders o ON o.product_id = p.id WHERE p.client_id = $1 AND o.created_at >= CURRENT_DATE - INTERVAL '${period}' AND o.status != 'cancelled' GROUP BY p.title ORDER BY sales DESC LIMIT 5`, [clientId]),
-          p.query(`SELECT status, COUNT(*) as count FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND created_at >= CURRENT_DATE - INTERVAL '${period}' GROUP BY status`, [clientId]),
+          p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue, COUNT(*) as orders FROM store_orders WHERE client_id = $1${aScope} AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '${period}'`, aParams),
+          p.query(`SELECT p.title, COUNT(o.id) as sales, SUM(o.total_price) as revenue FROM client_store_products p JOIN store_orders o ON o.product_id = p.id WHERE p.client_id = $1${hasStore ? ` AND (p.store_id = $2 OR p.store_id IS NULL) AND (o.store_id = $2 OR o.store_id IS NULL)` : ''} AND o.created_at >= CURRENT_DATE - INTERVAL '${period}' AND o.status != 'cancelled' GROUP BY p.title ORDER BY sales DESC LIMIT 5`, aParams),
+          p.query(`SELECT status, COUNT(*) as count FROM store_orders WHERE client_id = $1${aScope} AND deleted_at IS NULL AND created_at >= CURRENT_DATE - INTERVAL '${period}' GROUP BY status`, aParams),
         ]);
         const rev = revenueRes.rows[0];
         const top = topProducts.rows.map((p: any) => `  - ${p.title}: ${p.sales} مبيعات | ${Number(p.revenue).toLocaleString('ar-DZ')} دج`).join('\n') || '  لا توجد بيانات';
@@ -598,7 +717,10 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         return { success: true, message: `**شركات التوصيل:**\n${list}`, data: res.rows };
       }
       case 'list_delivery_integrations': {
-        const res = await p.query(`SELECT di.id, di.delivery_company_id, dc.name, di.is_enabled, di.configured_at FROM delivery_integrations di JOIN delivery_companies dc ON dc.id = di.delivery_company_id WHERE di.client_id = $1 ORDER BY dc.name`, [clientId]);
+        const params: any[] = [clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (di.store_id = $${params.length} OR di.store_id IS NULL)`; }
+        const res = await p.query(`SELECT di.id, di.delivery_company_id, dc.name, di.is_enabled, di.configured_at FROM delivery_integrations di JOIN delivery_companies dc ON dc.id = di.delivery_company_id WHERE di.client_id = $1${scope} ORDER BY dc.name`, params);
         if (!res.rows.length) return { success: true, message: 'لم تُعدّ أي شركة توصيل بعد.', data: [] };
         const list = res.rows.map((r: any) => `- ${r.name} | ${r.is_enabled ? 'مفعّل' : 'معطّل'} | منذ ${new Date(r.configured_at).toLocaleDateString('ar-DZ')}`).join('\n');
         return { success: true, message: `**إعدادات التوصيل:**\n${list}`, data: res.rows };
@@ -635,7 +757,10 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
 
       // ═══ DELIVERY PRICES ═══
       case 'get_delivery_prices': {
-        const res = await p.query(`SELECT id, wilaya_id, home_delivery_price, desk_delivery_price, is_active, estimated_days, notes FROM delivery_prices WHERE client_id = $1 ORDER BY wilaya_id`, [clientId]);
+        const params: any[] = [clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, wilaya_id, home_delivery_price, desk_delivery_price, is_active, estimated_days, notes FROM delivery_prices WHERE client_id = $1${scope} ORDER BY wilaya_id`, params);
         if (!res.rows.length) return { success: true, message: 'لم تُعدّ أسعار التوصيل بعد.', data: [] };
         const list = res.rows.slice(0, 15).map((r: any) => `- ولاية ${r.wilaya_id}: منزلي ${r.home_delivery_price} دج | مكتب ${r.desk_delivery_price || '-'} دج | ${r.estimated_days} أيام | ${r.is_active ? 'مفعّل' : 'معطّل'}`).join('\n');
         const more = res.rows.length > 15 ? `\n... و${res.rows.length - 15} ولاية أخرى` : '';
@@ -644,11 +769,15 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'set_delivery_price': {
         const { wilayaId, homePrice, deskPrice, estimatedDays } = action;
         if (!wilayaId || homePrice === undefined) return { success: false, message: 'رقم الولاية والسعر المنزلي مطلوبان' };
-        const existing = await p.query(`SELECT id FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND delivery_company_id IS NULL`, [clientId, wilayaId]);
+        const exParams: any[] = [clientId, wilayaId];
+        let exScope = '';
+        if (hasStore) { exParams.push(sid); exScope = ` AND (store_id = $${exParams.length} OR store_id IS NULL)`; }
+        const existing = await p.query(`SELECT id FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2${exScope} AND delivery_company_id IS NULL`, exParams);
         if (existing.rows.length) {
           await p.query(`UPDATE delivery_prices SET home_delivery_price = $1, desk_delivery_price = $2, estimated_days = $3, updated_at = NOW() WHERE id = $4`, [homePrice, deskPrice || null, estimatedDays || 3, existing.rows[0].id]);
         } else {
-          await p.query(`INSERT INTO delivery_prices (client_id, wilaya_id, home_delivery_price, desk_delivery_price, estimated_days) VALUES ($1, $2, $3, $4, $5)`, [clientId, wilayaId, homePrice, deskPrice || null, estimatedDays || 3]);
+          if (!hasStore) return { success: false, message: 'حدد المتجر أولاً قبل إضافة سعر توصيل' };
+          await p.query(`INSERT INTO delivery_prices (client_id, store_id, wilaya_id, home_delivery_price, desk_delivery_price, estimated_days) VALUES ($1, $2, $3, $4, $5, $6)`, [clientId, sid, wilayaId, homePrice, deskPrice || null, estimatedDays || 3]);
         }
         return { success: true, message: `تم تحديث سعر التوصيل لولاية ${wilayaId}: ${homePrice} دج ✅` };
       }
@@ -658,11 +787,15 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         let updated = 0;
         for (const p2 of prices) {
           if (!p2.wilayaId || p2.homePrice === undefined) continue;
-          const ex = await p.query(`SELECT id FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND delivery_company_id IS NULL`, [clientId, p2.wilayaId]);
+          const bxParams: any[] = [clientId, p2.wilayaId];
+          let bxScope = '';
+          if (hasStore) { bxParams.push(sid); bxScope = ` AND (store_id = $${bxParams.length} OR store_id IS NULL)`; }
+          const ex = await p.query(`SELECT id FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2${bxScope} AND delivery_company_id IS NULL`, bxParams);
           if (ex.rows.length) {
             await p.query(`UPDATE delivery_prices SET home_delivery_price = $1, updated_at = NOW() WHERE id = $2`, [p2.homePrice, ex.rows[0].id]);
           } else {
-            await p.query(`INSERT INTO delivery_prices (client_id, wilaya_id, home_delivery_price, desk_delivery_price, estimated_days) VALUES ($1, $2, $3, $4, $5)`, [clientId, p2.wilayaId, p2.homePrice, p2.deskPrice || null, p2.estimatedDays || 3]);
+            if (!hasStore) continue;
+            await p.query(`INSERT INTO delivery_prices (client_id, store_id, wilaya_id, home_delivery_price, desk_delivery_price, estimated_days) VALUES ($1, $2, $3, $4, $5, $6)`, [clientId, sid, p2.wilayaId, p2.homePrice, p2.deskPrice || null, p2.estimatedDays || 3]);
           }
           updated++;
         }
@@ -671,7 +804,11 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'delete_delivery_price': {
         const { priceId } = action;
         if (!priceId) return { success: false, message: 'معرف السعر مطلوب' };
-        await p.query(`DELETE FROM delivery_prices WHERE id = $1 AND client_id = $2`, [priceId, clientId]);
+        const params: any[] = [priceId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const del = await p.query(`DELETE FROM delivery_prices WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (del.rowCount === 0) return { success: false, message: `سعر التوصيل #${priceId} غير موجود في هذا المتجر` };
         return { success: true, message: `تم حذف سعر التوصيل #${priceId}` };
       }
 
@@ -679,6 +816,7 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'list_stock': {
         let sql = `SELECT id, name, sku, category, quantity, unit_price, reorder_level, status, supplier_name FROM client_stock_products WHERE client_id = $1`;
         const params: any[] = [clientId];
+        if (hasStore) { params.push(sid); sql += ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
         if (action.search) { params.push(`%${action.search}%`); sql += ` AND (name ILIKE $${params.length} OR sku ILIKE $${params.length} OR description ILIKE $${params.length})`; }
         if (action.category) { params.push(action.category); sql += ` AND category = $${params.length}`; }
         if (action.status) { params.push(action.status); sql += ` AND status = $${params.length}`; }
@@ -691,8 +829,11 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'get_stock': {
         const { stockId } = action;
         if (!stockId) return { success: false, message: 'معرف المنتج مطلوب' };
-        const res = await p.query(`SELECT id, name, sku, description, category, quantity, unit_price, reorder_level, location, supplier_name, supplier_contact, status, notes, sizes, colors FROM client_stock_products WHERE id = $1 AND client_id = $2`, [stockId, clientId]);
-        if (!res.rows.length) return { success: false, message: `المنتج #${stockId} غير موجود` };
+        const gsParams: any[] = [stockId, clientId];
+        let gsScope = '';
+        if (hasStore) { gsParams.push(sid); gsScope = ` AND (store_id = $${gsParams.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, name, sku, description, category, quantity, unit_price, reorder_level, location, supplier_name, supplier_contact, status, notes, sizes, colors FROM client_stock_products WHERE id = $1 AND client_id = $2${gsScope}`, gsParams);
+        if (!res.rows.length) return { success: false, message: `المنتج #${stockId} غير موجود في هذا المتجر` };
         const r = res.rows[0];
         const variants = await p.query(`SELECT color, size, size2, price, stock_quantity FROM client_stock_variants WHERE stock_id = $1 AND client_id = $2 ORDER BY sort_order`, [stockId, clientId]);
         let variantStr = '';
@@ -704,7 +845,8 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'create_stock': {
         const { name, quantity, unitPrice, category, sizes, colors, sku, description, reorderLevel, location, supplierName, supplierContact, shippingMode, shippingFlatFee, notes } = action;
         if (!name) return { success: false, message: 'اسم المنتج مطلوب' };
-        const res = await p.query(`INSERT INTO client_stock_products (client_id, name, quantity, unit_price, category, sizes, colors, sku, description, reorder_level, location, supplier_name, supplier_contact, shipping_mode, shipping_flat_fee, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`, [clientId, name, quantity || 0, unitPrice || null, category || null, sizes || [], colors || [], sku || null, description || null, reorderLevel || 10, location || null, supplierName || null, supplierContact || null, shippingMode || 'delivery_pricing', shippingFlatFee || null, notes || null]);
+        if (!hasStore) return { success: false, message: 'حدد المتجر أولاً قبل إضافة مخزون' };
+        const res = await p.query(`INSERT INTO client_stock_products (client_id, store_id, name, quantity, unit_price, category, sizes, colors, sku, description, reorder_level, location, supplier_name, supplier_contact, shipping_mode, shipping_flat_fee, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`, [clientId, sid, name, quantity || 0, unitPrice || null, category || null, sizes || [], colors || [], sku || null, description || null, reorderLevel || 10, location || null, supplierName || null, supplierContact || null, shippingMode || 'delivery_pricing', shippingFlatFee || null, notes || null]);
         return { success: true, message: `تم إضافة "${name}" للمخزون (ID: ${res.rows[0].id}) ✅`, data: { stockId: res.rows[0].id } };
       }
       case 'update_stock': {
@@ -712,28 +854,45 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!stockId || !field || value === undefined) return { success: false, message: 'بيانات ناقصة' };
         const allowed = ['name', 'unit_price', 'category', 'status', 'reorder_level', 'supplier_name', 'supplier_contact', 'location', 'sku', 'description', 'notes', 'shipping_mode', 'shipping_flat_fee'];
         if (!allowed.includes(field)) return { success: false, message: `الحقل "${field}" غير مدعوم. المتاح: ${allowed.join(', ')}` };
-        await p.query(`UPDATE client_stock_products SET ${field} = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3`, [value, stockId, clientId]);
+        const usParams: any[] = [value, stockId, clientId];
+        let usScope = '';
+        if (hasStore) { usParams.push(sid); usScope = ` AND (store_id = $${usParams.length} OR store_id IS NULL)`; }
+        const upd = await p.query(`UPDATE client_stock_products SET ${field} = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3${usScope}`, usParams);
+        if (upd.rowCount === 0) return { success: false, message: `المنتج #${stockId} غير موجود في هذا المتجر` };
         return { success: true, message: `تم تحديث ${field} للمنتج #${stockId} ✅` };
       }
       case 'adjust_stock': {
         const { stockId, adjustment, reason, notes } = action;
         if (!stockId || !adjustment || !reason) return { success: false, message: 'معرف المنتج والتعديل والسبب مطلوبون' };
-        const current = await p.query(`SELECT quantity FROM client_stock_products WHERE id = $1 AND client_id = $2`, [stockId, clientId]);
-        if (!current.rows.length) return { success: false, message: `المنتج #${stockId} غير موجود` };
+        const asParams: any[] = [stockId, clientId];
+        let asScope = '';
+        if (hasStore) { asParams.push(sid); asScope = ` AND (store_id = $${asParams.length} OR store_id IS NULL)`; }
+        const current = await p.query(`SELECT quantity FROM client_stock_products WHERE id = $1 AND client_id = $2${asScope}`, asParams);
+        if (!current.rows.length) return { success: false, message: `المنتج #${stockId} غير موجود في هذا المتجر` };
         const newQty = Number(current.rows[0].quantity) + Number(adjustment);
         if (newQty < 0) return { success: false, message: `الكمية النهائية (${newQty}) ستكون سالبة` };
         await p.query(`UPDATE client_stock_products SET quantity = $1, updated_at = NOW() WHERE id = $2 AND client_id = $3`, [newQty, stockId, clientId]);
-        await p.query(`INSERT INTO client_stock_history (stock_id, client_id, adjustment, reason, notes, previous_quantity, new_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [stockId, clientId, adjustment, reason, notes || null, current.rows[0].quantity, newQty]);
+        await p.query(`INSERT INTO client_stock_history (stock_id, client_id, store_id, adjustment, reason, notes, previous_quantity, new_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [stockId, clientId, hasStore ? sid : null, adjustment, reason, notes || null, current.rows[0].quantity, newQty]).catch(async () => {
+          // Fallback for schemas without store_id on history
+          await p.query(`INSERT INTO client_stock_history (stock_id, client_id, adjustment, reason, notes, previous_quantity, new_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [stockId, clientId, adjustment, reason, notes || null, current.rows[0].quantity, newQty]);
+        });
         return { success: true, message: `تم تعديل مخزون #${stockId}: ${current.rows[0].quantity} → ${newQty} (${adjustment > 0 ? '+' : ''}${adjustment}) ✅` };
       }
       case 'delete_stock': {
         const { stockId } = action;
         if (!stockId) return { success: false, message: 'معرف المنتج مطلوب' };
-        await p.query(`DELETE FROM client_stock_products WHERE id = $1 AND client_id = $2`, [stockId, clientId]);
+        const dsParams: any[] = [stockId, clientId];
+        let dsScope = '';
+        if (hasStore) { dsParams.push(sid); dsScope = ` AND (store_id = $${dsParams.length} OR store_id IS NULL)`; }
+        const del = await p.query(`DELETE FROM client_stock_products WHERE id = $1 AND client_id = $2${dsScope}`, dsParams);
+        if (del.rowCount === 0) return { success: false, message: `المنتج #${stockId} غير موجود في هذا المتجر` };
         return { success: true, message: `تم حذف المنتج #${stockId} من المخزون` };
       }
       case 'get_low_stock_alerts': {
-        const res = await p.query(`SELECT id, name, quantity, reorder_level, category FROM client_stock_products WHERE client_id = $1 AND status = 'active' AND quantity <= reorder_level ORDER BY quantity ASC LIMIT 15`, [clientId]);
+        const params: any[] = [clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, name, quantity, reorder_level, category FROM client_stock_products WHERE client_id = $1${scope} AND status = 'active' AND quantity <= reorder_level ORDER BY quantity ASC LIMIT 15`, params);
         if (!res.rows.length) return { success: true, message: 'لا توجد منتجات بمخزون منخفض 🎉', data: [] };
         const list = res.rows.map((r: any) => `- **${r.name}** (${r.category || '-'}) | المخزون: ${r.quantity} | الحد الأدنى: ${r.reorder_level}`).join('\n');
         return { success: true, message: `**⚠️ مخزون منخفض (${res.rows.length}):**\n${list}`, data: res.rows };
@@ -743,6 +902,12 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'get_product_variants': {
         const { productId } = action;
         if (!productId) return { success: false, message: 'معرف المنتج مطلوب' };
+        // Verify the product belongs to THIS store first (variants inherit the product's store).
+        const pvParams: any[] = [productId, clientId];
+        let pvScope = '';
+        if (hasStore) { pvParams.push(sid); pvScope = ` AND (store_id = $${pvParams.length} OR store_id IS NULL)`; }
+        const own = await p.query(`SELECT id FROM client_store_products WHERE id = $1 AND client_id = $2${pvScope}`, pvParams);
+        if (!own.rows.length) return { success: false, message: `المنتج #${productId} غير موجود في هذا المتجر` };
         const res = await p.query(`SELECT id, color, size, size2, variant_name, price, stock_quantity, is_active FROM product_variants WHERE product_id = $1 AND client_id = $2 ORDER BY sort_order`, [productId, clientId]);
         if (!res.rows.length) return { success: true, message: 'لا توجد متغيرات لهذا المنتج.', data: [] };
         const list = res.rows.map((r: any) => `- #${r.id} | ${[r.color, r.size, r.size2].filter(Boolean).join('/')} | ${r.price || 'رئيسي'} دج | ${r.stock_quantity} وحدة | ${r.is_active ? 'مفعّل' : 'معطّل'}`).join('\n');
@@ -751,6 +916,12 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'update_product_variants': {
         const { productId, variants } = action;
         if (!productId || !variants || !Array.isArray(variants)) return { success: false, message: 'معرف المنتج وقائمة المتغيرات مطلوبان' };
+        // Ownership gate: variants inherit the product's store.
+        const owParams: any[] = [productId, clientId];
+        let owScope = '';
+        if (hasStore) { owParams.push(sid); owScope = ` AND (store_id = $${owParams.length} OR store_id IS NULL)`; }
+        const ownProd = await p.query(`SELECT id FROM client_store_products WHERE id = $1 AND client_id = $2${owScope}`, owParams);
+        if (!ownProd.rows.length) return { success: false, message: `المنتج #${productId} غير موجود في هذا المتجر` };
         const formatted = variants.map((v: any, i: number) => ({
           color: v.color || null,
           size: v.size || null,
@@ -776,7 +947,11 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
 
       // ═══ SOCIAL LINKS ═══
       case 'get_social_links': {
-        const res = await p.query(`SELECT template_social_links FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+        const params: any[] = [clientId];
+        let where = `WHERE client_id = $1`;
+        if (hasStore) { params.push(sid); where = `WHERE id = $${params.length} AND client_id = $1`; }
+        else where += ` LIMIT 1`;
+        const res = await p.query(`SELECT template_social_links FROM client_store_settings ${where}`, params);
         const links = res.rows[0]?.template_social_links;
         if (!links) return { success: true, message: 'لا توجد روابط تواصل مُعدّة.', data: {} };
         const parsed = typeof links === 'string' ? JSON.parse(links) : links;
@@ -788,11 +963,19 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
         if (!platform) return { success: false, message: 'المنصة مطلوبة' };
         const allowed = ['facebook', 'instagram', 'tiktok', 'youtube', 'twitter', 'snapchat', 'whatsapp', 'telegram'];
         if (!allowed.includes(platform)) return { success: false, message: `المنصة "${platform}" غير مدعومة. المتاح: ${allowed.join(', ')}` };
-        const res = await p.query(`SELECT template_social_links FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+        const slParams: any[] = [clientId];
+        let slWhere = `WHERE client_id = $1`;
+        if (hasStore) { slParams.push(sid); slWhere = `WHERE id = $${slParams.length} AND client_id = $1`; }
+        else slWhere += ` LIMIT 1`;
+        const res = await p.query(`SELECT template_social_links FROM client_store_settings ${slWhere}`, slParams);
         let links: Record<string, string> = {};
         try { links = typeof res.rows[0]?.template_social_links === 'string' ? JSON.parse(res.rows[0].template_social_links) : (res.rows[0]?.template_social_links || {}); } catch { links = {}; }
         if (url) { links[platform] = url; } else { delete links[platform]; }
-        await p.query(`UPDATE client_store_settings SET template_social_links = $1, updated_at = NOW() WHERE client_id = $2`, [JSON.stringify(links), clientId]);
+        const upParams: any[] = [JSON.stringify(links), clientId];
+        let upWhere = `WHERE client_id = $2`;
+        if (hasStore) { upParams.push(sid); upWhere = `WHERE id = $${upParams.length} AND client_id = $2`; }
+        const upUpd = await p.query(`UPDATE client_store_settings SET template_social_links = $1, updated_at = NOW() ${upWhere}`, upParams);
+        if (upUpd.rowCount === 0) return { success: false, message: 'المتجر غير موجود' };
         return { success: true, message: `تم تحديث ${platform}: ${url || 'تم الحذف'} ✅` };
       }
 
@@ -818,7 +1001,10 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
 
       // ═══ CAMPAIGNS ═══
       case 'list_campaigns': {
-        const res = await p.query(`SELECT id, name, target_category, channel, status, recipients_count, sent_count, failed_count, sent_at, created_at FROM message_campaigns WHERE client_id = $1 ORDER BY created_at DESC LIMIT 10`, [clientId]);
+        const params: any[] = [clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const res = await p.query(`SELECT id, name, target_category, channel, status, recipients_count, sent_count, failed_count, sent_at, created_at FROM message_campaigns WHERE client_id = $1${scope} ORDER BY created_at DESC LIMIT 10`, params);
         if (!res.rows.length) return { success: true, message: 'لا توجد حملات.', data: [] };
         const list = res.rows.map((r: any) => `- #${r.id} | ${r.name} | ${r.channel} | ${r.status} | ${r.sent_count}/${r.recipients_count} مرسل | ${new Date(r.created_at).toLocaleDateString('ar-DZ')}`).join('\n');
         return { success: true, message: `**الحملات:**\n${list}`, data: res.rows };
@@ -826,26 +1012,38 @@ export async function executeAction(clientId: number, action: any): Promise<{ su
       case 'create_campaign': {
         const { name, message, targetCategory, channel } = action;
         if (!name || !message) return { success: false, message: 'الاسم والرسالة مطلوبان' };
-        const res = await p.query(`INSERT INTO message_campaigns (client_id, name, message, target_category, channel, status) VALUES ($1, $2, $3, $4, $5, 'draft') RETURNING id`, [clientId, name, message, targetCategory || 'all', channel || 'telegram']);
+        if (!hasStore) return { success: false, message: 'حدد المتجر أولاً قبل إنشاء حملة' };
+        const res = await p.query(`INSERT INTO message_campaigns (client_id, store_id, name, message, target_category, channel, status) VALUES ($1, $2, $3, $4, $5, $6, 'draft') RETURNING id`, [clientId, sid, name, message, targetCategory || 'all', channel || 'telegram']);
         return { success: true, message: `تم إنشاء الحملة "${name}" (ID: ${res.rows[0].id}) ✅`, data: { campaignId: res.rows[0].id } };
       }
       case 'send_campaign': {
         const { campaignId } = action;
         if (!campaignId) return { success: false, message: 'معرف الحملة مطلوب' };
-        await p.query(`UPDATE message_campaigns SET status = 'sending', sent_at = NOW(), updated_at = NOW() WHERE id = $1 AND client_id = $2`, [campaignId, clientId]);
+        const params: any[] = [campaignId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const upd = await p.query(`UPDATE message_campaigns SET status = 'sending', sent_at = NOW(), updated_at = NOW() WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (upd.rowCount === 0) return { success: false, message: `الحملة #${campaignId} غير موجودة في هذا المتجر` };
         return { success: true, message: `تم إرسال الحملة #${campaignId} ✅` };
       }
       case 'delete_campaign': {
         const { campaignId } = action;
         if (!campaignId) return { success: false, message: 'معرف الحملة مطلوب' };
-        await p.query(`DELETE FROM message_campaigns WHERE id = $1 AND client_id = $2`, [campaignId, clientId]);
+        const params: any[] = [campaignId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const del = await p.query(`DELETE FROM message_campaigns WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (del.rowCount === 0) return { success: false, message: `الحملة #${campaignId} غير موجودة في هذا المتجر` };
         return { success: true, message: `تم حذف الحملة #${campaignId}` };
       }
       case 'get_campaign_logs': {
         const { campaignId } = action;
         if (!campaignId) return { success: false, message: 'معرف الحملة مطلوب' };
-        const camp = await p.query(`SELECT name, status, recipients_count, sent_count, failed_count FROM message_campaigns WHERE id = $1 AND client_id = $2`, [campaignId, clientId]);
-        if (!camp.rows.length) return { success: false, message: 'الحملة غير موجودة' };
+        const params: any[] = [campaignId, clientId];
+        let scope = '';
+        if (hasStore) { params.push(sid); scope = ` AND (store_id = $${params.length} OR store_id IS NULL)`; }
+        const camp = await p.query(`SELECT name, status, recipients_count, sent_count, failed_count FROM message_campaigns WHERE id = $1 AND client_id = $2${scope}`, params);
+        if (!camp.rows.length) return { success: false, message: 'الحملة غير موجودة في هذا المتجر' };
         const c = camp.rows[0];
         const logs = await p.query(`SELECT customer_name, customer_phone, status, error_message, sent_at FROM message_logs WHERE campaign_id = $1 AND client_id = $2 ORDER BY created_at DESC LIMIT 10`, [campaignId, clientId]);
         const logList = logs.rows.map((l: any) => `  - ${l.customer_name || l.customer_phone} | ${l.status} ${l.error_message ? '(' + l.error_message + ')' : ''}`).join('\n');
@@ -985,10 +1183,17 @@ interface SlimContext {
   weekTrend: { thisWeek: number; lastWeek: number; changePct: number };
 }
 
-async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
+async function loadSlimContext(clientId: number, storeId: number): Promise<SlimContext | null> {
   const p = await pool();
 
-  const storeRes = await p.query(`SELECT store_name, store_description, template, primary_color, secondary_color, store_slug, is_public FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  // THIS store's profile (ownership-checked); legacy fallback = first store.
+  let storeRes = await p.query(
+    `SELECT id, store_name, store_description, template, primary_color, secondary_color, store_slug, is_public FROM client_store_settings WHERE client_id = $1 AND id = $2 LIMIT 1`,
+    [clientId, storeId]
+  );
+  if (!storeRes.rows.length) {
+    storeRes = await p.query(`SELECT id, store_name, store_description, template, primary_color, secondary_color, store_slug, is_public FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  }
   if (!storeRes.rows.length) return null;
   const s = storeRes.rows[0];
   const storeName = s.store_name || 'المتجر';
@@ -999,14 +1204,15 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   const subRes = await p.query(`SELECT tier, status, trial_ends_at, current_period_end FROM subscriptions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [clientId]).catch(() => ({ rows: [] }));
   const sub = subRes.rows[0] || {};
 
-  // Key metrics
+  // Key metrics — scoped to THIS store (NULL = pre-multi-store legacy rows).
+  const sid = [storeId];
   const [ordersRes, revenueRes, productsRes, lowStockRes, topRes, customersRes, deliveryRes, integrationsRes, staffRes] = await Promise.all([
-    p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL`, [clientId]),
-    p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue FROM store_orders WHERE client_id = $1 AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, [clientId]),
-    p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND status = 'active'`, [clientId]),
-    p.query(`SELECT title, stock_quantity FROM client_store_products WHERE client_id = $1 AND status = 'active' AND stock_quantity <= 5 AND stock_quantity > 0 ORDER BY stock_quantity ASC LIMIT 5`, [clientId]),
-    p.query(`SELECT p.title, COUNT(o.id) as sales FROM client_store_products p JOIN store_orders o ON o.product_id = p.id WHERE p.client_id = $1 AND o.created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY p.title ORDER BY sales DESC LIMIT 5`, [clientId]),
-    p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND customer_phone IS NOT NULL`, [clientId]),
+    p.query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE status = 'pending') as pending, COUNT(*) FILTER (WHERE status = 'delivered') as delivered, COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled FROM store_orders WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND deleted_at IS NULL`, [clientId, ...sid]),
+    p.query(`SELECT COALESCE(SUM(total_price), 0) as revenue FROM store_orders WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND status != 'cancelled' AND created_at >= CURRENT_DATE - INTERVAL '30 days'`, [clientId, ...sid]),
+    p.query(`SELECT COUNT(*) as total FROM client_store_products WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND status = 'active'`, [clientId, ...sid]),
+    p.query(`SELECT title, stock_quantity FROM client_store_products WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND status = 'active' AND stock_quantity <= 5 AND stock_quantity > 0 ORDER BY stock_quantity ASC LIMIT 5`, [clientId, ...sid]),
+    p.query(`SELECT p.title, COUNT(o.id) as sales FROM client_store_products p JOIN store_orders o ON o.product_id = p.id WHERE p.client_id = $1 AND (p.store_id = $2 OR p.store_id IS NULL) AND (o.store_id = $2 OR o.store_id IS NULL) AND o.created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY p.title ORDER BY sales DESC LIMIT 5`, [clientId, ...sid]),
+    p.query(`SELECT COUNT(DISTINCT customer_phone) as total FROM store_orders WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND deleted_at IS NULL AND customer_phone IS NOT NULL`, [clientId, ...sid]),
     p.query(`SELECT COUNT(*) as total FROM delivery_prices WHERE client_id = $1`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM delivery_integrations WHERE client_id = $1`, [clientId]),
     p.query(`SELECT COUNT(*) as total FROM staff WHERE client_id = $1`, [clientId]),
@@ -1069,14 +1275,17 @@ async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
   };
 }
 
-function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string, factsSummary: string = ''): string {
+function buildUserPrompt(ctx: SlimContext, history: GeminiContent[], question: string, factsSummary: string = '', storeNames?: string[]): string {
   let p = `=== بيانات الصاحب ===\n`;
   p += `الاسم: ${ctx.ownerName || 'غير محدد'}\n`;
   p += `الإيميل: ${ctx.ownerEmail || 'غير محدد'}\n`;
   p += `الهاتف: ${ctx.ownerPhone || 'غير محدد'}\n\n`;
 
   p += `=== بيانات المتجر ===\n`;
-  p += `المتجر: ${ctx.storeName}\n`;
+  p += `المتجر الحالي: ${ctx.storeName}\n`;
+  if (storeNames && storeNames.length > 1) {
+    p += `تنبيه: هذا الحساب يملك ${storeNames.length} متاجر (${storeNames.join('، ')}). كل الأرقام والإجراءات التالية تخص "${ctx.storeName}" فقط — لا تخلط بين المتاجر أبداً، وإذا طلب المالك شيئاً دون تحديد المتجر اسأله أولاً.\n`;
+  }
   p += `الوصف: ${ctx.storeDescription || 'بدون'}\n`;
   p += `القالب: ${ctx.template} | ألوان: ${ctx.primaryColor} / ${ctx.secondaryColor}\n`;
   p += `الرابط: sahla4eco.com/store/${ctx.storeSlug} | عام: ${ctx.isPublic ? 'نعم' : 'لا'}\n\n`;
@@ -1138,28 +1347,30 @@ function detectTopic(question: string): string {
   return '💬 عام';
 }
 
-async function searchStoreData(clientId: number, dataType: string, query: string): Promise<any[]> {
+async function searchStoreData(clientId: number, dataType: string, query: string, storeId?: number): Promise<any[]> {
   const p = await pool();
   const q = `%${query || ''}%`;
+  const s = storeId ? ` AND (store_id = $3 OR store_id IS NULL)` : '';
+  const sp: any[] = storeId ? [q, storeId] : [];
   switch (dataType) {
     case 'orders': {
-      const res = await p.query(`SELECT id, customer_name, customer_phone, total_price, status, delivery_status, created_at FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND (id::text ILIKE $2 OR customer_name ILIKE $2 OR customer_phone ILIKE $2 OR status ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q]);
+      const res = await p.query(`SELECT id, customer_name, customer_phone, total_price, status, delivery_status, created_at FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL${s} AND (id::text ILIKE $2 OR customer_name ILIKE $2 OR customer_phone ILIKE $2 OR status ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q, ...sp]);
       return res.rows;
     }
     case 'products': {
-      const res = await p.query(`SELECT id, title, price, stock_quantity, category, status FROM client_store_products WHERE client_id = $1 AND (title ILIKE $2 OR category ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q]);
+      const res = await p.query(`SELECT id, title, price, stock_quantity, category, status FROM client_store_products WHERE client_id = $1${s} AND (title ILIKE $2 OR category ILIKE $2) ORDER BY created_at DESC LIMIT 10`, [clientId, q, ...sp]);
       return res.rows;
     }
     case 'customers': {
-      const res = await p.query(`SELECT customer_name, customer_phone, COUNT(*) as order_count FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL AND (customer_name ILIKE $2 OR customer_phone ILIKE $2) GROUP BY customer_name, customer_phone ORDER BY order_count DESC LIMIT 10`, [clientId, q]);
+      const res = await p.query(`SELECT customer_name, customer_phone, COUNT(*) as order_count FROM store_orders WHERE client_id = $1 AND deleted_at IS NULL${s} AND (customer_name ILIKE $2 OR customer_phone ILIKE $2) GROUP BY customer_name, customer_phone ORDER BY order_count DESC LIMIT 10`, [clientId, q, ...sp]);
       return res.rows;
     }
     default: return [];
   }
 }
 
-async function executeSearch(clientId: number, dataType: string, query: string): Promise<string> {
-  const results = await searchStoreData(clientId, dataType, query);
+async function executeSearch(clientId: number, dataType: string, query: string, storeId?: number): Promise<string> {
+  const results = await searchStoreData(clientId, dataType, query, storeId);
   if (!results.length) return 'لا توجد نتائج.';
   if (dataType === 'orders') return results.map((o: any) => `#${o.id} | ${o.customer_name || 'N/A'} | ${o.total_price} دج | ${o.status} | ${new Date(o.created_at).toLocaleDateString('ar-DZ')}`).join('\n');
   if (dataType === 'products') return results.map((p: any) => `#${p.id} | ${p.title} | ${p.price} دج | مخزون: ${p.stock_quantity ?? 'N/A'} | ${p.category || ''}`).join('\n');
@@ -1171,10 +1382,13 @@ async function executeSearch(clientId: number, dataType: string, query: string):
 // OWNER CONVERSATION HISTORY
 // ═══════════════════════════════════════════════════════════════
 
-export async function getOwnerHistory(clientId: number): Promise<GeminiContent[]> {
+export async function getOwnerHistory(clientId: number, storeId?: number): Promise<GeminiContent[]> {
   try {
     const p = await pool();
-    const res = await p.query(`SELECT role, message FROM store_owner_conversations WHERE client_id = $1 ORDER BY created_at DESC LIMIT 8`, [clientId]);
+    const params: any[] = [clientId];
+    let scope = '';
+    if (storeId) { params.push(storeId); scope = ` AND (store_id = $2 OR store_id IS NULL)`; }
+    const res = await p.query(`SELECT role, message FROM store_owner_conversations WHERE client_id = $1${scope} ORDER BY created_at DESC LIMIT 8`, params);
     return res.rows.reverse().map((r: any) => {
       let text = r.message;
       if (r.role === 'assistant') text = text.replace(/^\[topic\].*\n?/, '');
@@ -1183,11 +1397,11 @@ export async function getOwnerHistory(clientId: number): Promise<GeminiContent[]
   } catch { return []; }
 }
 
-export async function saveOwnerHistory(clientId: number, message: string, response: string, topic?: string): Promise<void> {
+export async function saveOwnerHistory(clientId: number, message: string, response: string, topic?: string, storeId?: number): Promise<void> {
   try {
     const p = await pool();
     const tag = topic ? `[topic] ${topic}\n` : '';
-    await p.query(`INSERT INTO store_owner_conversations (client_id, role, message) VALUES ($1, 'owner', $2), ($1, 'assistant', $3)`, [clientId, message, tag + response]);
+    await p.query(`INSERT INTO store_owner_conversations (client_id, store_id, role, message) VALUES ($1, $2, 'owner', $3), ($1, $2, 'assistant', $4)`, [clientId, storeId || null, message, tag + response]);
     await p.query(`DELETE FROM store_owner_conversations WHERE client_id = $1 AND id NOT IN (SELECT id FROM store_owner_conversations WHERE client_id = $1 ORDER BY created_at DESC LIMIT 50)`, [clientId]).catch(() => {});
   } catch {}
 }

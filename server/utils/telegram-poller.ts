@@ -3,7 +3,7 @@ import https from 'https';
 import { sendTelegramMessage, replaceTemplateVariables } from './bot-messaging';
 import { parseSimpleCallback } from '../routes/telegram';
 import { ensureConnection } from './database';
-import { handleCustomerMessage, resolveClientFromTelegramChatId } from '../services/customer-ai';
+import { handleCustomerMessage, resolveClientFromTelegramChatId, resolveTelegramBotByToken } from '../services/customer-ai';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -360,9 +360,12 @@ async function processTelegramUpdate(pool: Pool, update: TelegramUpdate, botToke
               return;
             }
             const clientIdFromChatMap = await resolveClientFromTelegramChatId(String(chatId));
-            if (clientIdFromChatMap) {
+            // Resolve the store from THIS bot's token (per-store bots).
+            const botResolved = await resolveTelegramBotByToken(botToken);
+            const effectiveClientId = botResolved?.clientId || clientIdFromChatMap;
+            if (effectiveClientId) {
               try {
-                const aiResponse = await handleCustomerMessage(clientIdFromChatMap, 'telegram', String(chatId), trimmedText);
+                const aiResponse = await handleCustomerMessage(effectiveClientId, 'telegram', String(chatId), trimmedText, { storeId: botResolved?.storeId ?? null });
                 if (aiResponse) {
                   await sendTelegramMessage(botToken, String(chatId), aiResponse);
                 }

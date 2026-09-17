@@ -1216,7 +1216,7 @@ Answer helpfully in 2–3 sentences. If the answer is not about EcoPro, say "I c
  */
 router.post('/chat', chatLimiter, async (req: Request, res: Response) => {
   try {
-    const { question, history } = req.body;
+    const { question, history, storeId: rawStoreId } = req.body;
     if (!question) return res.status(400).json({ error: 'question is required' });
     // Accept last 20 prior turns for context (client sends [{role, content}])
     type HistoryMsg = { role: string; content: string };
@@ -1236,7 +1236,10 @@ router.post('/chat', chatLimiter, async (req: Request, res: Response) => {
       }));
 
       // Extra context: last 8 turns persisted in store_owner_conversations (getOwnerHistory)
-      const ownerExtra = await getOwnerHistory(clientId);
+      // Validate the requested store belongs to this account (ownership check inside).
+      const { resolveStore } = await import('../services/store-scope');
+      const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+      const ownerExtra = await getOwnerHistory(clientId, resolved.storeId || undefined);
       let mergedHistory = geminiHistory;
       if (ownerExtra.length > 0) {
         const seen = new Set(geminiHistory.map(m => m.parts[0]?.text || ''));
@@ -1244,8 +1247,8 @@ router.post('/chat', chatLimiter, async (req: Request, res: Response) => {
         if (extra.length > 0) mergedHistory = [...geminiHistory, ...extra].slice(-20);
       }
 
-      // Use clean owner AI
-      const { answer, action } = await handleOwnerMessage(clientId, question, mergedHistory);
+      // Use clean owner AI (store-scoped; asks which store when ambiguous)
+      const { answer, action } = await handleOwnerMessage(clientId, question, mergedHistory, { storeId: resolved.storeId });
 
       return res.json({ answer, ...(action ? { action } : {}) });
     }
@@ -1320,7 +1323,7 @@ router.post('/order-action', authAiLimiter, async (req: Request, res: Response) 
     if (!await checkAIActionPermission(clientId, 'action_order_status')) {
       return res.status(403).json({ error: 'AI order status change is disabled in AI settings.' });
     }
-    const { orderId, newStatus } = req.body;
+    const { orderId, newStatus, storeId: rawStoreId } = req.body;
 
     if (!orderId || !newStatus) {
       return res.status(400).json({ error: 'orderId and newStatus are required.' });
@@ -1333,6 +1336,17 @@ router.post('/order-action', authAiLimiter, async (req: Request, res: Response) 
     ];
     if (!allowedStatuses.includes(String(newStatus))) {
       return res.status(400).json({ error: `"${newStatus}" is not a valid order status.` });
+    }
+    // Ownership gate: the order must belong to the resolved store.
+    const { resolveStore } = await import('../services/store-scope');
+    const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+    if (!resolved.storeId) return res.status(404).json({ error: 'Store not found.' });
+    const own = await pool.query(
+      `SELECT id FROM store_orders WHERE id = $1 AND client_id = $2 AND (store_id = $3 OR store_id IS NULL) AND deleted_at IS NULL`,
+      [Number(orderId), clientId, resolved.storeId]
+    );
+    if (!own.rows.length) {
+      return res.status(404).json({ error: 'Order not found or does not belong to your store.' });
     }
     const result = await pool.query(
       `UPDATE store_orders
@@ -1372,7 +1386,7 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
       return res.status(401).json({ error: 'Authentication required.' });
     }
     const clientId = user.id || user.clientId;
-    const { type } = req.body;
+    const { type, storeId: rawStoreId } = req.body;
 
     if (type === 'create_product') {
       if (!await checkAIActionPermission(clientId, 'action_create_product')) {
@@ -1380,10 +1394,13 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
       }
       const { title, price, stock, category, description } = req.body;
       if (!title || price === undefined) return res.status(400).json({ error: 'title and price are required.' });
+      const { resolveStore } = await import('../services/store-scope');
+      const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+      if (!resolved.storeId) return res.status(404).json({ error: 'Store not found.' });
       const result = await pool.query(
-        `INSERT INTO client_store_products (client_id, title, price, stock_quantity, category, description, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW()) RETURNING id, title`,
-        [clientId, String(title).slice(0, 255), Number(price), Number(stock) || 0, String(category || 'General').slice(0, 100), String(description || '').slice(0, 2000)]
+        `INSERT INTO client_store_products (client_id, store_id, title, price, stock_quantity, category, description, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW(), NOW()) RETURNING id, title`,
+        [clientId, resolved.storeId, String(title).slice(0, 255), Number(price), Number(stock) || 0, String(category || 'General').slice(0, 100), String(description || '').slice(0, 2000)]
       );
       const p = result.rows[0];
       return res.json({ success: true, message: `Product "${p.title}" created successfully (ID: #${p.id}).`, product: p });
@@ -1398,10 +1415,15 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
       const allowedFields = ['price', 'stock_quantity', 'status', 'title', 'description', 'category'];
       const mappedField = String(field) === 'stock' ? 'stock_quantity' : String(field);
       if (!allowedFields.includes(mappedField)) return res.status(400).json({ error: `Field "${field}" cannot be edited via AI.` });
+      const { resolveStore } = await import('../services/store-scope');
+      const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+      const ep: any[] = [mappedField === 'price' || mappedField === 'stock_quantity' ? Number(value) : String(value).slice(0, 2000), Number(productId), clientId];
+      let escope = '';
+      if (resolved.storeId) { ep.push(resolved.storeId); escope = ` AND (store_id = $${ep.length} OR store_id IS NULL)`; }
       const result = await pool.query(
         `UPDATE client_store_products SET ${mappedField} = $1, updated_at = NOW()
-         WHERE id = $2 AND client_id = $3 RETURNING id, title`,
-        [mappedField === 'price' || mappedField === 'stock_quantity' ? Number(value) : String(value).slice(0, 2000), Number(productId), clientId]
+         WHERE id = $2 AND client_id = $3${escope} RETURNING id, title`,
+        ep
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found or does not belong to your store.' });
       return res.json({ success: true, message: `Product "${result.rows[0].title}" — ${field} updated to "${value}".`, product: result.rows[0] });
@@ -1413,10 +1435,15 @@ router.post('/product-action', authAiLimiter, async (req: Request, res: Response
       }
       const { productId, title } = req.body;
       if (!productId) return res.status(400).json({ error: 'productId is required.' });
+      const { resolveStore } = await import('../services/store-scope');
+      const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+      const dp: any[] = [Number(productId), clientId];
+      let dscope = '';
+      if (resolved.storeId) { dp.push(resolved.storeId); dscope = ` AND (store_id = $${dp.length} OR store_id IS NULL)`; }
       const result = await pool.query(
         `UPDATE client_store_products SET status = 'inactive', updated_at = NOW()
-         WHERE id = $1 AND client_id = $2 RETURNING id, title`,
-        [Number(productId), clientId]
+         WHERE id = $1 AND client_id = $2${dscope} RETURNING id, title`,
+        dp
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found or does not belong to your store.' });
       return res.json({ success: true, message: `Product "${result.rows[0].title || title}" has been deactivated.`, product: result.rows[0] });
@@ -1449,7 +1476,13 @@ router.post('/store-action', authAiLimiter, async (req: Request, res: Response) 
     if (!await checkAIActionPermission(clientId, 'action_store_design')) {
       return res.status(403).json({ error: 'AI store design changes are disabled in AI settings.' });
     }
-    const { field, value, changes } = req.body;
+    const { field, value, changes, storeId: rawStoreId } = req.body;
+
+    // Resolve + validate the target store (ownership check). Writes always hit ONE row.
+    const { resolveStore } = await import('../services/store-scope');
+    const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+    if (!resolved.storeId) return res.status(404).json({ error: 'Store not found.' });
+    const storeId = resolved.storeId;
 
     // ── Whitelist of AI-modifiable fields ──
     // Direct DB columns
@@ -1509,19 +1542,20 @@ router.post('/store-action', authAiLimiter, async (req: Request, res: Response) 
       if (allowedDirectCols.has(f)) {
         const result = await pool.query(
           `UPDATE client_store_settings SET ${f} = $1, updated_at = NOW()
-           WHERE client_id = $2 RETURNING store_name`,
-          [String(value).slice(0, 500), clientId]
+           WHERE id = $2 AND client_id = $3 RETURNING store_name`,
+          [String(value).slice(0, 500), storeId, clientId]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Store settings not found.' });
       } else {
         // JSONB update
-        await pool.query(
+        const upd = await pool.query(
           `UPDATE client_store_settings
            SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb,
                updated_at = NOW()
-           WHERE client_id = $2`,
-          [JSON.stringify({ [f]: value }), clientId]
+           WHERE id = $2 AND client_id = $3`,
+          [JSON.stringify({ [f]: value }), storeId, clientId]
         );
+        if (upd.rowCount === 0) return res.status(404).json({ error: 'Store settings not found.' });
       }
       return res.json({ success: true, message: `Store setting "${f}" updated to "${value}".` });
     }
@@ -1557,22 +1591,26 @@ router.post('/store-action', authAiLimiter, async (req: Request, res: Response) 
           pi++;
         }
         setClauses.push('updated_at = NOW()');
+        params.push(storeId);
+        const storeParam = pi++;
         params.push(clientId);
-        await pool.query(
-          `UPDATE client_store_settings SET ${setClauses.join(', ')} WHERE client_id = $${pi}`,
+        const upd = await pool.query(
+          `UPDATE client_store_settings SET ${setClauses.join(', ')} WHERE id = $${storeParam} AND client_id = $${pi}`,
           params
         );
+        if (upd.rowCount === 0) return res.status(404).json({ error: 'Store settings not found.' });
       }
 
       // Merge JSONB updates
       if (Object.keys(jsonbUpdates).length > 0) {
-        await pool.query(
+        const upd = await pool.query(
           `UPDATE client_store_settings
            SET template_settings = COALESCE(template_settings, '{}'::jsonb) || $1::jsonb,
                updated_at = NOW()
-           WHERE client_id = $2`,
-          [JSON.stringify(jsonbUpdates), clientId]
+           WHERE id = $2 AND client_id = $3`,
+          [JSON.stringify(jsonbUpdates), storeId, clientId]
         );
+        if (upd.rowCount === 0) return res.status(404).json({ error: 'Store settings not found.' });
       }
 
       const updatedCount = Object.keys(directUpdates).length + Object.keys(jsonbUpdates).length;
@@ -1604,7 +1642,7 @@ router.post('/exec-action', authAiLimiter, async (req: Request, res: Response) =
       return res.status(401).json({ error: 'Authentication required.' });
     }
     const clientId = user.id || user.clientId;
-    const { action } = req.body;
+    const { action, storeId: rawStoreId } = req.body;
     if (!action || !action.type) {
       return res.status(400).json({ error: 'Missing action type.' });
     }
@@ -1617,7 +1655,9 @@ router.post('/exec-action', authAiLimiter, async (req: Request, res: Response) =
     }
 
     const { executeAction } = await import('../services/owner-ai');
-    const result = await executeAction(clientId, action);
+    const { resolveStore } = await import('../services/store-scope');
+    const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+    const result = await executeAction(clientId, action, resolved.storeId || undefined);
     return res.json(result);
   } catch (err) {
     return serverError(res, err);
@@ -2869,7 +2909,7 @@ Write only the message text, no explanations.`;
 // Body: { message: string, clientId?: number, chatId?: string }
 router.post('/test-customer', authAiLimiter, async (req: Request, res: Response) => {
   try {
-    const { message, clientId, chatId } = req.body;
+    const { message, clientId, chatId, storeId } = req.body;
     if (!message) return res.status(400).json({ error: 'message is required' });
 
     // Use logged-in user's store, or the provided clientId
@@ -2887,7 +2927,7 @@ router.post('/test-customer', authAiLimiter, async (req: Request, res: Response)
     
     // Test mode: prefix with /test tells the handler this is the store owner testing
     const testMessage = '/test ' + message;
-    const response = await handleCustomerMessage(effectiveClientId, 'whatsapp', uniqueChatId, testMessage);
+    const response = await handleCustomerMessage(effectiveClientId, 'whatsapp', uniqueChatId, testMessage, { storeId: storeId != null ? Number(storeId) : null });
     
     if (!response) {
       return res.json({ 
@@ -3036,22 +3076,27 @@ router.put('/persona', authenticate, requireClient, async (req: Request, res: Re
 router.post('/persona/test', authenticate, requireClient, async (req: Request, res: Response) => {
   try {
     const clientId = (req as any).user?.id;
-    const { message } = req.body;
+    const { message, storeId: rawStoreId } = req.body;
     if (!message) return res.status(400).json({ error: 'message is required' });
 
-    // Load store context
+    const { resolveStore } = await import('../services/store-scope');
+    const resolved = await resolveStore(clientId, rawStoreId != null ? Number(rawStoreId) : null);
+    if (!resolved.storeId) return res.status(404).json({ error: 'Store not found' });
+    const testStoreId = resolved.storeId;
+
+    // Load store context (THIS store)
     const storeRes = await pool.query(
-      `SELECT store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 LIMIT 1`,
-      [clientId]
+      `SELECT store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 AND id = $2 LIMIT 1`,
+      [clientId, testStoreId]
     );
     if (!storeRes.rows.length) return res.status(404).json({ error: 'Store not found' });
     const { store_name, store_description, store_slug } = storeRes.rows[0];
 
-    // Load products
+    // Load products (THIS store)
     const productsRes = await pool.query(
       `SELECT title, price, original_price, description, category, stock_quantity
-       FROM client_store_products WHERE client_id = $1 AND status = 'active' ORDER BY is_featured DESC NULLS LAST LIMIT 10`,
-      [clientId]
+       FROM client_store_products WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND status = 'active' ORDER BY is_featured DESC NULLS LAST LIMIT 10`,
+      [clientId, testStoreId]
     );
     const products = productsRes.rows.map((p: any) => ({
       title: p.title, price: Number(p.price),
@@ -3063,8 +3108,8 @@ router.post('/persona/test', authenticate, requireClient, async (req: Request, r
     // Load delivery
     const delRes = await pool.query(
       `SELECT COUNT(*) as zones, MIN(home_delivery_price) as min_p, MAX(home_delivery_price) as max_p
-       FROM delivery_prices WHERE client_id = $1 AND is_active = true`,
-      [clientId]
+       FROM delivery_prices WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND is_active = true`,
+      [clientId, testStoreId]
     );
     const d = delRes.rows[0];
     const deliveryInfo = d?.zones > 0
@@ -3122,7 +3167,7 @@ ${message}`;
     const response = await generateText(
       'customer',
       prompt,
-      { storeId: clientId, storeName: store_name, clientId, userType: 'customer', persona: personaObj },
+      { storeId: testStoreId, storeName: store_name, clientId, userType: 'customer', persona: personaObj },
     );
 
     res.json({ answer: response });
@@ -3163,7 +3208,7 @@ router.post('/catch-up-unanswered', authenticate, async (req: Request, res: Resp
         FROM customer_conversations
         WHERE client_id = $1
       )
-      SELECT platform, platform_chat_id, message, created_at
+      SELECT platform, platform_chat_id, message, created_at, store_id
       FROM latest_messages
       WHERE rn = 1 AND role = 'customer'
       ORDER BY created_at DESC`,
@@ -3190,10 +3235,10 @@ router.post('/catch-up-unanswered', authenticate, async (req: Request, res: Resp
     const results: { platform: string; chatId: string; success: boolean; response?: string; error?: string }[] = [];
 
     for (const row of unanswered.rows) {
-      const { platform, platform_chat_id, message } = row;
+      const { platform, platform_chat_id, message, store_id } = row;
       try {
-        // Generate AI response (this also saves history)
-        const response = await handleCustomerMessage(clientId, platform, platform_chat_id, message);
+        // Generate AI response (this also saves history) — scoped to the conversation's store
+        const response = await handleCustomerMessage(clientId, platform, platform_chat_id, message, { storeId: store_id != null ? Number(store_id) : null });
 
         if (!response) {
           results.push({ platform, chatId: platform_chat_id, success: false, error: 'AI returned null (disabled or owner)' });

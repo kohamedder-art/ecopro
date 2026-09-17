@@ -1615,7 +1615,23 @@ async function handleMessage(pageId: string, senderId: string, message: any) {
     if (client_id && message.text) {
       console.log(`[Messenger] Attempting AI reply for client=${client_id} sender=${hashPsid(senderId)} tokenLen=${pageAccessToken?.length || 0}`);
       try {
-        const aiResponse = await handleCustomerMessage(client_id, 'messenger', senderId, String(message.text));
+        // Resolve the store from the Page (pages belong to stores; ownership-checked).
+        let msgStoreId: number | null = null;
+        try {
+          const pgRes = await pool.query(
+            `SELECT store_id FROM facebook_tokens WHERE client_id = $1 AND page_id = $2 AND store_id IS NOT NULL LIMIT 1`,
+            [client_id, String(pageId)]
+          );
+          if (pgRes.rows[0]?.store_id) msgStoreId = Number(pgRes.rows[0].store_id);
+          if (!msgStoreId) {
+            const subStore = await pool.query(
+              `SELECT store_id FROM messenger_subscribers WHERE client_id = $1 AND psid = $2 AND store_id IS NOT NULL ORDER BY last_interaction DESC LIMIT 1`,
+              [client_id, senderId]
+            );
+            if (subStore.rows[0]?.store_id) msgStoreId = Number(subStore.rows[0].store_id);
+          }
+        } catch {}
+        const aiResponse = await handleCustomerMessage(client_id, 'messenger', senderId, String(message.text), { storeId: msgStoreId });
         console.log(`[Messenger] AI reply result: ${aiResponse ? 'got response' : 'null/empty'}`);
         if (aiResponse) {
           await sendMessengerMessage(pageAccessToken, senderId, aiResponse);
@@ -1820,7 +1836,7 @@ async function handleInstagramMessage(igAccountId: string, senderId: string, mes
 
     // Resolve client by Instagram account ID stored during Facebook OAuth
     const tokenRes = await pool.query(
-      `SELECT client_id, page_access_token_encrypted FROM facebook_tokens
+      `SELECT client_id, store_id, page_access_token_encrypted FROM facebook_tokens
        WHERE instagram_account_id = $1 AND is_active = TRUE
        LIMIT 1`,
       [igAccountId]
@@ -1832,6 +1848,7 @@ async function handleInstagramMessage(igAccountId: string, senderId: string, mes
     }
 
     const clientId = Number(tokenRes.rows[0].client_id);
+    const igStoreId = tokenRes.rows[0].store_id != null ? Number(tokenRes.rows[0].store_id) : null;
     let pageAccessToken = '';
     try {
       pageAccessToken = decryptData(tokenRes.rows[0].page_access_token_encrypted);
@@ -1843,7 +1860,7 @@ async function handleInstagramMessage(igAccountId: string, senderId: string, mes
     if (!pageAccessToken) return;
 
     // Try AI auto-reply — pass 'instagram' as platform so per-platform toggle is checked correctly
-    const aiResponse = await handleCustomerMessage(clientId, 'instagram', `ig_${senderId}`, text);
+    const aiResponse = await handleCustomerMessage(clientId, 'instagram', `ig_${senderId}`, text, { storeId: igStoreId });
     if (aiResponse) {
       await sendInstagramMessage(pageAccessToken, senderId, aiResponse);
       return;

@@ -141,20 +141,22 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
   try {
     const pool = await ensureConnection();
 
-    // Resolve client: check bot_settings for whatsapp_phone_id match, 
+    // Resolve client: check bot_settings for whatsapp_phone_id match,
     // or fall back to platform-level phone number
     let clientId: number | null = null;
+    let waStoreId: number | null = null;
     let accessToken = getWaAccessToken(); // platform-level token
 
     // Priority 1: per-store phone number ID match
     const storeRes = await pool.query(
-      `SELECT client_id, whatsapp_token FROM bot_settings
+      `SELECT client_id, store_id, whatsapp_token FROM bot_settings
        WHERE whatsapp_phone_id = $1 AND enabled = true
        LIMIT 1`,
       [phoneNumberId]
     );
     if (storeRes.rows.length) {
       clientId = Number(storeRes.rows[0].client_id);
+      if (storeRes.rows[0].store_id != null) waStoreId = Number(storeRes.rows[0].store_id);
       // Use per-store token if available
       const storeToken = String(storeRes.rows[0].whatsapp_token || '').trim();
       if (storeToken) accessToken = storeToken;
@@ -170,20 +172,21 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
     // not to a different store they casually messaged earlier.
     if (!clientId && phoneNumberId === getWaPhoneNumberId()) {
       const custRes = await pool.query(
-        `SELECT client_id FROM customer_messaging_ids
+        `SELECT client_id, store_id FROM customer_messaging_ids
          WHERE customer_phone LIKE $1
          ORDER BY updated_at DESC LIMIT 1`,
         [`%${from.slice(-9)}`]
       );
       if (custRes.rows.length) {
         clientId = Number(custRes.rows[0].client_id);
+        if (custRes.rows[0].store_id != null) waStoreId = Number(custRes.rows[0].store_id);
       }
     }
 
     // Priority 3: subscriber mapping (last casual interaction)
     if (!clientId) {
       const subRes = await pool.query(
-        `SELECT client_id FROM whatsapp_subscribers
+        `SELECT client_id, store_id FROM whatsapp_subscribers
          WHERE wa_phone = $1
          ORDER BY last_interaction DESC
          LIMIT 1`,
@@ -191,6 +194,7 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
       );
       if (subRes.rows.length) {
         clientId = Number(subRes.rows[0].client_id);
+        if (subRes.rows[0].store_id != null) waStoreId = Number(subRes.rows[0].store_id);
       }
     }
 
@@ -216,7 +220,7 @@ async function handleWhatsAppMessage(phoneNumberId: string, from: string, text: 
     await markWhatsAppRead(accessToken, phoneNumberId, from);
 
     // Try AI auto-reply
-    const aiResponse = await handleCustomerMessage(clientId, 'whatsapp', from, text);
+    const aiResponse = await handleCustomerMessage(clientId, 'whatsapp', from, text, { storeId: waStoreId });
     if (aiResponse) {
       await sendWhatsAppTextMessage(accessToken, phoneNumberId, from, aiResponse);
       return;

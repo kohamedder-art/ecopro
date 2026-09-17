@@ -22,6 +22,7 @@
 import { ensureConnection } from '../utils/database';
 import { generateText, GeminiContent } from './gemini';
 import { notifyOrderCreated, sendPushNotification } from './push-notifications';
+import { resolveStore } from './store-scope';
 import { checkRateLimit, checkGlobalRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
 
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
@@ -189,38 +190,47 @@ export function detectChangeOfMind(msg: string): boolean {
   });
 }
 
-async function autoCancelCustomerOrders(clientId: number, platform: Platform, platformChatId: string, msg?: string): Promise<{ count: number; productName?: string }> {
+async function autoCancelCustomerOrders(clientId: number, platform: Platform, platformChatId: string, msg?: string, storeId?: number): Promise<{ count: number; productName?: string }> {
   try {
     const p = await pool();
     const phone = await resolvePhone(clientId, platform, platformChatId);
     if (!phone) return { count: 0 };
 
-    // Try to match a specific product from the customer's message
+    // Try to match a specific product from the customer's message (THIS store only)
     let productFilter = '';
     let productName: string | undefined;
     if (msg) {
       const words = msg.split(/\s+/).filter(w => w.length > 2);
       for (const w of words) {
+        const pq: any[] = [clientId, `%${w}%`];
+        let pscope = '';
+        if (storeId) { pscope = ` AND (store_id = $3 OR store_id IS NULL)`; pq.push(storeId); }
         const productMatch = await p.query(
-          `SELECT title FROM client_store_products WHERE client_id = $1 AND status = 'active' AND title ILIKE $2 LIMIT 1`,
-          [clientId, `%${w}%`]
+          `SELECT title FROM client_store_products WHERE client_id = $1 AND status = 'active'${pscope} AND title ILIKE $2 LIMIT 1`,
+          pq
         );
         if (productMatch.rows.length > 0) {
           productName = productMatch.rows[0].title;
-          productFilter = ` AND p.title ILIKE $3`;
+          productFilter = 'PRODUCT_PLACEHOLDER';
           break;
         }
       }
     }
 
     const params: any[] = [clientId, phone];
-    if (productFilter) params.push(`%${productName}%`);
+    let storeClause = '';
+    if (storeId) { params.push(storeId); storeClause = `AND (store_id = $${params.length} OR store_id IS NULL)`; }
+    if (productFilter) {
+      productFilter = ` AND p.title ILIKE $${params.length + 1}`;
+      params.push(`%${productName}%`);
+    }
 
     const res = await p.query(
       `UPDATE store_orders p
        SET status = 'cancelled', updated_at = NOW(),
            notes = COALESCE(notes, '') || ' | ألغاه الزبون عبر المحادثة'
        WHERE client_id = $1 AND customer_phone = $2
+         ${storeClause}
          AND status IN ('pending', 'confirmed')
          AND (delivery_status IS NULL OR delivery_status NOT IN ('shipped', 'in_transit', 'out_for_delivery', 'delivered', 'picked_up'))
          ${productFilter}
@@ -273,10 +283,19 @@ export async function isAiAutoReplyEnabled(clientId: number, platform?: Platform
   } catch { return true; }
 }
 
-export async function isSenderStoreOwner(clientId: number, platform: Platform, platformChatId: string): Promise<boolean> {
+export async function isSenderStoreOwner(clientId: number, platform: Platform, platformChatId: string, storeId?: number): Promise<boolean> {
   const pool = await ensureConnection();
   const col = platform === 'telegram' ? 'owner_telegram_chat_id' : 'owner_messenger_psid';
-  const ownerRes = await pool.query(`SELECT ${col}, support_phone FROM bot_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  // Prefer the store's own bot row, fall back to any account row (legacy single-bot).
+  let ownerRes = { rows: [] as any[] };
+  if (storeId) {
+    try {
+      ownerRes = await pool.query(`SELECT ${col}, support_phone FROM bot_settings WHERE client_id = $1 AND store_id = $2 LIMIT 1`, [clientId, storeId]);
+    } catch { ownerRes = { rows: [] }; }
+  }
+  if (!ownerRes.rows.length) {
+    ownerRes = await pool.query(`SELECT ${col}, support_phone FROM bot_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  }
   const storedId = String(ownerRes.rows[0]?.[col] || '').trim();
   if (storedId && storedId === String(platformChatId).trim()) return true;
   const senderCol = platform === 'telegram' ? 'telegram_chat_id' : 'messenger_psid';
@@ -288,10 +307,28 @@ export async function isSenderStoreOwner(clientId: number, platform: Platform, p
 }
 
 export async function resolveClientFromTelegramSecret(secret: string | undefined): Promise<number | null> {
+  const bot = await resolveTelegramBot(secret);
+  return bot?.clientId ?? null;
+}
+
+/** Resolve BOTH account and store from a Telegram webhook secret (per-store bots). */
+export async function resolveTelegramBot(secret: string | undefined): Promise<{ clientId: number; storeId: number | null } | null> {
   if (!secret) return null;
   const pool = await ensureConnection();
-  const res = await pool.query(`SELECT client_id FROM bot_settings WHERE telegram_webhook_secret = $1 AND enabled = true LIMIT 1`, [secret.trim()]);
-  return res.rows[0]?.client_id ? Number(res.rows[0].client_id) : null;
+  const res = await pool.query(`SELECT client_id, store_id FROM bot_settings WHERE telegram_webhook_secret = $1 AND enabled = true LIMIT 1`, [secret.trim()]);
+  if (!res.rows[0]?.client_id) return null;
+  return { clientId: Number(res.rows[0].client_id), storeId: res.rows[0].store_id != null ? Number(res.rows[0].store_id) : null };
+}
+
+/** Resolve account + store from a Telegram bot token (used by the poller). */
+export async function resolveTelegramBotByToken(botToken: string | undefined): Promise<{ clientId: number; storeId: number | null } | null> {
+  if (!botToken) return null;
+  try {
+    const pool = await ensureConnection();
+    const res = await pool.query(`SELECT client_id, store_id FROM bot_settings WHERE telegram_bot_token = $1 AND enabled = true LIMIT 1`, [String(botToken).trim()]);
+    if (!res.rows[0]?.client_id) return null;
+    return { clientId: Number(res.rows[0].client_id), storeId: res.rows[0].store_id != null ? Number(res.rows[0].store_id) : null };
+  } catch { return null; }
 }
 
 export async function resolveClientFromTelegramChatId(chatId: string): Promise<number | null> {
@@ -308,12 +345,18 @@ export async function handleCustomerMessage(
   clientId: number,
   platform: Platform,
   platformChatId: string,
-  customerMessage: string
+  customerMessage: string,
+  opts?: { storeId?: number | null }
 ): Promise<string | null> {
+  // Resolve WHICH store this chat belongs to (first-store fallback = legacy behavior).
+  const store = await resolveStore(clientId, opts?.storeId ?? null);
+  if (!store.storeId) return null;
+  const storeId = store.storeId;
+
   // Gate checks
   if (!await isAiAutoReplyEnabled(clientId, platform)) return null;
   const isTest = customerMessage.trim().startsWith('/test');
-  if (await isSenderStoreOwner(clientId, platform, platformChatId) && !isTest) return null;
+  if (await isSenderStoreOwner(clientId, platform, platformChatId, storeId) && !isTest) return null;
   const msg = isTest ? customerMessage.trim().replace(/^\/test\s*/i, '') : customerMessage;
 
   // Security
@@ -328,13 +371,13 @@ export async function handleCustomerMessage(
   // Dispute shield: intercept complaints/returns before AI sees them
   if (detectDisputeIntent(msg)) {
     sendPushNotification(clientId, '🔔 طلب استبدال أو شكوى', `زبون يطلب استبدال أو لديه شكوى بخصوص منتج (المنصة: ${platform})`).catch(() => {});
-    saveHistory(clientId, platform, platformChatId, msg, DISPUTE_RESPONSE).catch(() => {});
+    saveHistory(clientId, platform, platformChatId, msg, DISPUTE_RESPONSE, storeId).catch(() => {});
     return DISPUTE_RESPONSE;
   }
 
   // Change-of-mind shield: auto-cancel non-shipped orders when customer wants to cancel
   if (detectChangeOfMind(msg)) {
-    const result = await autoCancelCustomerOrders(clientId, platform, platformChatId, msg);
+    const result = await autoCancelCustomerOrders(clientId, platform, platformChatId, msg, storeId);
     let response: string;
     if (result.count === 0) {
       response = 'فهمت. لا توجد أي طلبيات نشطة باسمك حالياً. إذا كنت بحاجة إلى أي شيء آخر، أنا هنا للخدمة.';
@@ -342,20 +385,20 @@ export async function handleCustomerMessage(
       const detail = result.productName ? ` للمنتج "${result.productName}"` : '';
       response = `تم إلغاء ${result.count} طلب${detail}. إذا احتجت أي شيء آخر في المستقبل، أنا موجود.`;
     }
-    saveHistory(clientId, platform, platformChatId, msg, response).catch(() => {});
+    saveHistory(clientId, platform, platformChatId, msg, response, storeId).catch(() => {});
     return response;
   }
 
-  // Load context (slim)
-  const ctx = await loadSlimContext(clientId);
+  // Load context (slim) — scoped to THIS store
+  const ctx = await loadSlimContext(clientId, storeId);
   if (!ctx) return null;
 
-  // History (last 3 turns)
-  const history = await getHistory(clientId, platform, platformChatId);
+  // History (last 3 turns) — scoped to THIS store
+  const history = await getHistory(clientId, platform, platformChatId, storeId);
 
   // Customer identity + orders (resolve phone BEFORE loading facts for cross-chat inheritance)
   let phone = await resolvePhone(clientId, platform, platformChatId);
-  let orderText = phone ? await loadOrders(clientId, phone) : '';
+  let orderText = phone ? await loadOrders(clientId, phone, storeId) : '';
   let phoneFromMsg = false;
   // WhatsApp: try all stored phones for this chat if first phone got no orders
   if (!orderText && platform === 'whatsapp') {
@@ -364,7 +407,7 @@ export async function handleCustomerMessage(
       const phones = await p.query(`SELECT customer_phone FROM customer_messaging_ids WHERE client_id = $1 AND messenger_psid = $2 AND customer_phone IS NOT NULL`, [clientId, platformChatId]);
       for (const row of phones.rows) {
         if (row.customer_phone !== phone) {
-          const lookup = await loadOrders(clientId, row.customer_phone);
+          const lookup = await loadOrders(clientId, row.customer_phone, storeId);
           if (lookup) { orderText = lookup; phone = row.customer_phone; break; }
         }
       }
@@ -373,7 +416,7 @@ export async function handleCustomerMessage(
   if (!phone || !orderText) {
     const extracted = extractPhone(msg);
     if (extracted) {
-      const lookup = await loadOrders(clientId, extracted);
+      const lookup = await loadOrders(clientId, extracted, storeId);
       if (lookup) { orderText = lookup; phone = extracted; phoneFromMsg = true; }
       else if (!phone) { phone = extracted; } // set phone even if no orders found
     }
@@ -385,7 +428,7 @@ export async function handleCustomerMessage(
     const orderMatch = msg.match(/#(\d+)/) || msg.match(/طلب\s+(\d+)/) || msg.match(/ordine\s*#?(\d+)/i) || msg.match(/commande\s*#?(\d+)/i) || msg.match(/^\s*(\d{3,5})\s*$/);
     if (orderMatch) {
       const orderId = parseInt(orderMatch[1], 10);
-      const lookup = await loadOrdersByOrderNumber(clientId, orderId);
+      const lookup = await loadOrdersByOrderNumber(clientId, orderId, storeId);
       if (lookup) { orderText = lookup; orderFromNumber = true; }
     }
   }
@@ -422,7 +465,7 @@ export async function handleCustomerMessage(
 
   let search = '';
   if (!isPureData && msg.length > 3) {
-    search = await searchProducts(clientId, msg);
+    search = await searchProducts(clientId, msg, storeId);
   }
 
   // Cache the last search result per chat
@@ -438,7 +481,7 @@ export async function handleCustomerMessage(
   if (!search && history.length > 0) {
     const lastProduct = extractLastProductFromHistory(history);
     if (lastProduct) {
-      search = await searchProducts(clientId, lastProduct);
+      search = await searchProducts(clientId, lastProduct, storeId);
     }
     // Fallback: reuse cached search result from last conversation turn
     if (!search) {
@@ -465,7 +508,7 @@ export async function handleCustomerMessage(
     let response = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        response = await generateText('customer', prompt, { storeId: clientId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId }, history, undefined, SYSTEM_PROMPT);
+        response = await generateText('customer', prompt, { storeId, storeName: ctx.storeName, clientId, userType: 'customer', platformChatId }, history, undefined, SYSTEM_PROMPT);
         lastErr = null;
         break;
       } catch (retryErr: any) {
@@ -497,7 +540,7 @@ export async function handleCustomerMessage(
         const data = actionParsed.data;
         clean = actionParsed.clean;
         if (data.type === 'create_customer_order') {
-          const result = await createOrder({ clientId, platform, platformChatId, ...data });
+          const result = await createOrder({ clientId, storeId, platform, platformChatId, ...data });
           clean = stripAllEmbeddedActions(clean);
           if (result) {
             clean = `🎉 تم تأكيد طلبك!\n\n📦 رقم الطلب: #${result.orderId}\n💰 المبلغ: ${result.total} دج (الدفع عند الاستلام)\n\nشكراً ${data.customerName}! سيتم التواصل معك قريباً 🚚`;
@@ -520,7 +563,7 @@ export async function handleCustomerMessage(
             clean = 'عذراً، حدث خطأ أثناء تسجيل الطلب. يرجى المحاولة مرة أخرى.';
           }
         } else if (data.type === 'update_address') {
-          const updated = await updateCustomerOrderAddress(clientId, platform, data);
+          const updated = await updateCustomerOrderAddress(clientId, platform, data, storeId);
           clean = stripAllEmbeddedActions(clean);
           if (updated > 0) {
             clean = `تم تحديث عنوان التوصيل ✅\n\n${updated === 1 ? 'الطلب' : `${updated} طلب`} سيتم توصيله(ها) إلى:\n📍 ${data.shippingAddress}${data.wilayaName ? ` — ${data.wilayaName}` : ''}\n\nسنتواصل معك للتأكيد قبل الشحن.`;
@@ -554,9 +597,9 @@ export async function handleCustomerMessage(
     }
 
     // Save conversation (non-blocking)
-    saveHistory(clientId, platform, platformChatId, msg, clean).catch(() => {});
+    saveHistory(clientId, platform, platformChatId, msg, clean, storeId).catch(() => {});
     // Update running summary
-    updateFactsSummary(clientId, platform, platformChatId, facts, msg, clean).catch(() => {});
+    updateFactsSummary(clientId, platform, platformChatId, facts, msg, clean, storeId).catch(() => {});
     return clean;
   } catch (err) {
     console.error(`[CustomerAI] Error for client ${clientId}:`, err);
@@ -593,24 +636,31 @@ interface SlimContext {
   };
 }
 
-async function loadSlimContext(clientId: number): Promise<SlimContext | null> {
+async function loadSlimContext(clientId: number, storeId: number): Promise<SlimContext | null> {
   const p = await pool();
-  const sRes = await p.query(`SELECT store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  // This store's profile (ownership-checked); fall back to first store for legacy accounts.
+  let sRes = await p.query(
+    `SELECT id, store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 AND id = $2 LIMIT 1`,
+    [clientId, storeId]
+  );
+  if (!sRes.rows.length) {
+    sRes = await p.query(`SELECT id, store_name, store_description, store_slug FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+  }
   if (!sRes.rows.length) return null;
   const { store_name, store_description, store_slug } = sRes.rows[0];
 
   const prodRes = await p.query(
     `SELECT title, price, original_price, stock_quantity, category, description
-     FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active'
-     ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC LIMIT 10`, [clientId]
+     FROM client_store_products p WHERE p.client_id = $1 AND (p.store_id = $2 OR p.store_id IS NULL) AND p.status = 'active'
+     ORDER BY p.is_featured DESC NULLS LAST, p.created_at DESC LIMIT 10`, [clientId, storeId]
   );
 
-  // Load per-wilaya delivery prices
+  // Load per-wilaya delivery prices for THIS store
   const dRes = await p.query(
     `SELECT wilaya_id, home_delivery_price, desk_delivery_price, estimated_days
      FROM delivery_prices
-     WHERE client_id = $1 AND is_active = true
-     ORDER BY wilaya_id`, [clientId]
+     WHERE client_id = $1 AND (store_id = $2 OR store_id IS NULL) AND is_active = true
+     ORDER BY wilaya_id`, [clientId, storeId]
   ).catch(() => ({ rows: [] }));
 
   let deliveryInfo = '';
@@ -742,24 +792,48 @@ function buildUserPrompt(ctx: SlimContext, search: string, orderText: string, ph
   return p;
 }
 
-async function getHistory(clientId: number, platform: Platform, chatId: string): Promise<GeminiContent[]> {
+async function getHistory(clientId: number, platform: Platform, chatId: string, storeId?: number): Promise<GeminiContent[]> {
   try {
     const p = await pool();
-    const res = await p.query(
-      `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND store_id = (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1) AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 5`,
-      [clientId, platform, chatId]
-    );
+    let res;
+    if (storeId) {
+      res = await p.query(
+        `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND store_id = $2 AND platform = $3 AND platform_chat_id = $4 ORDER BY created_at DESC LIMIT 5`,
+        [clientId, storeId, platform, chatId]
+      );
+      // Legacy rows written before store attribution: fall back to account-level.
+      if (!res.rows.length) {
+        res = await p.query(
+          `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 5`,
+          [clientId, platform, chatId]
+        );
+      }
+    } else {
+      res = await p.query(
+        `SELECT role, message FROM customer_conversations WHERE client_id = $1 AND platform = $2 AND platform_chat_id = $3 ORDER BY created_at DESC LIMIT 5`,
+        [clientId, platform, chatId]
+      );
+    }
     return res.rows.reverse().map((r: any) => ({ role: r.role === 'customer' ? 'user' as const : 'model' as const, parts: [{ text: r.message }] }));
   } catch { return []; }
 }
 
-async function saveHistory(clientId: number, platform: Platform, chatId: string, msg: string, response: string): Promise<void> {
+async function saveHistory(clientId: number, platform: Platform, chatId: string, msg: string, response: string, storeId?: number): Promise<void> {
   const p = await pool();
+  // Resolve store explicitly; legacy fallback = first store (old behavior).
+  let sid = storeId;
+  if (!sid) {
+    try {
+      const r = await p.query(`SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+      sid = r.rows[0]?.id;
+    } catch {}
+  }
+  if (!sid) return;
   await p.query(
-    `INSERT INTO customer_conversations (client_id, store_id, platform, platform_chat_id, role, message) VALUES ($1, (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1), $2, $3, 'customer', $4), ($1, (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1), $2, $3, 'assistant', $5)`,
-    [clientId, platform, chatId, msg, response]
+    `INSERT INTO customer_conversations (client_id, store_id, platform, platform_chat_id, role, message) VALUES ($1, $2, $3, $4, 'customer', $5), ($1, $2, $3, $4, 'assistant', $6)`,
+    [clientId, sid, platform, chatId, msg, response]
   );
-    await p.query(`DELETE FROM customer_conversations WHERE client_id = $1 AND store_id = (SELECT id FROM client_store_settings WHERE client_id = $1 LIMIT 1) AND platform = $2 AND platform_chat_id = $3 AND created_at < NOW() - INTERVAL '7 days'`, [clientId, platform, chatId]).catch(() => {});
+  await p.query(`DELETE FROM customer_conversations WHERE client_id = $1 AND store_id = $2 AND platform = $3 AND platform_chat_id = $4 AND created_at < NOW() - INTERVAL '7 days'`, [clientId, sid, platform, chatId]).catch(() => {});
 }
 
 async function loadFacts(clientId: number, platform: Platform, chatId: string, phone?: string | null): Promise<ConversationFacts | null> {
@@ -972,17 +1046,17 @@ function buildFactsSummary(facts: ConversationFacts | null): string {
   return parts.length > 0 ? `\n[سجل الزبون]\n${parts.join('\n')}\n[/سجل الزبون]\n` : '';
 }
 
-async function updateFactsSummary(clientId: number, platform: Platform, chatId: string, existingFacts: ConversationFacts | null, lastMsg: string, lastResponse: string): Promise<void> {
+async function updateFactsSummary(clientId: number, platform: Platform, chatId: string, existingFacts: ConversationFacts | null, lastMsg: string, lastResponse: string, storeId?: number): Promise<void> {
   try {
     const count = existingFacts?.preferences?.interaction_count || 0;
     // Use AI to write a proper summary every 5 interactions
     if (count > 0 && count % 5 === 0) {
       try {
-        const history = await getHistory(clientId, platform, chatId);
+        const history = await getHistory(clientId, platform, chatId, storeId);
         const turnText = history.map(h => `${h.role === 'user' ? 'زبون' : 'بائع'}: ${h.parts[0]?.text || ''}`).join('\n');
         const summaryPrompt = `لخص المحادثة التالية بين بائع وزبون في 3-4 جمل بالعربية. ركز على: اسم الزبون، رقم هاتفه، المنتجات التي أبدى اهتمام بها أو اشتراها، ولايته المفضلة، وأي معلومات مهمة أخرى:\n\n${turnText}`;
         const { generateText } = await import('./gemini');
-        const aiSummary = await generateText('customer', summaryPrompt, { storeId: clientId, storeName: '', clientId, userType: 'customer', platformChatId }, [], 0.3, 'gemini-1.5-flash');
+        const aiSummary = await generateText('customer', summaryPrompt, { storeId: storeId ?? clientId, storeName: '', clientId, userType: 'customer', platformChatId }, [], 0.3, 'gemini-1.5-flash');
         if (aiSummary && aiSummary.length > 10) {
           const p = await pool();
           await p.query(
@@ -1032,29 +1106,33 @@ function normalizeSearchText(text: string): string {
     .trim();
 }
 
-async function searchProducts(clientId: number, query: string): Promise<string> {
+async function searchProducts(clientId: number, query: string, storeId?: number): Promise<string> {
   try {
     const p = await pool();
     const normalized = normalizeSearchText(query);
+    // Scope to THIS store (NULL = pre-multi-store legacy rows).
+    const scope = storeId ? ` AND (p.store_id = $3 OR p.store_id IS NULL)` : '';
 
     // First try: full query match with normalized text
     let res = await p.query(
       `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
               (SELECT json_agg(json_build_object('color', v.color, 'size', v.size, 'size2', v.size2, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
-       FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (p.title ILIKE $2 OR p.description ILIKE $2 OR p.category ILIKE $2) ORDER BY p.is_featured DESC NULLS LAST LIMIT 5`,
-      [clientId, `%${normalized}%`]
+       FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active'${scope} AND (p.title ILIKE $2 OR p.description ILIKE $2 OR p.category ILIKE $2) ORDER BY p.is_featured DESC NULLS LAST LIMIT 5`,
+      storeId ? [clientId, `%${normalized}%`, storeId] : [clientId, `%${normalized}%`]
     );
 
     // Second try: split normalized query into words and match any word
     if (res.rows.length === 0 && normalized.length > 3) {
       const words = normalized.split(/\s+/).filter(w => w.length > 2);
       if (words.length > 1) {
-        const conditions = words.map((_, i) => `(p.title ILIKE $${i + 2} OR p.description ILIKE $${i + 2} OR p.category ILIKE $${i + 2})`).join(' OR ');
-        const params = [clientId, ...words.map(w => `%${w}%`)];
+        const startIdx = storeId ? 3 : 2;
+        const conditions = words.map((_, i) => `(p.title ILIKE $${i + startIdx} OR p.description ILIKE $${i + startIdx} OR p.category ILIKE $${i + startIdx})`).join(' OR ');
+        const params: any[] = storeId ? [clientId, storeId, ...words.map(w => `%${w}%`)] : [clientId, ...words.map(w => `%${w}%`)];
+        const scope2 = storeId ? ` AND (p.store_id = $2 OR p.store_id IS NULL)` : '';
         res = await p.query(
           `SELECT p.title, p.price, p.original_price, p.stock_quantity, p.category, p.id,
                   (SELECT json_agg(json_build_object('color', v.color, 'size', v.size, 'size2', v.size2, 'variant_name', v.variant_name, 'price', v.price, 'stock', v.stock_quantity)) FROM product_variants v WHERE v.product_id = p.id AND v.client_id = p.client_id AND v.is_active = true) as variants
-           FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active' AND (${conditions}) ORDER BY p.is_featured DESC NULLS LAST LIMIT 5`,
+           FROM client_store_products p WHERE p.client_id = $1 AND p.status = 'active'${scope2} AND (${conditions}) ORDER BY p.is_featured DESC NULLS LAST LIMIT 5`,
           params
         );
       }
@@ -1128,16 +1206,19 @@ function extractPhone(message: string): string | null {
   return null;
 }
 
-async function loadOrders(clientId: number, phone: string): Promise<string> {
+async function loadOrders(clientId: number, phone: string, storeId?: number): Promise<string> {
   try {
     const p = await pool();
+    const params: any[] = [clientId, phone];
+    let storeFilter = '';
+    if (storeId) { storeFilter = ` AND (o.store_id = $3 OR o.store_id IS NULL)`; params.push(storeId); }
     const res = await p.query(
       `SELECT o.id, o.total_price, o.created_at, o.quantity, o.delivery_status, o.tracking_number, o.delivery_type, o.customer_name, o.shipping_address,
               p.title as product_title, dc.name as delivery_company,
               (SELECT de.description FROM delivery_events de WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as last_event,
               (SELECT de.event_type FROM delivery_events de WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as event_type
        FROM store_orders o LEFT JOIN client_store_products p ON p.id = o.product_id LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
-       WHERE o.client_id = $1 AND o.customer_phone = $2 ORDER BY o.created_at DESC LIMIT 3`, [clientId, phone]
+       WHERE o.client_id = $1 AND o.customer_phone = $2${storeFilter} ORDER BY o.created_at DESC LIMIT 3`, params
     );
     if (!res.rows.length) return '';
     const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم بالفعل', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
@@ -1153,16 +1234,19 @@ async function loadOrders(clientId: number, phone: string): Promise<string> {
   } catch { return ''; }
 }
 
-async function loadOrdersByOrderNumber(clientId: number, orderId: number): Promise<string> {
+async function loadOrdersByOrderNumber(clientId: number, orderId: number, storeId?: number): Promise<string> {
   try {
     const p = await pool();
+    const params: any[] = [clientId, orderId];
+    let storeFilter = '';
+    if (storeId) { storeFilter = ` AND (o.store_id = $3 OR o.store_id IS NULL)`; params.push(storeId); }
     const res = await p.query(
       `SELECT o.id, o.total_price, o.created_at, o.quantity, o.delivery_status, o.tracking_number, o.delivery_type, o.customer_name, o.shipping_address, o.customer_phone,
               p.title as product_title, dc.name as delivery_company,
               (SELECT de.description FROM delivery_events de WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as last_event,
               (SELECT de.event_type FROM delivery_events de WHERE de.order_id = o.id ORDER BY de.created_at DESC LIMIT 1) as event_type
        FROM store_orders o LEFT JOIN client_store_products p ON p.id = o.product_id LEFT JOIN delivery_companies dc ON dc.id = o.delivery_company_id
-       WHERE o.client_id = $1 AND o.id = $2 LIMIT 1`, [clientId, orderId]
+       WHERE o.client_id = $1 AND o.id = $2${storeFilter} LIMIT 1`, params
     );
     if (!res.rows.length) return '';
     const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم بالفعل', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
@@ -1177,12 +1261,15 @@ async function loadOrdersByOrderNumber(clientId: number, orderId: number): Promi
   } catch { return ''; }
 }
 
-interface OrderData { clientId: number; platform: Platform; platformChatId: string; productTitle: string; customerName: string; customerPhone: string; shippingAddress: string; wilayaName?: string; quantity?: number; variantColor?: string; }
+interface OrderData { clientId: number; storeId?: number; platform: Platform; platformChatId: string; productTitle: string; customerName: string; customerPhone: string; shippingAddress: string; wilayaName?: string; quantity?: number; variantColor?: string; }
 
 async function createOrder(data: OrderData): Promise<{ orderId: number; total: number } | null> {
   try {
     const p = await pool();
-    const prodRes = await p.query(`SELECT id, price FROM client_store_products WHERE client_id = $1 AND status = 'active' AND title ILIKE $2 LIMIT 1`, [data.clientId, `%${data.productTitle}%`]);
+    const prodParams: any[] = [data.clientId, `%${data.productTitle}%`];
+    let prodScope = '';
+    if (data.storeId) { prodParams.push(data.storeId); prodScope = ` AND (store_id = $3 OR store_id IS NULL)`; }
+    const prodRes = await p.query(`SELECT id, price FROM client_store_products WHERE client_id = $1 AND status = 'active'${prodScope} AND title ILIKE $2 LIMIT 1`, prodParams);
     if (!prodRes.rows.length) return null;
     const productId = Number(prodRes.rows[0].id);
     const unitPrice = Number(prodRes.rows[0].price);
@@ -1194,7 +1281,13 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
 
     let deliveryFee = 0;
     if (wilayaId) {
-      try { const d = await p.query(`SELECT home_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2 AND is_active = true LIMIT 1`, [data.clientId, wilayaId]); deliveryFee = Number(d.rows[0]?.home_delivery_price) || 0; } catch {}
+      try {
+        const dParams: any[] = [data.clientId, wilayaId];
+        let dScope = '';
+        if (data.storeId) { dParams.push(data.storeId); dScope = ` AND (store_id = $3 OR store_id IS NULL)`; }
+        const d = await p.query(`SELECT home_delivery_price FROM delivery_prices WHERE client_id = $1 AND wilaya_id = $2${dScope} AND is_active = true LIMIT 1`, dParams);
+        deliveryFee = Number(d.rows[0]?.home_delivery_price) || 0;
+      } catch {}
     }
 
     const qty = data.quantity || 1;
@@ -1206,7 +1299,7 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
     const add = (c: string, v: any) => { if (cols.has(c)) { insertCols.push(c); insertVals.push(v); } };
 
     add('client_id', data.clientId); add('product_id', productId); add('quantity', qty);
-    add('unit_price', unitPrice); add('total_price', total); add('delivery_fee', deliveryFee);
+    if (data.storeId) add('store_id', data.storeId);    add('unit_price', unitPrice); add('total_price', total); add('delivery_fee', deliveryFee);
     add('customer_name', data.customerName); add('customer_phone', data.customerPhone);
     add('shipping_address', data.shippingAddress); add('shipping_wilaya_id', wilayaId);
     add('status', 'pending'); add('payment_status', 'unpaid');
@@ -1225,7 +1318,7 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
     } catch {}
 
     try {
-      await p.query(`INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at) VALUES ($1, $2, (SELECT id FROM client_store_settings WHERE client_id = $2 LIMIT 1), $3, 'telegram', $4, NOW())`, [orderId, data.clientId, data.customerPhone, `📦 طلب جديد!\nرقم: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}`]);
+      await p.query(`INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at) VALUES ($1, $2, $3, $4, 'telegram', $5, NOW())`, [orderId, data.clientId, data.storeId || null, data.customerPhone, `📦 طلب جديد!\nرقم: #${orderId}\nالمنتج: ${data.productTitle}\nالسعر: ${unitPrice} دج × ${qty}\nالمجموع: ${total} دج\nالاسم: ${data.customerName}\nالهاتف: ${data.customerPhone}`]);
     } catch {}
     notifyOrderCreated(data.clientId, orderId, data.customerName);
 
@@ -1235,7 +1328,7 @@ async function createOrder(data: OrderData): Promise<{ orderId: number; total: n
 
 interface AddressUpdateData { customerPhone?: string; shippingAddress: string; wilayaName?: string; }
 
-async function updateCustomerOrderAddress(clientId: number, platform: Platform, data: AddressUpdateData): Promise<number> {
+async function updateCustomerOrderAddress(clientId: number, platform: Platform, data: AddressUpdateData, storeId?: number): Promise<number> {
   try {
     const p = await pool();
     const phone = data.customerPhone || '';
@@ -1252,6 +1345,7 @@ async function updateCustomerOrderAddress(clientId: number, platform: Platform, 
 
     let where = `client_id = $${idx++} AND status IN ('pending', 'confirmed')`;
     vals.push(clientId);
+    if (storeId) { where += ` AND (store_id = $${idx++} OR store_id IS NULL)`; vals.push(storeId); }
 
     if (phone) {
       where += ` AND customer_phone = $${idx++}`;
