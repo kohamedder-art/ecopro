@@ -17,8 +17,23 @@ let cachedAccessToken: string | null = null;
 let tokenExpiresAt = 0;
 
 function getServiceAccount(): any {
-  const path = join(__dirname, '..', 'firebase-service-account.json');
-  return JSON.parse(readFileSync(path, 'utf8'));
+  // Production (Render): JSON pasted into FIREBASE_SERVICE_ACCOUNT_JSON env var.
+  // The file is gitignored and never deploys — without the env var, FCM is dead
+  // and killed-state notifications silently never send. Fail loudly in logs.
+  const fromEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (fromEnv) {
+    try {
+      return JSON.parse(fromEnv);
+    } catch {
+      throw new Error('[fcm] FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON');
+    }
+  }
+  try {
+    const path = join(__dirname, '..', 'firebase-service-account.json');
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    throw new Error('[fcm] No service account: set FIREBASE_SERVICE_ACCOUNT_JSON env var (production) or place firebase-service-account.json next to server/ (local dev)');
+  }
 }
 
 async function getAccessToken(): Promise<string> {
