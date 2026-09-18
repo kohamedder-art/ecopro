@@ -137,7 +137,8 @@ const getOrderDetail: RequestHandler = async (req, res) => {
               o.variant_name, o.delivery_type, o.tracking_number,
               o.order_source, o.source_platform,
               o.store_id, COALESCE(s.store_name, '') as store_name,
-              COALESCE(p.title, 'منتج محذوف') as product_title
+              COALESCE(p.title, 'منتج محذوف') as product_title,
+              p.stock_quantity as product_stock
        FROM store_orders o
        LEFT JOIN client_store_products p ON o.product_id = p.id
        LEFT JOIN client_store_settings s ON s.id = o.store_id
@@ -182,6 +183,7 @@ const getOrderDetail: RequestHandler = async (req, res) => {
       status_label: statusLabels[order.status] || order.status,
       store_id: order.store_id != null ? Number(order.store_id) : null,
       store_name: order.store_name || null,
+      product_stock: order.product_stock != null ? Number(order.product_stock) : null,
       wilaya_id: order.shipping_wilaya_id, commune_id: order.shipping_commune_id,
       address: order.shipping_address, quantity: order.quantity,
       variant_name: order.variant_name, notes: order.notes,
