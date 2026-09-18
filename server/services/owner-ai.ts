@@ -59,7 +59,23 @@ const SYSTEM_PROMPT = `أنت مساعد ذكي لصاحب متجر على Sahla
 // ═══════════════════════════════════════════════════════════════
 
 const ACTION_INSTRUCTIONS = `
-الدوات المتاحة — أضف ECOPRO_ACTION في النهاية إذا طلب المستخدم إجراء:
+═══ كيف تعمل أدواتك (اقرأ بعناية — هذا أهم ما في رسالتك) ═══
+أنت مساعد حقيقي داخل لوحة تحكم المتجر، ولديك أدوات تنفّذ أفعالاً حقيقية
+(بحث في الطلبات والمنتجات، تعديل الأسعار والمخزون، تغيير الحالات...).
+- عندما يحتاج سؤال المستخدم بيانات أو فعلاً، أصدر أمراً واحداً فقط بصيغة
+  ECOPRO_ACTION:{...} في نهاية ردك — لا أكثر من أمر واحد أبداً.
+- هذا الأمر يُنفَّذ تلقائياً وتعود إليك نتيجته، فتجيب بناءً عليها.
+  أنت لا تنفّذ بيدك، ولا تطلب من المستخدم أن ينفّذ أي شيء.
+- القاعدة الذهبية: المستخدم لا يرى هذه الأوامر أبداً ولا يعرف بوجودها.
+  ممنوع منعاً باتاً ذكرها أو شرحها أو كتابة كلمات مثل "نفّذ" أو
+  "للاطلاع على التفاصيل نفّذ". تحدّث فقط عن النتيجة بلغة طبيعية،
+  مثال: "وجدت لك 3 طلبات معلقة" — وليس كيف وجدتها.
+- لا تخترع أرقاماً (IDs) من رأسك أبداً — ابحث أولاً بأداة search
+  ثم استخدم ما وجدته فعلاً.
+- إذا لم يكن الفعل واضحاً (أي متجر؟ أي منتج؟)، اسأل المستخدم أولاً
+  بدل التخمين.
+
+═══ صيغ الأوامر ═══
 
 ═══ المنتجات ═══
 - ECOPRO_ACTION:{"type":"search_products","query":"<بحث>"}
@@ -207,6 +223,23 @@ export function extractEmbeddedAction(text: string): { action: any | null; clean
   }
 }
 
+/**
+ * Remove EVERY ECOPRO_ACTION block from user-facing text.
+ * extractEmbeddedAction handles the first (executed) action only — any
+ * additional blocks the model emits must never reach the merchant's eyes.
+ */
+export function stripAllEmbeddedActions(text: string): string {
+  let out = String(text || '');
+  for (let i = 0; i < 10; i++) {
+    const r = extractEmbeddedAction(out);
+    if (!r.action) break;
+    out = r.clean;
+  }
+  // Last-resort sweep for malformed leftovers (unbalanced braces etc.).
+  out = out.replace(/ECOPRO_ACTION:\s*\{[^}]*\}?/g, '').trim();
+  return out;
+}
+
 export async function handleOwnerMessage(
   clientId: number,
   question: string,
@@ -243,18 +276,20 @@ export async function handleOwnerMessage(
   try {
     const response = await generateText('store_owner', prompt, { storeId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT + '\n' + ACTION_INSTRUCTIONS);
 
-    // Parse action (balanced-brace: works with nested JSON + trailing text)
+    // Parse action (balanced-brace: works with nested JSON + trailing text).
+    // The model is briefed to emit ONE silent call; anything beyond the first
+    // is scrubbed so protocol text can never surface in the reply.
     let answer = response;
     let action: any = null;
     const extracted = extractEmbeddedAction(response);
     action = extracted.action;
-    if (action) answer = extracted.clean;
+    if (action) answer = stripAllEmbeddedActions(extracted.clean);
 
     // Handle search_store_data inline
     if (action?.type === 'search_store_data') {
       const toolResult = await executeSearch(clientId, action.dataType, action.query, storeId);
       const followUp = await generateText('store_owner', `البيانات المطلوبة:\n${toolResult}\n\nالسؤال الأصلي: "${question}"`, { storeId, storeName: ctx.storeName, clientId, userType: 'owner' }, prevHistory, undefined, SYSTEM_PROMPT);
-      answer = followUp;
+      answer = stripAllEmbeddedActions(followUp);
       action = null;
     }
 
