@@ -354,8 +354,10 @@ export async function sendMessengerMessageDirect(
     const payload = {
       recipient: { id: recipientPsid },
       message: { text: message },
-      messaging_type: 'MESSAGE_TAG',
-      tag: 'POST_PURCHASE_UPDATE',
+      // RESPONSE (not MESSAGE_TAG): the customer is inside the 24h window
+      // whenever we message them, and Meta rejects our tag with
+      // "Invalid parameter" while RESPONSE delivers reliably.
+      messaging_type: 'RESPONSE',
     };
 
     const response = await fetch(
@@ -422,8 +424,8 @@ export async function sendMessengerOrderConfirmationDirect(
           },
         },
       },
-      messaging_type: 'MESSAGE_TAG',
-      tag: 'POST_PURCHASE_UPDATE',
+      // RESPONSE, not MESSAGE_TAG — see sendMessengerMessageDirect.
+      messaging_type: 'RESPONSE',
     };
 
     const response = await fetch(
