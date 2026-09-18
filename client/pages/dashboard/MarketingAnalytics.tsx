@@ -241,10 +241,10 @@ export default function MarketingAnalytics() {
               <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${k.gradient} flex items-center justify-center shadow ${k.shadow}`}>
                 <span className="text-sm">{k.icon}</span>
               </div>
-              <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">{k.label}</span>
+              <span className="text-xs font-bold text-muted-foreground tracking-wide">{k.label}</span>
             </div>
             <p className={`text-lg font-black tabular-nums leading-none ${k.valueColor || 'text-foreground'}`}>{k.value}</p>
-            {k.sub && <p className={`text-[10px] mt-1 font-medium ${k.subColor || 'text-muted-foreground'}`}>{k.sub}</p>}
+            {k.sub && <p className={`text-[11px] mt-1 font-medium ${k.subColor || 'text-muted-foreground'}`}>{k.sub}</p>}
           </div>
         ))}
       </div>
@@ -304,19 +304,19 @@ export default function MarketingAnalytics() {
             <div className="flex items-center justify-center gap-4 mt-2">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-2 rounded-sm bg-indigo-500" />
-                <span className="text-[10px] font-semibold text-muted-foreground">زيارات</span>
+                <span className="text-[11px] font-semibold text-muted-foreground">زيارات</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-2 rounded-sm bg-emerald-500" />
-                <span className="text-[10px] font-semibold text-muted-foreground">مشتريات</span>
+                <span className="text-[11px] font-semibold text-muted-foreground">مشتريات</span>
               </div>
             </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1 w-full">
                 {statusData.map((s: any) => (
                   <div key={s.name} className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                    <span className="text-[10px] font-medium text-muted-foreground truncate">{s.name}</span>
-                    <span className="text-[10px] font-bold text-foreground tabular-nums mr-auto">{fmtNum(s.value)}</span>
+                    <span className="text-[11px] font-medium text-muted-foreground truncate">{s.name}</span>
+                    <span className="text-[11px] font-bold text-foreground tabular-nums mr-auto">{fmtNum(s.value)}</span>
                   </div>
                 ))}
               </div>
@@ -423,7 +423,7 @@ export default function MarketingAnalytics() {
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full transition-all" style={{ width: `${cust?.totalCustomers ? (n.value / cust.totalCustomers) * 100 : 0}%`, backgroundColor: n.fill }} />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">الإيرادات: {fmtCurr(n.revenue)}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">الإيرادات: {fmtCurr(n.revenue)}</p>
                   </div>
                 </div>
               ))}
@@ -512,7 +512,7 @@ export default function MarketingAnalytics() {
             </table>
           </div>
           {/* Product cost breakdown legend */}
-          <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
             <span>تكلفة الطلب = شراء + تغليف + مناولة + توصيل + مركز اتصال + أخرى + إعلانات</span>
           </div>
         </div>
@@ -531,7 +531,7 @@ export default function MarketingAnalytics() {
                 <span className="text-lg">{d.device === 'mobile' ? '📱' : d.device === 'desktop' ? '🖥️' : '📟'}</span>
                 <div>
                   <p className="text-xs font-bold text-foreground">{d.device === 'mobile' ? 'هاتف' : d.device === 'desktop' ? 'كمبيوتر' : d.device === 'tablet' ? 'تابلت' : d.device}</p>
-                  <p className="text-[10px] text-muted-foreground">{fmtNum(d.sessions)} جلسة — {fmtPct(d.share)}</p>
+                  <p className="text-[11px] text-muted-foreground">{fmtNum(d.sessions)} جلسة — {fmtPct(d.share)}</p>
                 </div>
               </div>
             ))}
