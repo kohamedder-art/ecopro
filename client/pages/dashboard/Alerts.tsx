@@ -133,15 +133,15 @@ export default function AlertsPage() {
           <Icon className="w-3.5 h-3.5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-xs leading-relaxed ${unread ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'}`}>
+          <p className={`text-[13px] leading-relaxed ${unread ? 'font-bold text-foreground' : 'font-medium text-muted-foreground'}`}>
             {alert.message}
           </p>
           {(alert.link || true) && (
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1.5">
               {alert.link && (
                 <button
                   onClick={() => navigate(alert.link!)}
-                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                 >
                   <ExternalLink className="w-3 h-3" />
                   {isRTL ? 'عرض' : 'View'}
@@ -150,7 +150,7 @@ export default function AlertsPage() {
               <button
                 onClick={() => dismissOne(alert.id)}
                 disabled={dismissing === alert.id}
-                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
               >
                 {dismissing === alert.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                 {isRTL ? 'تجاهل' : 'Dismiss'}
@@ -212,10 +212,10 @@ export default function AlertsPage() {
                     <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${k.gradient} flex items-center justify-center shadow ${k.shadow}`}>
                       <Icon className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">{k.label}</span>
+                    <span className="text-xs font-bold text-muted-foreground tracking-wide">{k.label}</span>
                   </div>
                   <p className={`text-lg font-black tabular-nums leading-none ${k.valueColor || 'text-foreground'}`}>{k.value}</p>
-                  {k.sub && <p className={`text-[10px] mt-1 font-medium ${k.subColor || 'text-muted-foreground'}`}>{k.sub}</p>}
+                  {k.sub && <p className={`text-[11px] mt-1 font-medium ${k.subColor || 'text-muted-foreground'}`}>{k.sub}</p>}
                 </div>
               );
             })}
@@ -226,7 +226,7 @@ export default function AlertsPage() {
             <div className="bg-muted/40 p-1 rounded-lg border border-border/40 flex gap-1 overflow-x-auto max-w-full">
               {tabs.map(tb => (
                 <button key={tb.key} onClick={() => setFilter(tb.key)}
-                  className={`px-3 h-7 rounded-md text-xs font-bold transition-all duration-200 whitespace-nowrap tabular-nums ${
+                  className={`px-3.5 h-8 rounded-md text-[13px] font-bold transition-all duration-200 whitespace-nowrap tabular-nums ${
                     filter === tb.key
                       ? 'bg-primary text-white shadow-sm shadow-primary/30'
                       : 'text-muted-foreground hover:text-foreground hover:bg-background'

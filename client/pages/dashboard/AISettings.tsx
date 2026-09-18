@@ -451,10 +451,10 @@ export default function AISettingsPage() {
               <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${k.gradient} flex items-center justify-center shadow ${k.shadow}`}>
                 {k.icon}
               </div>
-              <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">{k.label}</span>
+              <span className="text-xs font-bold text-muted-foreground tracking-wide">{k.label}</span>
             </div>
             <p className={`text-lg font-black tabular-nums leading-none ${k.valueColor || 'text-foreground'}`}>{k.value}</p>
-            {k.sub && <p className="text-[10px] mt-1 font-medium text-muted-foreground">{k.sub}</p>}
+            {k.sub && <p className="text-[11px] mt-1 font-medium text-muted-foreground">{k.sub}</p>}
           </div>
         ))}
       </div>
