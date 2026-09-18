@@ -2044,6 +2044,33 @@ export default function GoldTemplateEditor() {
                         </>
                         )}
 
+                        {/* Template-specific (LeRoiShop — trust badges, empty hides) */}
+                        {activeTemplateId === 'leroishop' && (
+                        <>
+                          <div className="border-t border-slate-200 dark:border-white/5"/>
+                          <div className="space-y-3">
+                            <span className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-500">شارات الثقة (اترك فارغاً للإخفاء)</span>
+                            {([
+                              ['template_trust_delivery', 'شارة التوصيل', 'توصيل 1-3 أيام'],
+                              ['template_trust_returns', 'شارة الإرجاع', 'إمكانية الإرجاع'],
+                              ['template_trust_cod', 'شارة الدفع', 'الدفع عند الاستلام'],
+                              ['template_shipping_banner', 'لافتة التوصيل', '🚚 التوصيل ابتداءً من 300 دج'],
+                            ] as const).map(([field, label, ph]) => (
+                              <div key={field}>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">{label}</span>
+                                <Input
+                                  value={(settings as any)[field] ?? ''}
+                                  onChange={(e) => handleSettingChange(field, e.target.value)}
+                                  placeholder={ph}
+                                  dir="rtl"
+                                  className="bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/5 rounded-xl h-10"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                        )}
+
                         {/* Template-specific (NovaDZ) */}
                         {activeTemplateId === 'novadz' && (
                         <>

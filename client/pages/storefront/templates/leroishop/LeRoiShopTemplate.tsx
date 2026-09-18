@@ -727,26 +727,32 @@ export default function LeRoiShopTemplate({
                   )}
                 </div>
 
-                {/* Trust badges — Hijab Saba style */}
-                <div className="flex items-center justify-center gap-6 py-3 mb-4 border rounded-xl" style={{ borderColor: borderColor, backgroundColor: surfaceMuted }}>
-                  <div className="flex flex-col items-center gap-1">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a2 2 0 01-2 2h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                    <span className="text-[10px] font-bold" style={{ color: textColor }}>توصيل 1-3 أيام</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><path d="M12 8v4l2 2"/></svg>
-                    <span className="text-[10px] font-bold" style={{ color: textColor }}>إمكانية الإرجاع</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                    <span className="text-[10px] font-bold" style={{ color: textColor }}>الدفع عند الاستلام</span>
-                  </div>
-                </div>
+                {/* Trust badges — Hijab Saba style (editable in template editor, empty hides) */}
+                {(() => {
+                  const badges = [
+                    { text: settings?.template_trust_delivery ?? 'توصيل 1-3 أيام', icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a2 2 0 01-2 2h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>) },
+                    { text: settings?.template_trust_returns ?? 'إمكانية الإرجاع', icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><path d="M12 8v4l2 2"/></svg>) },
+                    { text: settings?.template_trust_cod ?? 'الدفع عند الاستلام', icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>) },
+                  ].filter(b => String(b.text || '').trim() !== '');
+                  if (badges.length === 0) return null;
+                  return (
+                    <div className="flex items-center justify-center gap-6 py-3 mb-4 border rounded-xl" style={{ borderColor: borderColor, backgroundColor: surfaceMuted }}>
+                      {badges.map((b, i) => (
+                        <div key={i} className="flex flex-col items-center gap-1">
+                          {b.icon}
+                          <span className="text-[10px] font-bold" style={{ color: textColor }}>{b.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
-                {/* Free shipping banner */}
-                <div className="text-center py-2.5 mb-4 rounded-xl text-sm font-bold" style={{ backgroundColor: accentColor + '15', color: accentColor }}>
-                  🚚 التوصيل ابتداءً من 300 دج
-                </div>
+                {/* Free shipping banner (editable, empty hides) */}
+                {String(settings?.template_shipping_banner ?? '🚚 التوصيل ابتداءً من 300 دج').trim() !== '' && (
+                  <div className="text-center py-2.5 mb-4 rounded-xl text-sm font-bold" style={{ backgroundColor: accentColor + '15', color: accentColor }}>
+                    {settings?.template_shipping_banner ?? '🚚 التوصيل ابتداءً من 300 دج'}
+                  </div>
+                )}
 
                 {/* Product description — structured */}
                 {activeProduct.description && (
