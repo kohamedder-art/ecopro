@@ -86,17 +86,17 @@ async function getAccessToken(): Promise<string> {
   return cachedAccessToken;
 }
 
-async function sendFcmMessage(fcmToken: string, title: string, body: string, data?: Record<string, string>) {
+async function sendFcmMessage(fcmToken: string, title: string, body: string, data?: Record<string, string>, channelId: string = 'default') {
   try {
     const accessToken = await getAccessToken();
-    const message = {
+    const message: any = {
       token: fcmToken,
       notification: { title, body },
       data: data || {},
       android: {
         priority: 'high',
         notification: {
-          channelId: 'default',
+          channel_id: channelId,
           sound: 'default',
         },
       },
@@ -123,7 +123,7 @@ async function sendFcmMessage(fcmToken: string, title: string, body: string, dat
   }
 }
 
-export async function sendPushNotification(clientId: number, title: string, body: string, data?: Record<string, any>) {
+export async function sendPushNotification(clientId: number, title: string, body: string, data?: Record<string, any>, channelId: string = 'default') {
   try {
     const pool = await ensureConnection();
     const devices = await pool.query(
@@ -160,7 +160,7 @@ export async function sendPushNotification(clientId: number, title: string, body
     const invalidTokens: string[] = [];
     for (const device of devices.rows) {
       const token = device.push_token;
-      const result = await sendFcmMessage(token, title, body, extraData);
+      const result = await sendFcmMessage(token, title, body, extraData, channelId);
       if (result.error === 'unregistered') {
         invalidTokens.push(token);
       }
@@ -239,7 +239,8 @@ export async function notifyOrderCreated(clientId: number, orderId: number, cust
     ...(notifId ? { notif_id: String(notifId) } : {}),
   };
   await Promise.all([
-    sendPushNotification(clientId, title, body, extra),
+    // New orders ride the 'orders' channel → cash-register sound when killed.
+    sendPushNotification(clientId, title, body, extra, 'orders'),
     sendNtfyNotification(clientId, title, body),
   ]);
 }
