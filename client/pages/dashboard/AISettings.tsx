@@ -17,6 +17,7 @@ interface AISettings {
   auto_alt_text: boolean;
   broadcast_composer: boolean;
   reply_suggestions: boolean;
+  auto_cancel_orders: boolean;
   action_order_status: boolean;
   action_create_product: boolean;
   action_edit_product: boolean;
@@ -102,6 +103,7 @@ const DEFAULT: AISettings = {
   auto_alt_text: false,
   broadcast_composer: true,
   reply_suggestions: true,
+  auto_cancel_orders: true,
   action_order_status: true,
   action_create_product: true,
   action_edit_product: true,
@@ -886,6 +888,10 @@ export default function AISettingsPage() {
                 label={isRTL ? 'اقتراحات الردود' : 'Reply suggestions'}
                 desc={isRTL ? 'ردود جاهزة في المحادثات' : 'Ready replies in chat'}
                 icon={<Sparkles className="w-3.5 h-3.5 text-purple-500" />} />
+              <ToggleRow checked={settings.auto_cancel_orders} onChange={() => toggle('auto_cancel_orders')}
+                label={isRTL ? 'الإلغاء التلقائي للطلبات' : 'Auto-cancel orders'}
+                desc={isRTL ? 'يلغي الطلبات غير المشحونة عندما يطلب الزبون ذلك' : 'Cancels unshipped orders when the customer asks'}
+                icon={<Shield className="w-3.5 h-3.5 text-red-500" />} />
             </div>
           </div>
 

@@ -193,6 +193,12 @@ export function detectChangeOfMind(msg: string): boolean {
 async function autoCancelCustomerOrders(clientId: number, platform: Platform, platformChatId: string, msg?: string, storeId?: number): Promise<{ count: number; productName?: string }> {
   try {
     const p = await pool();
+    // Merchant opt-in gate (Meta review: AI must never cancel without merchant consent).
+    // Missing column/row = legacy behavior (enabled); explicit FALSE blocks.
+    try {
+      const gate = await p.query(`SELECT auto_cancel_orders FROM ai_settings WHERE client_id = $1 LIMIT 1`, [clientId]);
+      if (gate.rows.length && gate.rows[0].auto_cancel_orders === false) return { count: 0 };
+    } catch { /* legacy schema → enabled */ }
     const phone = await resolvePhone(clientId, platform, platformChatId);
     if (!phone) return { count: 0 };
 
@@ -265,12 +271,20 @@ async function autoCancelCustomerOrders(clientId: number, platform: Platform, pl
 // ═══════════════════════════════════════════════════════════════
 
 export async function isAiAutoReplyEnabled(clientId: number, platform?: Platform): Promise<boolean> {
+  let pool;
   try {
-    const pool = await ensureConnection();
+    pool = await ensureConnection();
+  } catch (err) {
+    // DB unreachable → fail CLOSED (never auto-reply blind). Loud log, no silent spam.
+    console.error('[CustomerAI] auto-reply gate: database unreachable, blocking auto-reply', (err as any)?.message || err);
+    return false;
+  }
+  try {
     const res = await pool.query(
       `SELECT ai_chat_enabled, storefront_assistant, ai_reply_telegram, ai_reply_messenger, ai_reply_instagram, ai_reply_whatsapp FROM ai_settings WHERE client_id = $1 LIMIT 1`,
       [clientId]
     );
+    // No settings row = brand-new store → onboarding default ON (documented).
     if (res.rows.length === 0) return true;
     const row = res.rows[0];
     if (row.ai_chat_enabled === false) return false;
@@ -280,7 +294,11 @@ export async function isAiAutoReplyEnabled(clientId: number, platform?: Platform
       if (col && row[col] === false) return false;
     }
     return true;
-  } catch { return true; }
+  } catch (err) {
+    // Query failed (not "no row") → fail CLOSED. Never reply on unknown state.
+    console.error('[CustomerAI] auto-reply gate: query failed, blocking auto-reply', (err as any)?.message || err);
+    return false;
+  }
 }
 
 export async function isSenderStoreOwner(clientId: number, platform: Platform, platformChatId: string, storeId?: number): Promise<boolean> {

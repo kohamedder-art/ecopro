@@ -16,6 +16,7 @@ const COLUMNS = [
   "churn_warning",
   "reply_suggestions",
   "broadcast_composer",
+  "auto_cancel_orders",
   "omni_intelligence",
   "action_order_status",
   "action_create_product",
