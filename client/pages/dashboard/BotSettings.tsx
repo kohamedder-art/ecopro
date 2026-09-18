@@ -150,7 +150,7 @@ export default function AdminBotSettings() {
     {
       id: 'confirmation' as const,
       title: isRTL ? 'تأكيد الطلبات' : 'Order Confirmation',
-      desc: isRTL ? 'يرسل رسالة ترحيب وتأكيد تلقائي للعميل عند إنشاء طلب جديد' : 'Sends welcome & confirmation message when customer places an order',
+      desc: isRTL ? 'رسالة التأكيد التفاعلية بأزرار ✅/❌ — الرسالة الفورية والتثبيت يُرسلان دائماً' : 'Interactive confirmation with ✅/❌ buttons — instant receipt & pin tip always send',
       icon: MessageSquare,
       color: 'emerald',
       enabled: settings.enabled,

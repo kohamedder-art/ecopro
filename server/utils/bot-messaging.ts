@@ -721,23 +721,27 @@ export async function sendOrderConfirmationMessages(
       console.warn('[Bot] Access check failed; proceeding with enabled flag only:', (err as any)?.message || err);
     }
 
-    // Get bot settings for this store owner
+    // Get bot settings for this store owner.
+    // NOTE: the master `enabled` switch gates ONLY the interactive confirmation
+    // (approve/decline buttons). Instant receipt + pin tip are harmless and
+    // ALWAYS scheduled — they are not controlled by the confirmation toggle.
     const settingsResult = storeId
       ? await pool.query(
-          `SELECT * FROM bot_settings WHERE store_id = $1 AND enabled = true`,
+          `SELECT * FROM bot_settings WHERE store_id = $1`,
           [storeId]
         )
       : await pool.query(
-          `SELECT * FROM bot_settings WHERE client_id = $1 AND enabled = true`,
+          `SELECT * FROM bot_settings WHERE client_id = $1`,
           [clientId]
         );
 
     if (settingsResult.rows.length === 0) {
-      console.log(`[Bot] Bot disabled for client ${clientId}, skipping message send`);
+      console.log(`[Bot] No bot settings for client ${clientId}, skipping message send`);
       return;
     }
 
     const settings = settingsResult.rows[0];
+    const confirmationEnabled = settings.enabled !== false;
     const templateVariables = {
       customerName,
       storeName,
@@ -756,7 +760,9 @@ export async function sendOrderConfirmationMessages(
     // Note: We no longer require provider === 'telegram' since stores may have both channels configured
     const provider = settings.provider || 'telegram';
     const effectiveTelegramToken = String(settings.telegram_bot_token || '').trim() || (isPlatformTelegramAvailable() ? getPlatformTelegramBotToken() : '');
-    if (!options?.skipTelegram && effectiveTelegramToken) {
+    // Telegram carries ONLY the interactive confirmation (no instant/pin here),
+    // so the whole branch obeys the confirmation toggle.
+    if (confirmationEnabled && !options?.skipTelegram && effectiveTelegramToken) {
       // Check if customer has connected Telegram (has telegram_chat_id)
       const telegramConnectionRes = await pool.query(
         `SELECT telegram_chat_id FROM customer_messaging_ids 
@@ -863,11 +869,15 @@ export async function sendOrderConfirmationMessages(
 
         const delayMinutes = settings.messenger_delay_minutes || 5;
         const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-        await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-           VALUES ($1, $2, $3, $4, 'messenger', $5, $6, $7)`,
-          [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
-        );
+        // Interactive confirmation ONLY when the merchant enabled it.
+        // Instant + pin above always send — they are harmless receipts.
+        if (confirmationEnabled) {
+          await pool.query(
+            `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+             VALUES ($1, $2, $3, $4, 'messenger', $5, $6, $7)`,
+            [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
+          );
+        }
         console.log(`[Bot] Messenger scheduled for order ${orderId} at ${sendAt}`);
       } else {
         console.log(`[Bot] Messenger enabled but customer ${customerPhone} hasn't connected - queuing for later`);
@@ -894,11 +904,14 @@ export async function sendOrderConfirmationMessages(
            VALUES ($1, $2, $3, $4, 'messenger', $5, $6, 'WAITING_FOR_MESSENGER_PSID')`,
           [orderId, clientId, storeId || null, customerPhone, pinMessage, pinDelay]
         );
-        await pool.query(
-          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at, error_message)
-           VALUES ($1, $2, $3, $4, 'messenger', $5, $6, $7, 'WAITING_FOR_MESSENGER_PSID')`,
-          [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
-        );
+        // Interactive confirmation ONLY when the merchant enabled it.
+        if (confirmationEnabled) {
+          await pool.query(
+            `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at, error_message)
+             VALUES ($1, $2, $3, $4, 'messenger', $5, $6, $7, 'WAITING_FOR_MESSENGER_PSID')`,
+            [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
+          );
+        }
         console.log(`[Bot] Messenger messages queued with WAITING_FOR_MESSENGER_PSID for order ${orderId}`);
       }
     }
@@ -929,14 +942,17 @@ export async function sendOrderConfirmationMessages(
         [orderId, clientId, storeId || null, customerPhone, instantMessage, now]
       );
 
-      // Delayed confirmation with buttons
+      // Delayed confirmation with buttons — ONLY when the merchant enabled it.
+      // Instant receipt above always sends; it is harmless.
       const delayMinutes = settings.whatsapp_delay_minutes || settings.telegram_delay_minutes || 5;
       const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-      await pool.query(
-        `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
-         VALUES ($1, $2, $3, $4, 'whatsapp_cloud', $5, $6, $7)`,
-        [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
-      );
+      if (confirmationEnabled) {
+        await pool.query(
+          `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, confirmation_link, send_at)
+           VALUES ($1, $2, $3, $4, 'whatsapp_cloud', $5, $6, $7)`,
+          [orderId, clientId, storeId || null, customerPhone, confirmationMessage, confirmationLink, sendAt]
+        );
+      }
       console.log(`[Bot] WhatsApp Cloud scheduled for ${customerPhone} at ${sendAt}`);
     }
 
