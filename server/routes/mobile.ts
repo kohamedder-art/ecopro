@@ -291,9 +291,6 @@ router.patch('/notifications/read-all', markNotificationsRead);
 // Without this alias, "mark all read" 404s and notifications come back unread after every restart.
 router.post('/notifications/read-all', markNotificationsRead);
 
-// In-memory cache for Expo API result
-let expoBuildCache: { url: string; version: string; expiresAt: number } | null = null;
-
 // Public: get latest app download URL
 export const getDownloadUrl: RequestHandler = async (_req, res) => {
   // 1) Check database (manually set by admin)
@@ -332,44 +329,10 @@ export const getDownloadUrl: RequestHandler = async (_req, res) => {
     }
   } catch { /* fall through */ }
 
-  // 3) Check EXPO_TOKEN + EXPO_APP_ID — auto-fetch latest build URL (may expire)
-  const expoToken = String(process.env.EXPO_TOKEN || '').trim();
-  const expoAppId = String(process.env.EXPO_APP_ID || '').trim();
-  if (expoToken && expoAppId) {
-    if (expoBuildCache && Date.now() < expoBuildCache.expiresAt) {
-      return res.json({ download_url: expoBuildCache.url, version: expoBuildCache.version, updated_at: null });
-    }
-    try {
-      const gqlRes = await fetch('https://api.expo.dev/graphql', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${expoToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: `query ViewBuildsOnApp($appId: String!, $offset: Int!, $limit: Int!, $filter: BuildFilter) {
-            app { byId(appId: $appId) { id builds(offset: $offset, limit: $limit, filter: $filter) {
-              id artifacts { buildUrl } appVersion appBuildVersion
-            } } }
-          }`,
-          variables: { appId: expoAppId, offset: 0, limit: 1, filter: { platform: 'ANDROID', status: 'FINISHED' } },
-        }),
-      });
-      if (gqlRes.ok) {
-        const gqlData = await gqlRes.json();
-        const build = gqlData?.data?.app?.byId?.builds?.[0];
-        if (build?.artifacts?.buildUrl) {
-          expoBuildCache = {
-            url: build.artifacts.buildUrl,
-            version: build.appBuildVersion || 'latest',
-            expiresAt: Date.now() + 3_600_000,
-          };
-          return res.json({ download_url: build.artifacts.buildUrl, version: build.appBuildVersion || 'latest', updated_at: null });
-        }
-      }
-    } catch { /* fall through */ }
-  }
-
+  // NOTE: no Expo fallback — it serves stale EAS builds (v18) that shadow
+  // real GitHub releases and strand users on old versions with "up to date".
+  // GitHub Releases is the single source of truth. If it fails, return null
+  // (app treats it as "couldn't check", never as a downgrade).
   res.json({ download_url: null });
 };
 
