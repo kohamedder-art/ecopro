@@ -16,10 +16,10 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 let cachedAccessToken: string | null = null;
 let tokenExpiresAt = 0;
 
-function getServiceAccount(): any {
-  // Production (Render): JSON pasted into FIREBASE_SERVICE_ACCOUNT_JSON env var.
-  // The file is gitignored and never deploys — without the env var, FCM is dead
-  // and killed-state notifications silently never send. Fail loudly in logs.
+let cachedServiceAccount: any | null = null;
+
+async function getServiceAccount(): Promise<any> {
+  // 1. Explicit env var (Render dashboard) — highest priority.
   const fromEnv = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (fromEnv) {
     try {
@@ -28,11 +28,30 @@ function getServiceAccount(): any {
       throw new Error('[fcm] FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON');
     }
   }
+  if (cachedServiceAccount) return cachedServiceAccount;
+  // 2. platform_settings in Postgres (written once, no dashboard paste needed).
+  try {
+    const pool = await ensureConnection();
+    const r = await pool.query(
+      `SELECT setting_value FROM platform_settings WHERE setting_key = 'firebase_service_account'`
+    );
+    const raw = r.rows[0]?.setting_value;
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (parsed?.private_key) {
+      cachedServiceAccount = parsed;
+      return parsed;
+    }
+  } catch (e: any) {
+    console.warn('[fcm] DB service account lookup failed:', e?.message || e);
+  }
+  // 3. Local file (dev machines only — gitignored, never deploys).
   try {
     const path = join(__dirname, '..', 'firebase-service-account.json');
-    return JSON.parse(readFileSync(path, 'utf8'));
+    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+    cachedServiceAccount = parsed;
+    return parsed;
   } catch {
-    throw new Error('[fcm] No service account: set FIREBASE_SERVICE_ACCOUNT_JSON env var (production) or place firebase-service-account.json next to server/ (local dev)');
+    throw new Error('[fcm] No service account: set FIREBASE_SERVICE_ACCOUNT_JSON env var or platform_settings.firebase_service_account (production), or place firebase-service-account.json next to server/ (local dev)');
   }
 }
 
@@ -42,7 +61,7 @@ async function getAccessToken(): Promise<string> {
     return cachedAccessToken;
   }
 
-  const sa = getServiceAccount();
+  const sa = await getServiceAccount();
   const nowSec = Math.floor(now / 1000);
 
   const payload = {
