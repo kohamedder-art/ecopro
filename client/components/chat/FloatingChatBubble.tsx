@@ -456,7 +456,7 @@ export default function FloatingChatBubble() {
   return (
     <>
       {!isAdmin && open && (
-        <div className={`fixed z-[9999] flex flex-col-reverse gap-2 sm:gap-3 ${isEditorPage ? 'left-4' : 'right-3 sm:right-4'}`} style={{ bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className={`fixed z-[9999] flex flex-col-reverse gap-2 sm:gap-3 ${isEditorPage ? 'left-4' : 'right-3 sm:right-4'}`} style={{ bottom: 'calc(126px + env(safe-area-inset-bottom, 0px))' }}>
           {adminContacts.map((ch, i) => (
             <a
               key={ch.platform + ch.url}
