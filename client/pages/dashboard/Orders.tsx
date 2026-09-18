@@ -1678,10 +1678,16 @@ export default function OrdersAdmin() {
             <div className="py-8 text-center text-sm text-muted-foreground">{t('orders.noOrders')}</div>
           ) : getPaginatedOrders().map((o: any) => {
             const s = getStatusDisplay(o.status);
+            const open = expandedOrderId === o.id;
             return (
               <div key={o.id}>
-                <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-3 p-3">
+                <div
+                  className={`rounded-2xl bg-card border shadow-sm overflow-hidden transition-colors ${open ? "border-primary/40" : "border-border"}`}
+                >
+                  <div
+                    className="flex items-center gap-3 p-3 cursor-pointer"
+                    onClick={() => setExpandedOrderId(open ? null : o.id)}
+                  >
                     <div onClick={e => e.stopPropagation()}>
                       <button onClick={() => toggleOrderSelection(o.raw_id)}>
                         {selectedOrders.has(o.raw_id)
@@ -1708,6 +1714,7 @@ export default function OrdersAdmin() {
                       <div className="text-sm font-black">{Math.round(Number(o.total) || 0)}</div>
                       <div className="text-xs text-foreground/70">DZD</div>
                     </div>
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
                   </div>
                   <div className="h-px bg-border mx-3" />
                   <div className="flex flex-col items-start px-3 py-2 gap-1">
@@ -1725,26 +1732,18 @@ export default function OrdersAdmin() {
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground mr-1">{getTimeStr(Math.floor((Date.now() - parseUTCDate(o.created_at).getTime()) / 60000))}</span>
                       {o.phone && (
-                        <a href={`tel:${o.phone}`}
+                        <a href={`tel:${o.phone}`} onClick={e => e.stopPropagation()}
                           className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
                         >
                           <Phone className="h-3 w-3" /> {t('orders.call')}
                         </a>
                       )}
-                      <button
-                        onClick={() => setExpandedOrderId(expandedOrderId === o.id ? null : o.id)}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                      >
-                        {expandedOrderId === o.id ? t('orders.less') : t('orders.details')}
-                        <ChevronRight className={`h-3 w-3 transition-transform ${expandedOrderId === o.id ? 'rotate-90' : ''}`} />
-                      </button>
                     </div>
                   </div>
-                </div>
-                {expandedOrderId === o.id && (
-                  <div className="mt-1 rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                {open && (
+                  <div className="border-t border-primary/10 bg-primary/[0.03] px-3 py-3 space-y-3">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-border/50">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-foreground">#{o.id}</span>
                         <span className="text-xs text-muted-foreground">{o.customer}</span>
@@ -1752,7 +1751,7 @@ export default function OrdersAdmin() {
                       <span className="text-sm font-bold text-foreground tabular-nums">{Math.round(Number(o.total) || 0)} DZD</span>
                     </div>
 
-                    <div className="p-3 space-y-3">
+                    <div className="space-y-3">
                       {/* Product */}
                       <div className="bg-muted/30 rounded-xl border border-border/50 p-3">
                         <div className="flex gap-3">
@@ -1839,6 +1838,7 @@ export default function OrdersAdmin() {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             );
           })}
