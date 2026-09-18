@@ -128,7 +128,9 @@ export default function Profile() {
 
   const loadAppDownload = async () => {
     try {
-      const res = await fetch('/api/app-download');
+      // NOTE: /api/app-download never existed server-side (silent 404 = eternal "soon").
+      // /api/mobile/download is the real public endpoint (GitHub Releases source of truth).
+      const res = await fetch('/api/mobile/download');
       if (res.ok) {
         const data = await res.json();
         setAppDownload(data);
