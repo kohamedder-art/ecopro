@@ -418,6 +418,33 @@ export default function Integrations() {
             </div>
           )}
 
+          {/* ── WhatsApp cost explainer — Meta bills the number owner, not us ── */}
+          {activePlatform === 'whatsapp_cloud' && (
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                {isRTL ? 'تكلفة رسائل واتساب (تدفع لميتا مباشرة)' : 'WhatsApp costs (paid to Meta directly)'}
+              </p>
+              <ul className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5 leading-relaxed">
+                <li>
+                  {isRTL
+                    ? '• الزبون يبدأ والذكاء يرد داخل 24 ساعة: أول 1,000 رد شهرياً مجاناً لكل رقم، بعدها سنتات قليلة لكل رسالة.'
+                    : '• Customer writes first, AI replies within 24h: first 1,000 replies/month free per number, then a few cents each.'}
+                </li>
+                <li>
+                  {isRTL
+                    ? '• الذكاء يبدأ بعد صمت 24 ساعة: يحتاج قالب Meta مدفوع، بسعر أعلى ويستهلك من حصة الرقم.'
+                    : '• AI writes first after 24h silence: needs a paid Meta template, pricier and quota-consuming.'}
+                </li>
+                <li className="font-bold text-slate-600 dark:text-slate-300">
+                  {isRTL
+                    ? 'القاعدة: رد بسرعة داخل النافذة = أرخص طريق. (Telegram وMessenger وInstagram بلا تكلفة لكل رسالة حالياً.)'
+                    : 'Rule: fast replies inside the window = cheapest. (Telegram, Messenger & Instagram have no per-message charge.)'}
+                </li>
+              </ul>
+            </div>
+          )}
+
           {/* ── Timing Settings — only when connected ── */}
           {!comingSoon && connected && (
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60">
