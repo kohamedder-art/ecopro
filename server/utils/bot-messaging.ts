@@ -992,6 +992,34 @@ function defaultWhatsAppTemplate(): string {
  * Background job to send pending messages
  * Call this periodically (e.g., every 5 minutes)
  */
+/**
+ * WhatsApp 24h customer-service window check (cost guard).
+ * Meta only allows free-form replies within 24h of the customer's LAST
+ * INBOUND message. Outside the window, free-form sends are rejected by Meta
+ * (and would need paid templates) — so we skip instead of burning calls.
+ * The AI itself is reactive-only (never initiates); this gate covers the
+ * proactive queue (confirmations, follow-ups, broadcasts).
+ * Fail-closed: unknown state = outside window = skip.
+ */
+async function isWithinWhatsAppWindow(client: any, clientId: number, phone: string | null): Promise<boolean> {
+  if (!phone) return false;
+  try {
+    const digits = String(phone).replace(/\D/g, '').slice(-9);
+    if (!digits) return false;
+    const r = await client.query(
+      `SELECT MAX(cc.created_at) as last_in FROM customer_conversations cc
+       WHERE cc.client_id = $1 AND cc.platform = 'whatsapp' AND cc.role = 'customer'
+       AND RIGHT(REGEXP_REPLACE(cc.platform_chat_id, '\\D', '', 'g'), 9) = $2`,
+      [clientId, digits]
+    );
+    const lastIn = r.rows[0]?.last_in ? new Date(r.rows[0].last_in).getTime() : 0;
+    if (!lastIn) return false;
+    return Date.now() - lastIn <= 24 * 60 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export async function processPendingMessages(): Promise<boolean> {
   // Use a single dedicated client for the entire batch to avoid pool exhaustion.
   // Previously each pool.query() in the loop checked out/returned a connection,
@@ -1036,6 +1064,16 @@ export async function processPendingMessages(): Promise<boolean> {
         let sendResult;
 
         if (message.message_type === "whatsapp") {
+          // Cost guard: never initiate outside the customer's 24h window.
+          const inWindow = await isWithinWhatsAppWindow(client, message.client_id, message.customer_phone);
+          if (!inWindow) {
+            await client.query(
+              `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+              ['OUTSIDE_24H_WINDOW', message.id]
+            );
+            console.log(`[Bot] WhatsApp skipped (outside 24h window): msg ${message.id} client ${message.client_id}`);
+            continue;
+          }
           // Get WhatsApp token from bot settings (presence only; Twilio creds come from env)
           const settingsResult = await client.query(
             `SELECT whatsapp_token FROM bot_settings WHERE store_id = $1`,
@@ -1113,6 +1151,18 @@ export async function processPendingMessages(): Promise<boolean> {
             sendResult = await sendViberMessage(token, receiverId, message.message_content, senderName);
           }
         } else if (message.message_type === 'whatsapp_cloud') {
+          // Cost guard: never initiate outside the customer's 24h window.
+          // Inside the window replies are ~free (1k/mo free, then pennies);
+          // outside it Meta demands paid templates — which we don't auto-send.
+          const inWindowCloud = await isWithinWhatsAppWindow(client, message.client_id, message.customer_phone);
+          if (!inWindowCloud) {
+            await client.query(
+              `UPDATE bot_messages SET status = 'failed', error_message = $1, updated_at = NOW() WHERE id = $2`,
+              ['OUTSIDE_24H_WINDOW', message.id]
+            );
+            console.log(`[Bot] WhatsApp Cloud skipped (outside 24h window): msg ${message.id} client ${message.client_id}`);
+            continue;
+          }
           // WhatsApp Cloud API handling — phone number IS the recipient
           const settingsResult = await client.query(
             `SELECT whatsapp_phone_id, whatsapp_token FROM bot_settings WHERE store_id = $1`,
