@@ -245,12 +245,31 @@ router.get('/google/callback', async (req, res) => {
       token: accessToken,
     }));
 
-    // Mobile: redirect to deep link so the app opens
+    // Mobile: redirect to deep link so the app opens.
+    // NOTE: server-side 302s to custom schemes are swallowed by Chrome/Brave
+    // (ERR_UNKNOWN_URL_SCHEME) when there is no user gesture. So instead of a
+    // bare redirect, serve a tiny interstitial: it auto-attempts the deep link
+    // AND shows a big tap button (user gesture = reliable intent fire).
     const isMobile = typeof state === 'string' && state.startsWith('mobile_');
     if (isMobile) {
-      console.log('[OAUTH] Mobile login detected, redirecting to deep link');
+      console.log('[OAUTH] Mobile login detected, serving app-opener page');
       const deepLink = `sahla4eco://auth?token=${encodeURIComponent(accessToken)}&user=${userParam}`;
-      return res.redirect(deepLink);
+      res.send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sahla4Eco</title>
+<style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}
+.card{background:#1e293b;border-radius:20px;padding:32px 28px;max-width:340px;margin:16px}
+.logo{font-size:44px}.btn{display:block;background:#2563eb;color:#fff;font-weight:800;font-size:18px;border-radius:14px;padding:14px 20px;margin-top:20px;text-decoration:none}
+.hint{color:#94a3b8;font-size:13px;margin-top:14px}</style>
+<script>setTimeout(function(){window.location.replace(${JSON.stringify(deepLink)});},600);</script>
+</head><body><div class="card">
+<div class="logo">✅</div>
+<h2>تم تسجيل الدخول بنجاح</h2>
+<p>اضغط الزر للعودة إلى التطبيق</p>
+<a class="btn" href="${deepLink.replace(/"/g, '&quot;')}">فتح التطبيق</a>
+<p class="hint">Connexion réussie — ouvrez l&apos;application</p>
+</div></body></html>`);
+      return;
     }
     
     console.log('[OAUTH] Redirecting to login with user data');
