@@ -220,7 +220,7 @@ export default function Profile() {
   useEffect(() => { load(); loadAffiliateInfo(); loadAppDownload(); }, [activeStore?.id]);
   const subStatus = access?.status || profile?.subscription?.status || 'unknown';
   const isFrozen = subStatus === 'paused';
-  const isActivePaid = subStatus === 'active';
+  const isActivePaid = subStatus === 'active' || subStatus === 'extended';
   const isTrial = subStatus === 'trial';
   const frozenDays = isFrozen
     ? (access?.frozenDays ?? (profile?.subscription?.paused_at
@@ -269,8 +269,8 @@ export default function Profile() {
             <p className="text-sm text-foreground/70 font-medium">{form.email}</p>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ${subStatus === 'active' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : subStatus === 'trial' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : subStatus === 'paused' ? 'bg-sky-500/10 text-sky-600 border border-sky-500/20' : 'bg-muted text-muted-foreground border border-border/40'}`}>
-          {subStatus === 'active' && <BadgeCheck className="w-3 h-3" />}
+        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ${subStatus === 'active' || subStatus === 'extended' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : subStatus === 'trial' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : subStatus === 'paused' ? 'bg-sky-500/10 text-sky-600 border border-sky-500/20' : 'bg-muted text-muted-foreground border border-border/40'}`}>
+          {(subStatus === 'active' || subStatus === 'extended') && <BadgeCheck className="w-3 h-3" />}
           {subStatus === 'paused' ? (lang === 'ar' ? '⏸️ مجمّد' : lang === 'fr' ? '⏸️ Gelé' : '⏸️ FROZEN') : subStatus.toUpperCase()}
         </span>
       </div>

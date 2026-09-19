@@ -1076,11 +1076,19 @@ export const freezeSubscription: RequestHandler = async (req, res) => {
     const userId = Number((req.user as any)?.id);
     if (!userId) return jsonError(res, 401, "Not authenticated");
 
-    const sub = await pool.query(`SELECT * FROM subscriptions WHERE user_id = $1`, [userId]);
+    const sub = await pool.query(
+      `SELECT s.*, c.subscription_extended_until
+       FROM subscriptions s LEFT JOIN clients c ON c.id = s.user_id
+       WHERE s.user_id = $1`,
+      [userId]
+    );
     if (!sub.rows.length) return jsonError(res, 404, "No subscription found");
     const s = sub.rows[0];
     if (s.status === 'paused') return jsonError(res, 400, "Account is already frozen");
-    if (s.status !== 'active' && s.status !== 'trial') return jsonError(res, 400, "Only trial or paid subscriptions can be frozen");
+    // Paid access = active/trial row OR a live admin/voucher extension
+    const extUntil = s.subscription_extended_until ? new Date(s.subscription_extended_until) : null;
+    const extOk = !!(extUntil && Number.isFinite(extUntil.getTime()) && extUntil.getTime() > Date.now());
+    if (s.status !== 'active' && s.status !== 'trial' && !extOk) return jsonError(res, 400, "Only trial, extended or paid subscriptions can be frozen");
 
     const db = await pool.connect();
     try {
