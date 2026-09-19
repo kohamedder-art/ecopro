@@ -33,9 +33,11 @@ const getStats: RequestHandler = async (req, res) => {  try {
     const [statsRes, pendingRes, lowStockRes] = await Promise.all([
       pool.query(
         `SELECT COALESCE(SUM(total_price), 0) as revenue, COUNT(*)::int as orders
-         FROM store_orders WHERE client_id = $1 AND created_at::date = $2 AND deleted_at IS NULL
+         FROM store_orders WHERE client_id = $1
+         AND (created_at AT TIME ZONE 'Africa/Algiers')::date = (NOW() AT TIME ZONE 'Africa/Algiers')::date
+         AND deleted_at IS NULL
          AND status NOT IN ('cancelled','returned','fake','duplicate')`,
-        [clientId, today]
+        [clientId]
       ),
       pool.query(
         `SELECT COUNT(*)::int as count FROM store_orders WHERE client_id = $1 AND status = 'pending' AND deleted_at IS NULL`,
