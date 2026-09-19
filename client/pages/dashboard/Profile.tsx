@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { useToast } from '@/components/ui/use-toast';
-import { Gift, Loader, Save, Key, Eye, EyeOff, BadgeCheck, Globe, CheckCircle2, AlertCircle, Sparkles, Smartphone, Download } from 'lucide-react';
+import { Gift, Loader, Save, Key, Eye, EyeOff, BadgeCheck, Globe, CheckCircle2, AlertCircle, Sparkles, Smartphone, Download, Snowflake, Play } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 
 type SubscriptionRow = {
   tier?: string | null;
   status?: string | null;
+  paused_at?: string | null;
   trial_started_at?: string | null;
   trial_ends_at?: string | null;
   current_period_start?: string | null;
@@ -32,14 +33,15 @@ type ProfileResponse = {
 const inputCls = "w-full h-10 bg-muted/40 border border-border/40 rounded-lg px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all";
 
 export default function Profile() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { toast } = useToast();
   const { activeStore } = useStore();
+  const lang = locale === 'ar' ? 'ar' : locale === 'fr' ? 'fr' : 'en';
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [profile, setProfile] = React.useState<ProfileResponse | null>(null);
-  const [access, setAccess] = React.useState<{ status: string; hasAccess: boolean; daysLeft?: number } | null>(null);
+  const [access, setAccess] = React.useState<{ status: string; hasAccess: boolean; daysLeft?: number; frozenDays?: number } | null>(null);
 
   const [form, setForm] = React.useState({ name: '', email: '', phone: '', business_name: '', country: '', city: '', subdomain: '' });
 
@@ -143,12 +145,14 @@ export default function Profile() {
   const load = async () => {
     setLoading(true);
     try {
-      const [profileRes, accessRes] = await Promise.all([
+      const [profileRes, accessRes, billRes] = await Promise.all([
         fetch('/api/users/me'),
         fetch('/api/access/check'),
+        fetch('/api/billing/check-access'),
       ]);
       const profileData = await profileRes.json().catch(() => ({} as any));
       const accessData = await accessRes.json().catch(() => ({} as any));
+      const billData = await billRes.json().catch(() => ({} as any));
       if (profileData?.user) {
         const u = profileData.user;
         setProfile(u);
@@ -162,7 +166,7 @@ export default function Profile() {
           subdomain: u.subdomain || '',
         });
       }
-      setAccess(accessData);
+      setAccess(billData?.status ? billData : accessData);
     } catch {} finally {
       setLoading(false);
     }
@@ -215,6 +219,34 @@ export default function Profile() {
 
   useEffect(() => { load(); loadAffiliateInfo(); loadAppDownload(); }, [activeStore?.id]);
   const subStatus = access?.status || profile?.subscription?.status || 'unknown';
+  const isFrozen = subStatus === 'paused';
+  const isActivePaid = subStatus === 'active';
+  const frozenDays = isFrozen
+    ? (access?.frozenDays ?? (profile?.subscription?.paused_at
+        ? Math.max(0, Math.floor((Date.now() - new Date(profile.subscription.paused_at).getTime()) / 86400000))
+        : 0))
+    : 0;
+  const [freezeLoading, setFreezeLoading] = useState(false);
+
+  const doFreezeToggle = async () => {
+    const freezing = !isFrozen;
+    const msg = freezing
+      ? (lang === 'ar' ? 'تجميد الحساب؟ ستتوقف كل متاجرك مؤقتاً وتبقى أيامك المدفوعة محفوظة.' : lang === 'fr' ? 'Geler le compte ? Boutiques en pause, jours payés conservés.' : 'Freeze account? All stores pause, paid days preserved.')
+      : (lang === 'ar' ? 'استئناف الحساب؟ ستعود كل متاجرك للعمل.' : lang === 'fr' ? 'Reprendre ? Vos boutiques rouvrent.' : 'Resume? All stores reopen.');
+    if (!window.confirm(msg)) return;
+    setFreezeLoading(true);
+    try {
+      const res = await fetch(freezing ? '/api/billing/freeze' : '/api/billing/resume', { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || 'Failed');
+      toast({ title: body?.message || (freezing ? '❄️' : '✅') });
+      await load();
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: t('common.error'), description: (e as Error).message });
+    } finally {
+      setFreezeLoading(false);
+    }
+  };
 
   const initials = form.name
     ? form.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -236,9 +268,9 @@ export default function Profile() {
             <p className="text-[11px] text-muted-foreground font-medium">{form.email}</p>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg ${subStatus === 'active' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : subStatus === 'trial' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : 'bg-muted text-muted-foreground border border-border/40'}`}>
+        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg ${subStatus === 'active' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : subStatus === 'trial' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : subStatus === 'paused' ? 'bg-sky-500/10 text-sky-600 border border-sky-500/20' : 'bg-muted text-muted-foreground border border-border/40'}`}>
           {subStatus === 'active' && <BadgeCheck className="w-3 h-3" />}
-          {subStatus.toUpperCase()}
+          {subStatus === 'paused' ? (lang === 'ar' ? '⏸️ مجمّد' : lang === 'fr' ? '⏸️ Gelé' : '⏸️ FROZEN') : subStatus.toUpperCase()}
         </span>
       </div>
 
@@ -483,6 +515,64 @@ export default function Profile() {
             <span className="shrink-0 text-[10px] text-muted-foreground font-bold">{t('profile.comingSoon')}</span>
           )}
         </div>
+      </div>
+
+      {/* ── Row 4: Freeze account (full width) ── */}
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-sky-500 to-indigo-500" />
+          <span className="text-sm font-bold text-foreground">
+            {lang === 'ar' ? '❄️ تجميد الحساب' : lang === 'fr' ? '❄️ Geler le compte' : '❄️ Freeze account'}
+          </span>
+          {isFrozen && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600">
+              {lang === 'ar' ? `مجمّد منذ ${frozenDays} يوم` : lang === 'fr' ? `Gelé depuis ${frozenDays} j` : `Frozen ${frozenDays}d`}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          <div className="rounded-lg bg-muted/40 border border-border/40 p-3">
+            <p className="text-[11px] font-black text-foreground mb-1.5">
+              {lang === 'ar' ? 'ماذا يتوقف؟' : lang === 'fr' ? 'Quoi en pause ?' : 'What pauses?'}
+            </p>
+            <ul className="space-y-1 text-[11px] text-muted-foreground font-medium">
+              {(lang === 'ar' ? ['كل متاجرك: صفحة عطلة + بدون طلبات جديدة', 'البوتات والرد الآلي على كل المنصات', 'المساعد الذكي (لا استهلاك)', 'تحديثات شركات التوصيل'] : lang === 'fr' ? ['Toutes vos boutiques : page vacances, sans commandes', 'Bots et réponses auto sur toutes les plateformes', 'Assistant IA (zéro consommation)', 'Suivi des transporteurs'] : ['All your stores: vacation page, no new orders', 'Bots and auto-replies on every platform', 'AI assistant (zero usage)', 'Courier tracking updates']).map((x, i) => (
+                <li key={i} className="flex items-start gap-1.5"><span className="text-sky-500 font-black">⏸</span>{x}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3">
+            <p className="text-[11px] font-black text-foreground mb-1.5">
+              {lang === 'ar' ? 'ماذا يبقى محفوظاً؟' : lang === 'fr' ? 'Quoi conservé ?' : 'What is kept?'}
+            </p>
+            <ul className="space-y-1 text-[11px] text-muted-foreground font-medium">
+              {(lang === 'ar' ? ['منتجاتك وإعداداتك وبياناتك — لا يُحذف شيء', 'أيامك المدفوعة: تُمدد فترة اشتراكك بها', 'روابط متاجرك تبقى شغالة (صفحة عطلة)', 'بدون مدة قصوى — استأنف متى شئت'] : lang === 'fr' ? ['Produits, réglages, données — rien supprimé', 'Jours payés : période prolongée d’autant', 'Liens conservés (page vacances)', 'Sans limite — reprenez quand vous voulez'] : ['Products, settings, data — nothing deleted', 'Paid days: period extended day-for-day', 'Store links stay alive (vacation page)', 'No time limit — resume anytime']).map((x, i) => (
+                <li key={i} className="flex items-start gap-1.5"><span className="text-emerald-500 font-black">✓</span>{x}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {isActivePaid && !isFrozen && (
+          <button onClick={doFreezeToggle} disabled={freezeLoading}
+            className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold border border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+            {freezeLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Snowflake className="w-3.5 h-3.5" />}
+            {lang === 'ar' ? 'تجميد الحساب' : lang === 'fr' ? 'Geler le compte' : 'Freeze account'}
+          </button>
+        )}
+        {isFrozen && (
+          <button onClick={doFreezeToggle} disabled={freezeLoading}
+            className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md">
+            {freezeLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+            {lang === 'ar' ? 'استئناف الحساب' : lang === 'fr' ? 'Reprendre' : 'Resume account'}
+          </button>
+        )}
+        {!isActivePaid && !isFrozen && (
+          <p className="text-[11px] text-muted-foreground font-medium">
+            {lang === 'ar' ? 'التجميد متاح للاشتراكات المدفوعة (الفترة التجريبية مجانية أصلاً).' : lang === 'fr' ? 'Pause réservée aux abonnements payés (l’essai est déjà gratuit).' : 'Freezing is for paid subscriptions (trial is already free).'}
+          </p>
+        )}
       </div>
 
     </div>
