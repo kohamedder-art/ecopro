@@ -2,13 +2,12 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { Loader2, Search, RefreshCw, Package, MapPin, Truck, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 
-// Owner pipeline: 5 steps. Failed/returned/cancelled are NOT steps —
-// they land in the "attention" bucket (STATUS_TO_STEP = -1).
+// Owner pipeline: 4 steps. OFD folds into "in_transit" (couriers flag it for
+// days — false precision). Failed/returned/cancelled land in "attention".
 const TRACKING_STEPS = [
   { key: "new",              labelKey: "tracking.stepNew",            color: "#0d9488" },
   { key: "confirmed",        labelKey: "tracking.stepConfirmed",      color: "#1c7ed6" },
   { key: "in_transit",       labelKey: "tracking.stepInTransit",      color: "#d9480f" },
-  { key: "out_for_delivery", labelKey: "tracking.stepOutForDelivery", color: "#c2255c" },
   { key: "delivered",        labelKey: "tracking.stepDelivered",       color: "#2b8a3e" },
 ];
 
@@ -16,8 +15,8 @@ const STATUS_TO_STEP: Record<string, number> = {
   pending: 0, processing: 0,
   confirmed: 1, assigned: 1, picked_up: 1, shipped: 1,
   in_transit: 2, in_delivery: 2, at_warehouse: 2, at_hub: 2, ready_for_pickup: 2,
-  out_for_delivery: 3, out_delivery: 3,
-  delivered: 4, completed: 4,
+  out_for_delivery: 2, out_delivery: 2,
+  delivered: 3, completed: 3,
   cancelled: -1, returned: -1, failed: -1, fake: -1, duplicate: -1,
 };
 
@@ -25,7 +24,7 @@ const STATUS_GROUP: Record<string, string> = {
   pending: "new", processing: "new",
   confirmed: "confirmed", assigned: "confirmed", picked_up: "confirmed", shipped: "confirmed",
   in_transit: "transit", in_delivery: "transit", at_warehouse: "transit", at_hub: "transit", ready_for_pickup: "transit",
-  out_for_delivery: "ofd", out_delivery: "ofd",
+  out_for_delivery: "transit", out_delivery: "transit",
   delivered: "done", completed: "done",
   cancelled: "attention", returned: "attention", failed: "attention", fake: "attention", duplicate: "attention",
 };
@@ -34,7 +33,6 @@ const GROUP_META: Record<string, { label: string; color: string; icon: React.Rea
   new:       { label: "جديد",          color: "#0d9488", icon: <Clock className="w-3.5 h-3.5" /> },
   confirmed: { label: "مؤكد",          color: "#1c7ed6", icon: <Package className="w-3.5 h-3.5" /> },
   transit:   { label: "في الطريق",     color: "#d97706", icon: <Truck className="w-3.5 h-3.5" /> },
-  ofd:       { label: "خارج للتوصيل",  color: "#e11d48", icon: <MapPin className="w-3.5 h-3.5" /> },
   done:      { label: "تم التسليم",    color: "#059669", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   attention: { label: "يحتاج تدخل",    color: "#dc2626", icon: <AlertCircle className="w-3.5 h-3.5" /> },
 };
@@ -214,13 +212,13 @@ export default function OrderTracking() {
 
   useEffect(() => { load(); }, [load]);
 
-  const liveCounts: Record<string, number> = { all: orders.length, new: 0, confirmed: 0, transit: 0, ofd: 0, done: 0, attention: 0 };
+  const liveCounts: Record<string, number> = { all: orders.length, new: 0, confirmed: 0, transit: 0, done: 0, attention: 0 };
   for (const o of orders) {
     const g = STATUS_GROUP[getEffectiveStatus(o)] || "new";
     if (liveCounts[g] !== undefined) liveCounts[g]++;
   }
 
-  const PIPELINE_GROUPS = ["all", "new", "confirmed", "transit", "ofd", "done", "attention"] as const;
+  const PIPELINE_GROUPS = ["all", "new", "confirmed", "transit", "done", "attention"] as const;
 
   const filtered = orders.filter(o => {
     const g = STATUS_GROUP[getEffectiveStatus(o)] || "new";
@@ -256,8 +254,8 @@ export default function OrderTracking() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        {(["new","confirmed","transit","ofd","done","attention"] as const).map(g => {
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        {(["new","confirmed","transit","done","attention"] as const).map(g => {
           const meta = GROUP_META[g];
           const count = liveCounts[g] || 0;
           const active = groupFilter === g;

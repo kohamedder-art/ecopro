@@ -503,8 +503,8 @@ export function replaceTemplateVariables(
   return result;
 }
 
-/* ─── Delivery event labels: customer sees 4 steps only ──── */
-/* Raw courier noise (picked_up/in_transit/at_hub…) maps to one bucket. */
+/* ─── Delivery event labels: customer sees 3 steps only ──── */
+/* Raw courier noise (picked_up/in_transit/OFD/at_hub…) maps to one bucket. */
 const DELIVERY_EVENT_LABELS: Record<string, string> = {
   pickup:            'تم تأكيد طلبك وهو عند شركة التوصيل',
   picked_up:         'تم تأكيد طلبك وهو عند شركة التوصيل',
@@ -512,7 +512,7 @@ const DELIVERY_EVENT_LABELS: Record<string, string> = {
   shipped:           'تم تأكيد طلبك وهو عند شركة التوصيل',
   at_hub:            'تم تأكيد طلبك وهو عند شركة التوصيل',
   ready_for_pickup:  'تم تأكيد طلبك وهو عند شركة التوصيل',
-  out_for_delivery:  'المندوب في الطريق إليك',
+  out_for_delivery:  'تم تأكيد طلبك وهو عند شركة التوصيل',
   delivered:         'تم التسليم بنجاح ✅',
   failed:            'تعذّر التوصيل ❌',
   returned:          'تعذّر التوصيل ❌',
