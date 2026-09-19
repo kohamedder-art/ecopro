@@ -35,7 +35,32 @@ function isLightBg(color: string): boolean {
     return luminance > 0.5;
 }
 
-export default function DZShopTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate, onProductView, searchQuery, setSearchQuery }: TemplateProps) {
+function AnnouncementBar({ settings, canManage, handleTextEdit }: any) {
+    const slides = String(settings?.template_announcement || "🚚 توصيل سريع لـ 58 ولاية | الدفع عند الاستلام 💵").split('|').map((s: string) => s.trim()).filter(Boolean);
+    const [idx, setIdx] = useState(0);
+    useEffect(() => {
+        if (slides.length < 2) return;
+        const t = setInterval(() => setIdx(i => (i + 1) % slides.length), 5000);
+        return () => clearInterval(t);
+    }, [slides.length]);
+    return (
+        <div className="bg-[#1c1c1c] text-white text-center text-[11px] sm:text-xs font-bold tracking-wide px-10 py-2 relative">
+            <span key={idx} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_announcement" onBlur={handleTextEdit('template_announcement')}>
+                {slides[idx % slides.length]}
+            </span>
+            {slides.length > 1 && (
+                <>
+                    <button onClick={() => setIdx((idx - 1 + slides.length) % slides.length)} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 px-2" aria-label="السابق">‹</button>
+                    <button onClick={() => setIdx((idx + 1) % slides.length)} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100 px-2" aria-label="التالي">›</button>
+                </>
+            )}
+        </div>
+    );
+}
+
+export default function DZShopTemplate({ settings, products, filtered, categories, categoryFilter, setCategoryFilter, canManage, storeSlug, initialProductSlug, navigate, onProductView, searchQuery, setSearchQuery }: TemplateProps) {
+    const visibleProducts = (filtered && filtered.length) || searchQuery || categoryFilter ? (filtered || []) : (products || []);
+    const activeCats = categories && categories.length ? categories : (settings?.categories || []);
     const rootRef = useRef<HTMLDivElement>(null);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
@@ -222,8 +247,8 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 .dz-description { font-size: 1.125rem; line-height: 1.8; }
                 .dz-description * { font-family: inherit; }
                 .dz-description img { max-width: 100%; height: auto; border-radius: 0.75rem; }
-                .dz-masonry { column-count: 2; column-gap: 4px; }
-                .dz-masonry > * { break-inside-avoid; margin-bottom: 4px; }
+                .dz-masonry { column-count: 2; column-gap: 8px; }
+                .dz-masonry > * { break-inside-avoid; margin-bottom: 8px; }
                 .dz-grid-desktop { display: none; }
                 @media (min-width: 640px) {
                     .dz-masonry { column-count: 3 !important; }
@@ -231,9 +256,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 @media (min-width: 768px) {
                     .dz-masonry { display: none !important; }
                     .dz-grid-desktop { display: grid !important; }
-                }
-                @media (min-width: 1024px) {
-                    .dz-grid-desktop { grid-template-columns: repeat(5, 1fr) !important; }
                 }
             `;
     // Explicit landing images from seller upload; falls back to empty
@@ -409,62 +431,67 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
-            {/* Header — Shopify style: announcement + sticky glass navbar + hero */}
+            {/* Header — Aya style: dark rotating announcement + centered logo + category nav */}
             {showStoreGrid && (
             <>
-            <div className="text-center text-[11px] sm:text-xs font-bold text-white px-3 py-2" style={{ background: `linear-gradient(90deg, ${accentColor || 'var(--dz-primary)'}, ${secondaryColor || '#8b5cf6'})` }}>
-                <span contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_announcement" onBlur={handleTextEdit('template_announcement')}>
-                    {settings?.template_announcement || "🚚 توصيل سريع لـ 58 ولاية | الدفع عند الاستلام 💵"}
-                </span>
-            </div>
-            <header className="sticky top-0 z-50 border-b border-black/5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]" style={{ backgroundColor: 'color-mix(in srgb, var(--dz-header, #ffffff) 88%, transparent)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
-                <div className="px-3 sm:px-5 h-[60px] flex items-center gap-2 sm:gap-4 max-w-7xl mx-auto">
-                    <button onClick={() => { setSearchQuery?.(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex items-center gap-2 shrink-0">
+            <AnnouncementBar settings={settings} canManage={canManage} handleTextEdit={handleTextEdit} accentColor={accentColor} secondaryColor={secondaryColor} />
+            <header className="sticky top-0 z-50 bg-white/95 border-b border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.04)]" style={{ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 h-[64px] max-w-7xl mx-auto">
+                    <div className="flex items-center gap-1 justify-start">
+                        <button onClick={() => setMobileSearch(v => !v)} className="md:hidden w-10 h-10 flex items-center justify-center" aria-label="القائمة">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.7" strokeLinecap="square"><path d="M1 6h22M1 12h22M1 18h22"/></svg>
+                        </button>
+                        <button onClick={() => setMobileSearch(v => !v)} className="w-10 h-10 hidden sm:flex items-center justify-center" aria-label="بحث">
+                            <i className="ph ph-magnifying-glass text-[22px] text-[#111]"></i>
+                        </button>
+                    </div>
+                    <button onClick={() => { setSearchQuery?.(''); setCategoryFilter?.(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex flex-col items-center leading-none px-2">
                         {settings?.store_logo ? (
-                          <img
-                            src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo}
-                            alt={settings?.store_name || "متجري"}
-                            className="rounded-full object-cover border shadow-sm"
-                            style={{ width: 40, height: 40, borderColor: 'rgba(0,0,0,0.08)', filter: imgLoaded['header-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
-                            loading="eager"
-                            decoding="async"
-                            width="40"
-                            height="40"
-                            onLoad={() => setImgLoaded(prev => ({...prev, 'header-logo': true}))}
-                          />
+                          <img src={settings.store_logo} alt={settings?.store_name || "متجري"}
+                            className="h-9 sm:h-10 w-auto object-contain"
+                            style={{ filter: imgLoaded['header-logo'] ? 'none' : 'blur(8px)', transition: 'filter 0.5s' }}
+                            loading="eager" decoding="async"
+                            onLoad={() => setImgLoaded(prev => ({...prev, 'header-logo': true}))} />
+                        ) : null}
+                        <span className="font-black text-[#111] tracking-[0.12em] uppercase" style={{ fontSize: settings?.store_logo ? 11 : 17 }}>{settings?.store_name || "متجري"}</span>
+                    </button>
+                    <div className="flex items-center gap-1 justify-end">
+                        {settings?.show_search_bar !== false && (
+                            <button onClick={() => setMobileSearch(v => !v)} className="sm:hidden w-10 h-10 flex items-center justify-center" aria-label="بحث">
+                                <i className="ph ph-magnifying-glass text-[22px] text-[#111]"></i>
+                            </button>
+                        )}
+                        <button onClick={scrollToGrid} className="w-10 h-10 hidden sm:flex items-center justify-center" aria-label="المنتجات">
+                            <i className="ph ph-bag text-[22px] text-[#111]"></i>
+                        </button>
+                    </div>
+                </div>
+                {activeCats.length > 0 && (
+                    <nav className="hidden md:flex items-center justify-center gap-7 px-4 pb-3 text-[12px] font-bold tracking-[0.14em] uppercase text-[#111]">
+                        <button onClick={() => { setCategoryFilter?.(''); scrollToGrid(); }} className={!categoryFilter ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>All</button>
+                        {activeCats.slice(0, 8).map((cat: string) => (
+                            <button key={cat} onClick={() => { setCategoryFilter?.(cat); scrollToGrid(); }}
+                                className={categoryFilter === cat ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>{cat}</button>
+                        ))}
+                    </nav>
+                )}
+                {mobileSearch && (
+                    <div className="px-3 pb-3">
+                        {settings?.show_search_bar !== false ? (
+                            <div className="flex items-center gap-2 h-11 px-4 bg-black/[0.04] border border-black/10 rounded-none">
+                                <i className="ph ph-magnifying-glass text-lg opacity-50"></i>
+                                <input autoFocus value={searchQuery || ''} onChange={e => setSearchQuery?.(e.target.value)} placeholder="ابحث عن منتج..."
+                                    className="bg-transparent outline-none text-sm w-full font-medium text-[#111]" />
+                                {!!searchQuery && <button onClick={() => setSearchQuery?.('')} className="opacity-50 text-base leading-none">✕</button>}
+                            </div>
                         ) : (
-                            <div className="rounded-full flex items-center justify-center text-white font-black text-base shadow-sm" style={{ width: 40, height: 40, background: `linear-gradient(135deg, ${accentColor || 'var(--dz-primary)'}, ${secondaryColor || '#8b5cf6'})` }}>
-                                {(settings?.store_name || 'م').charAt(0)}
+                            <div className="flex flex-col gap-1 py-1">
+                                <button onClick={() => { setCategoryFilter?.(''); setMobileSearch(false); scrollToGrid(); }} className="text-start px-2 py-2.5 text-sm font-bold text-[#111] border-b border-black/5">الكل</button>
+                                {activeCats.slice(0, 10).map((cat: string) => (
+                                    <button key={cat} onClick={() => { setCategoryFilter?.(cat); setMobileSearch(false); scrollToGrid(); }} className="text-start px-2 py-2.5 text-sm font-bold text-[#111] border-b border-black/5">{cat}</button>
+                                ))}
                             </div>
                         )}
-                        <span className="text-base sm:text-lg font-black tracking-tight" style={{ color: 'var(--dz-ink, #111)' }}>{settings?.store_name || "متجري"}</span>
-                    </button>
-                    <nav className="hidden md:flex items-center gap-5 text-[13px] font-bold" style={{ color: 'var(--dz-ink, #333)' }}>
-                        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:opacity-60 transition-opacity">الرئيسية</button>
-                        <button onClick={scrollToGrid} className="hover:opacity-60 transition-opacity">المنتجات</button>
-                    </nav>
-                    <div className="flex-1" />
-                    {settings?.show_search_bar !== false && (
-                        <div className="hidden sm:flex items-center gap-2 rounded-full px-3 h-10 w-56 lg:w-72 border border-black/10 bg-black/[0.04] focus-within:border-black/25 focus-within:bg-white transition-all">
-                            <i className="ph ph-magnifying-glass text-base opacity-50"></i>
-                            <input value={searchQuery || ''} onChange={e => setSearchQuery?.(e.target.value)} placeholder="ابحث عن منتج..."
-                                className="bg-transparent outline-none text-[13px] w-full font-medium" style={{ color: 'var(--dz-ink, #111)' }} />
-                            {!!searchQuery && <button onClick={() => setSearchQuery?.('')} className="opacity-50 hover:opacity-100 text-sm leading-none">✕</button>}
-                        </div>
-                    )}
-                    {settings?.show_search_bar !== false && (
-                        <button onClick={() => setMobileSearch(v => !v)} className="sm:hidden w-10 h-10 rounded-full flex items-center justify-center border border-black/10 bg-black/[0.04]" aria-label="بحث">
-                            <i className="ph ph-magnifying-glass text-lg" style={{ color: 'var(--dz-ink, #111)' }}></i>
-                        </button>
-                    )}
-                </div>
-                {mobileSearch && settings?.show_search_bar !== false && (
-                    <div className="sm:hidden px-3 pb-3">
-                        <div className="flex items-center gap-2 rounded-full px-3 h-10 border border-black/10 bg-black/[0.04]">
-                            <i className="ph ph-magnifying-glass text-base opacity-50"></i>
-                            <input autoFocus value={searchQuery || ''} onChange={e => setSearchQuery?.(e.target.value)} placeholder="ابحث عن منتج..."
-                                className="bg-transparent outline-none text-[13px] w-full font-medium" style={{ color: 'var(--dz-ink, #111)' }} />
-                        </div>
                     </div>
                 )}
             </header>
@@ -478,19 +505,29 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                 <div id="dz-grid" className="relative z-10 pt-2 scroll-mt-20">
                 {/* Category Pills */}
                 <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: 'transparent' }}>
-                  <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold text-white transition-all" style={{ backgroundColor: accentColor }}>
+                  <button onClick={() => setCategoryFilter?.('')}
+                    className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all"
+                    style={!categoryFilter ? { backgroundColor: '#1c1c1c', color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                     الكل
                   </button>
-                  {(settings?.categories || []).slice(0, 8).map((cat: string) => (
-                    <button key={cat} className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all" style={{ backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
+                  {activeCats.slice(0, 8).map((cat: string) => (
+                    <button key={cat} onClick={() => setCategoryFilter?.(cat)}
+                      className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all"
+                      style={categoryFilter === cat ? { backgroundColor: '#1c1c1c', color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                       {cat}
                     </button>
                   ))}
                 </div>
+                {(searchQuery || categoryFilter) && (
+                  <p className="px-3 pb-1 text-[11px] font-bold text-muted-foreground">{visibleProducts.length} منتج</p>
+                )}
 
                 {/* Product Grid — masonry on mobile */}
-                <div className="dz-masonry px-[3px] pb-2">
-                    {(products || []).map((p: any) => {
+                <div className="dz-masonry px-2 pb-2">
+                    {visibleProducts.length === 0 && (
+                      <div className="text-center text-sm text-muted-foreground py-10">لا توجد منتجات مطابقة</div>
+                    )}
+                    {visibleProducts.map((p: any) => {
                       const thumb = p.images?.[0] || '';
                       const price = p.price || 0;
                       const discount = p.original_price && p.original_price > price
@@ -503,7 +540,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                           className="cursor-pointer overflow-hidden mb-[4px] break-inside-avoid"
                           onClick={() => goToProduct(p)}
                         >
-                          <div className="relative overflow-hidden">
+                          <div className="relative overflow-hidden bg-[#f4f4f4]">
                             {thumb ? (
                               <img
                                 src={thumb?.includes('cloudinary.com') && !thumb.includes('?tr=') ? `${thumb}?tr=w_400,q_auto,f_auto,c_limit` : thumb}
@@ -512,11 +549,11 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                                 loading="lazy"
                                 decoding="async"
                                 width="300"
-                                style={{ filter: imgLoaded[`grid-${p.id}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                                style={{ aspectRatio: '3 / 4', filter: imgLoaded[`grid-${p.id}`] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
                                 onLoad={() => setImgLoaded(prev => ({...prev, [`grid-${p.id}`]: true}))}
                               />
                             ) : (
-                              <div className="w-full flex items-center justify-center text-3xl" style={{ backgroundColor: '#f0f0f0', aspectRatio: '1 / 1' }}>📦</div>
+                              <div className="w-full flex items-center justify-center text-3xl" style={{ backgroundColor: '#f0f0f0', aspectRatio: '3 / 4' }}>📦</div>
                             )}
                             {discount > 0 && (
                               <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded">
@@ -524,20 +561,20 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                               </span>
                             )}
                           </div>
-                          <div className="px-1 pt-1 pb-1.5">
-                            <h3 className="text-[11px] font-normal leading-snug mb-0.5 line-clamp-1" style={{ color: '#555' }}>
+                          <div className="px-1.5 pt-2 pb-2">
+                            <h3 className="text-[13px] font-semibold leading-snug mb-1 line-clamp-2 min-h-[2.2em]" style={{ color: '#1c1c1c' }}>
                               {p.title || 'منتج'}
                             </h3>
                             <div className="flex items-center justify-between">
-                              <div className="flex items-baseline gap-1">
-                                <span className="font-extrabold text-sm" style={{ color: '#222' }}>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-extrabold text-[15px]" style={{ color: '#1c1c1c' }}>
                                   {Math.round(price).toLocaleString()}
                                 </span>
-                                <span className="text-[9px] font-medium" style={{ color: '#999' }}>
+                                <span className="text-[10px] font-semibold" style={{ color: '#767676' }}>
                                   {settings?.currency_code || 'دج'}
                                 </span>
                                 {p.original_price && p.original_price > price && (
-                                  <span className="text-[9px] line-through" style={{ color: '#bbb' }}>
+                                  <span className="text-[11px] line-through" style={{ color: '#b0b0b0' }}>
                                     {Math.round(p.original_price).toLocaleString()}
                                   </span>
                                 )}
@@ -564,9 +601,12 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     })}
                 </div>
 
-                {/* Product Grid — uniform on desktop like Temu */}
-                <div className="dz-grid-desktop px-2 pb-4 gap-[7px]" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                    {(products || []).map((p: any) => {
+                {/* Product Grid — 4 tall columns on desktop like Aya */}
+                <div className="dz-grid-desktop px-3 pb-4 gap-4 max-w-7xl mx-auto" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    {visibleProducts.length === 0 && (
+                      <div className="col-span-4 text-center text-sm text-muted-foreground py-10">لا توجد منتجات مطابقة</div>
+                    )}
+                    {visibleProducts.map((p: any) => {
                       const thumb = p.images?.[0] || '';
                       const price = p.price || 0;
                       const discount = p.original_price && p.original_price > price
@@ -601,20 +641,20 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                               </span>
                             )}
                           </div>
-                          <div className="px-1 pt-1.5 pb-2">
-                            <h3 className="text-[11px] font-normal leading-snug mb-0.5 line-clamp-1" style={{ color: '#555' }}>
+                          <div className="px-1 pt-2 pb-2">
+                            <h3 className="text-[13px] font-semibold leading-snug mb-1 line-clamp-2 min-h-[2.2em]" style={{ color: '#1c1c1c' }}>
                               {p.title || 'منتج'}
                             </h3>
                             <div className="flex items-center justify-between">
-                              <div className="flex items-baseline gap-1">
-                                <span className="font-extrabold text-sm" style={{ color: '#222' }}>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-extrabold text-[15px]" style={{ color: '#1c1c1c' }}>
                                   {Math.round(price).toLocaleString()}
                                 </span>
-                                <span className="text-[9px] font-medium" style={{ color: '#999' }}>
+                                <span className="text-[10px] font-semibold" style={{ color: '#767676' }}>
                                   {settings?.currency_code || 'دج'}
                                 </span>
                                 {p.original_price && p.original_price > price && (
-                                  <span className="text-[9px] line-through" style={{ color: '#bbb' }}>
+                                  <span className="text-[11px] line-through" style={{ color: '#b0b0b0' }}>
                                     {Math.round(p.original_price).toLocaleString()}
                                   </span>
                                 )}
