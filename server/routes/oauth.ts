@@ -263,6 +263,8 @@ router.get('/google/callback', async (req, res) => {
     if (isMobile) {
       console.log('[OAUTH] Mobile login detected, serving app-opener page');
       const deepLink = `sahla4eco://auth?token=${encodeURIComponent(accessToken)}&user=${userParam}`;
+      // intent:// fires reliably from Brave/Chrome on Android; plain scheme URLs get swallowed
+      const intentLink = `intent://auth?token=${encodeURIComponent(accessToken)}&user=${userParam}#Intent;scheme=sahla4eco;package=com.sahla4eco.mobile;end`;
       res.send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Sahla4Eco</title>
@@ -270,12 +272,12 @@ router.get('/google/callback', async (req, res) => {
 .card{background:#1e293b;border-radius:20px;padding:32px 28px;max-width:340px;margin:16px}
 .logo{font-size:44px}.btn{display:block;background:#2563eb;color:#fff;font-weight:800;font-size:18px;border-radius:14px;padding:14px 20px;margin-top:20px;text-decoration:none}
 .hint{color:#94a3b8;font-size:13px;margin-top:14px}</style>
-<script>setTimeout(function(){window.location.replace(${JSON.stringify(deepLink)});},600);</script>
+<script>setTimeout(function(){window.location.replace(${JSON.stringify(intentLink)});},600);</script>
 </head><body><div class="card">
 <div class="logo">✅</div>
 <h2>تم تسجيل الدخول بنجاح</h2>
 <p>اضغط الزر للعودة إلى التطبيق</p>
-<a class="btn" href="${deepLink.replace(/"/g, '&quot;')}">فتح التطبيق</a>
+<a class="btn" href="${intentLink.replace(/"/g, '&quot;')}">فتح التطبيق</a>
 <p class="hint">Connexion réussie — ouvrez l&apos;application</p>
 </div></body></html>`);
       return;
