@@ -319,28 +319,39 @@ export default function Checkout() {
     return () => window.clearTimeout(timeout);
   }, [settings?.store_slug, formData.phone]);
 
+  // Mobile browsers kill window.open() called AFTER an await (tap gesture lost).
+  // Reserve the tab synchronously, navigate it once the final URL is known.
+  const openChatUrl = (getUrl: () => Promise<string>) => {
+    const win = window.open('about:blank', '_blank');
+    getUrl().then(url => {
+      if (win && !win.closed) win.location.href = url;
+      else window.location.href = url; // popup blocked → same-tab fallback
+    });
+  };
+
   const handleConnectTelegram = async () => {
     const slug = settings?.store_slug;
     const botUsername = telegramBotInfo?.botUsername;
     if (!slug || !botUsername) return;
 
-    let url = `https://t.me/${botUsername}?start=store`;
     const normalizedPhone = (formData.phone || '').replace(/\D/g, '');
-    if (normalizedPhone.length >= 9) {
-      try {
-        const res = await fetch(
-          `/api/telegram/bot-link/${encodeURIComponent(slug)}?phone=${encodeURIComponent(normalizedPhone)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.botUrl) url = String(data.botUrl);
+    openChatUrl(async () => {
+      let url = `https://t.me/${botUsername}?start=store`;
+      if (normalizedPhone.length >= 9) {
+        try {
+          const res = await fetch(
+            `/api/telegram/bot-link/${encodeURIComponent(slug)}?phone=${encodeURIComponent(normalizedPhone)}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.botUrl) url = String(data.botUrl);
+          }
+        } catch (error) {
+          console.error('Failed to get Telegram link:', error);
         }
-      } catch (error) {
-        console.error('Failed to get Telegram link:', error);
       }
-    }
-
-    window.open(url, '_blank');
+      return url;
+    });
   };
 
   const handleConnectMessenger = async () => {
@@ -349,23 +360,25 @@ export default function Checkout() {
     const pageId = messengerInfo?.pageId;
     if (!slug || !pageId) return;
 
-    let url = messengerInfo?.url || `https://m.me/${encodeURIComponent(pageId)}`;
-    if (normalizedPhone.length >= 9) {
-      try {
-        const res = await fetch(
-          `/api/messenger/page-link/${encodeURIComponent(slug)}?phone=${encodeURIComponent(normalizedPhone)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.url) url = String(data.url);
+    openChatUrl(async () => {
+      let url = messengerInfo?.url || `https://m.me/${encodeURIComponent(pageId)}`;
+      if (normalizedPhone.length >= 9) {
+        try {
+          const res = await fetch(
+            `/api/messenger/page-link/${encodeURIComponent(slug)}?phone=${encodeURIComponent(normalizedPhone)}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.url) url = String(data.url);
+          }
+        } catch (error) {
+          console.error('Failed to get Messenger link:', error);
         }
-      } catch (error) {
-        console.error('Failed to get Messenger link:', error);
       }
-    }
+      return url;
+    });
 
     setWaitingForMessengerConnection(true);
-    window.open(url, '_blank');
 
     // Poll briefly so UI flips to Connected automatically
     if (normalizedPhone.length < 9) return;

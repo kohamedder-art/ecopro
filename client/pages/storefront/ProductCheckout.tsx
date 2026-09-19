@@ -641,6 +641,16 @@ export default function ProductCheckout() {
     return `/api/telegram/bot-link/${slug}?phone=${normalizedPhone}`;
   };
 
+  // Mobile browsers kill window.open() called AFTER an await (tap gesture lost).
+  // Reserve the tab synchronously, navigate it once the final URL is known.
+  const openChatUrl = (getUrl: () => Promise<string>) => {
+    const win = window.open('about:blank', '_blank');
+    getUrl().then(url => {
+      if (win && !win.closed) win.location.href = url;
+      else window.location.href = url; // popup blocked → same-tab fallback
+    });
+  };
+
   // Open Telegram with proper link
   const handleConnectTelegram = async () => {
     if (!telegramBotInfo?.enabled || !telegramBotInfo?.botUsername) return;
@@ -652,51 +662,53 @@ export default function ProductCheckout() {
       window.open(telegramUrls[0], '_blank');
       return;
     }
-    
-    let url = `https://t.me/${telegramBotInfo.botUsername}?start=store`;
+
     const slug = storeSlug || product?.store_slug || localStorage.getItem('currentStoreSlug');
-    
-    if (slug && formData.phone && formData.phone.replace(/\D/g, '').length >= 9) {
-      try {
-        const normalizedPhone = formData.phone.replace(/\D/g, '');
-        const res = await fetch(`/api/telegram/bot-link/${slug}?phone=${normalizedPhone}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.botUrl) url = data.botUrl;
+    const phone = (formData.phone || '').replace(/\D/g, '');
+    openChatUrl(async () => {
+      let url = `https://t.me/${telegramBotInfo.botUsername}?start=store`;
+      if (slug && phone.length >= 9) {
+        try {
+          const res = await fetch(`/api/telegram/bot-link/${slug}?phone=${phone}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.botUrl) url = data.botUrl;
+          }
+        } catch (error) {
+          console.error('Failed to get Telegram link:', error);
         }
-      } catch (error) {
-        console.error('Failed to get Telegram link:', error);
       }
-    }
-    
+      return url;
+    });
+
     // Start polling for connection
     setWaitingForTelegramConnection(true);
-    window.open(url, '_blank');
   };
 
   // Open Messenger with proper link
   const handleConnectMessenger = async () => {
     if (!messengerInfo?.enabled || !messengerInfo?.pageId) return;
-    
-    let url = messengerInfo.url || `https://m.me/${messengerInfo.pageId}`;
+
     const slug = storeSlug || product?.store_slug || localStorage.getItem('currentStoreSlug');
-    
-    if (slug && formData.phone && formData.phone.replace(/\D/g, '').length >= 9) {
-      try {
-        const normalizedPhone = formData.phone.replace(/\D/g, '');
-        const res = await fetch(`/api/messenger/page-link/${slug}?phone=${normalizedPhone}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.url) url = data.url;
+    const phone = (formData.phone || '').replace(/\D/g, '');
+    openChatUrl(async () => {
+      let url = messengerInfo.url || `https://m.me/${messengerInfo.pageId}`;
+      if (slug && phone.length >= 9) {
+        try {
+          const res = await fetch(`/api/messenger/page-link/${slug}?phone=${phone}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) url = data.url;
+          }
+        } catch (error) {
+          console.error('Failed to get Messenger link:', error);
         }
-      } catch (error) {
-        console.error('Failed to get Messenger link:', error);
       }
-    }
-    
+      return url;
+    });
+
     // Start polling for connection
     setWaitingForMessengerConnection(true);
-    window.open(url, '_blank');
     
     // Poll for connection
     const slug2 = storeSlug || product?.store_slug || localStorage.getItem('currentStoreSlug');
