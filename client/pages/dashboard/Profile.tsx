@@ -265,7 +265,7 @@ export default function Profile() {
             <h1 className="text-lg sm:text-xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               {t('profile.myProfile')}
             </h1>
-            <p className="text-[13px] text-muted-foreground font-medium">{form.email}</p>
+            <p className="text-sm text-foreground/70 font-medium">{form.email}</p>
           </div>
         </div>
         <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg ${subStatus === 'active' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : subStatus === 'trial' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' : subStatus === 'paused' ? 'bg-sky-500/10 text-sky-600 border border-sky-500/20' : 'bg-muted text-muted-foreground border border-border/40'}`}>
@@ -293,7 +293,7 @@ export default function Profile() {
             <p className="text-[13px] font-black text-foreground mb-1.5">
               {lang === 'ar' ? 'ماذا يتوقف؟' : lang === 'fr' ? 'Quoi en pause ?' : 'What pauses?'}
             </p>
-            <ul className="space-y-1 text-[13px] text-muted-foreground font-medium">
+            <ul className="space-y-1.5 text-[13px] leading-relaxed text-foreground/75 font-medium">
               {(lang === 'ar' ? ['كل متاجرك: صفحة عطلة + بدون طلبات جديدة', 'البوتات والرد الآلي على كل المنصات', 'المساعد الذكي (لا استهلاك)', 'تحديثات شركات التوصيل'] : lang === 'fr' ? ['Toutes vos boutiques : page vacances, sans commandes', 'Bots et réponses auto sur toutes les plateformes', 'Assistant IA (zéro consommation)', 'Suivi des transporteurs'] : ['All your stores: vacation page, no new orders', 'Bots and auto-replies on every platform', 'AI assistant (zero usage)', 'Courier tracking updates']).map((x, i) => (
                 <li key={i} className="flex items-start gap-1.5"><span className="text-sky-500 font-black">⏸</span>{x}</li>
               ))}
@@ -303,7 +303,7 @@ export default function Profile() {
             <p className="text-[13px] font-black text-foreground mb-1.5">
               {lang === 'ar' ? 'ماذا يبقى محفوظاً؟' : lang === 'fr' ? 'Quoi conservé ?' : 'What is kept?'}
             </p>
-            <ul className="space-y-1 text-[13px] text-muted-foreground font-medium">
+            <ul className="space-y-1.5 text-[13px] leading-relaxed text-foreground/75 font-medium">
               {(lang === 'ar' ? ['منتجاتك وإعداداتك وبياناتك — لا يُحذف شيء', 'أيامك المدفوعة: تُمدد فترة اشتراكك بها', 'روابط متاجرك تبقى شغالة (صفحة عطلة)', 'بدون مدة قصوى — استأنف متى شئت'] : lang === 'fr' ? ['Produits, réglages, données — rien supprimé', 'Jours payés : période prolongée d’autant', 'Liens conservés (page vacances)', 'Sans limite — reprenez quand vous voulez'] : ['Products, settings, data — nothing deleted', 'Paid days: period extended day-for-day', 'Store links stay alive (vacation page)', 'No time limit — resume anytime']).map((x, i) => (
                 <li key={i} className="flex items-start gap-1.5"><span className="text-emerald-500 font-black">✓</span>{x}</li>
               ))}
@@ -326,7 +326,7 @@ export default function Profile() {
           </button>
         )}
         {!isActivePaid && !isTrial && !isFrozen && (
-          <p className="text-[13px] text-muted-foreground font-medium">
+          <p className="text-[13px] leading-relaxed text-foreground/75 font-medium">
             {lang === 'ar' ? 'التجميد متاح للحسابات التجريبية والمدفوعة.' : lang === 'fr' ? 'Pause disponible pour essais et abonnements.' : 'Freezing is available for trial and paid accounts.'}
           </p>
         )}
@@ -345,28 +345,28 @@ export default function Profile() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.fullName')}</label>
+                <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.fullName')}</label>
                 <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   className={inputCls} placeholder={t('profile.placeholder.fullName')} />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.phoneNumber')}</label>
+                <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.phoneNumber')}</label>
                 <input type="text" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
                   className={inputCls} placeholder={t('profile.placeholder.phone')} />
               </div>
             </div>
             <div>
-              <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.emailAddress')}</label>
+              <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.emailAddress')}</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
                 className={inputCls} placeholder={t('profile.placeholder.email')} />
             </div>
             <div>
-              <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.storeName')}</label>
+              <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.storeName')}</label>
               <input type="text" value={form.business_name} onChange={e => setForm({ ...form, business_name: e.target.value })}
                 className={inputCls} placeholder={t('profile.placeholder.storeName')} />
             </div>
             <div>
-              <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.subdomain')}</label>
+              <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.subdomain')}</label>
               <div className="flex items-center">
                 <div className="h-10 px-3 flex items-center bg-muted/60 border border-border/40 border-r-0 rounded-r-lg text-xs text-muted-foreground shrink-0">
                   .sahla4eco.com
@@ -376,7 +376,7 @@ export default function Profile() {
               </div>
               <div className="flex items-center gap-2 mt-1.5 px-3 py-1.5 rounded-lg bg-muted/30 border border-border/30">
                 <Globe className="w-3 h-3 text-muted-foreground shrink-0" />
-                <p className="text-xs text-muted-foreground">{t('profile.subdomainDesc')}</p>
+                <p className="text-[13px] leading-relaxed text-foreground/70">{t('profile.subdomainDesc')}</p>
               </div>
             </div>
             <div className="flex justify-end pt-1">
@@ -407,7 +407,7 @@ export default function Profile() {
             )}
 
             <div>
-              <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.currentPassword')}</label>
+              <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.currentPassword')}</label>
               <div className="relative">
                 <input type={showCurrentPassword ? 'text' : 'password'} value={passwordForm.currentPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
@@ -420,7 +420,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.newPassword')}</label>
+              <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.newPassword')}</label>
               <div className="relative">
                 <input type={showNewPassword ? 'text' : 'password'} value={passwordForm.newPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
@@ -450,7 +450,7 @@ export default function Profile() {
             </div>
 
             <div>
-              <label className="block text-[13px] font-semibold text-muted-foreground mb-1">{t('profile.confirmNewPassword')}</label>
+              <label className="block text-sm font-semibold text-foreground/80 mb-1.5">{t('profile.confirmNewPassword')}</label>
               <div className="relative">
                 <input type="password" value={passwordForm.confirmPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
@@ -524,7 +524,7 @@ export default function Profile() {
                 <p className="text-2xl font-black text-foreground">
                   {affiliateInfo.earn_per_referral?.toFixed(0) || '0'} دج
                 </p>
-                <p className="text-xs text-muted-foreground font-medium">{t('profile.perReferral')}</p>
+                <p className="text-[13px] text-foreground/70 font-medium">{t('profile.perReferral')}</p>
                 <p className="text-xs font-mono text-foreground bg-muted/40 rounded-lg px-3 py-2 border border-border/40">{affiliateInfo.voucher_code}</p>
               </div>
             ) : (
@@ -552,7 +552,7 @@ export default function Profile() {
         </div>
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-muted-foreground leading-relaxed">{t('profile.mobileDesc')}</p>
+            <p className="text-sm text-foreground/75 leading-relaxed">{t('profile.mobileDesc')}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
               {[t('profile.mobileFeature1'), t('profile.mobileFeature2'), t('profile.mobileFeature3'), t('profile.mobileFeature4')].map((f, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
