@@ -1342,6 +1342,20 @@ export const updateOrderStatus: RequestHandler = async (req, res) => {
       return;
     }
 
+    // Owner intent wins: sync delivery_status so tracking page / AI / bot
+    // notifications agree with the manual status instead of fighting it.
+    try {
+      const { manualStatusToDelivery } = await import('../utils/tracking-status');
+      const synced = manualStatusToDelivery(status);
+      if (synced) {
+        await pool.query(
+          `UPDATE store_orders SET delivery_status = $1, updated_at = NOW() WHERE id = $2`,
+          [synced, id]
+        );
+        result.rows[0].delivery_status = synced;
+      }
+    } catch { /* sync is best-effort */ }
+
     res.json(result.rows[0]);
     // Broadcast order status update
     if (global.broadcastOrderUpdate) {

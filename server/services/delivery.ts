@@ -606,7 +606,7 @@ export class DeliveryService {
 
       // Find order by tracking number first
       let orderResult = await pool.query(
-        'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number, delivery_status FROM store_orders WHERE tracking_number = $1',
+        'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number, delivery_status, status FROM store_orders WHERE tracking_number = $1',
         [trackingNumber]
       );
 
@@ -614,7 +614,7 @@ export class DeliveryService {
       if (orderResult.rows.length === 0 && data?.id) {
         console.log(`[Webhook] Tracking "${trackingNumber}" not found, trying parcel UUID: ${data.id}`);
         orderResult = await pool.query(
-          'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number, delivery_status FROM store_orders WHERE tracking_number = $1',
+          'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number, delivery_status, status FROM store_orders WHERE tracking_number = $1',
           [data.id]
         );
         // Update tracking number to the real one if found by UUID
@@ -632,7 +632,15 @@ export class DeliveryService {
         return { success: true }; // Don't fail, just log
       }
 
-      const { id: orderId, client_id: clientId, store_id: storeId, customer_phone: customerPhone, customer_name: customerName, delivery_status: prevDeliveryStatus } = orderResult.rows[0];
+      const { id: orderId, client_id: clientId, store_id: storeId, customer_phone: customerPhone, customer_name: customerName, delivery_status: prevDeliveryStatus, status: orderStatus } = orderResult.rows[0];
+
+      // Owner intent wins: courier webhooks never overwrite a manually closed
+      // order (event is still logged below for history, but status + notifies stop)
+      const { TERMINAL_ORDER_STATUSES } = await import('../utils/tracking-status');
+      const manualClosed = !!orderStatus && TERMINAL_ORDER_STATUSES.has(String(orderStatus).toLowerCase());
+      if (manualClosed) {
+        console.log(`[Webhook] Manual status ${orderStatus} on order ${orderId} — logging event only`);
+      }
 
       // Verify webhook signature if signature is provided
       let webhookVerified = false;
@@ -673,8 +681,8 @@ export class DeliveryService {
         ]
       );
 
-      // Update order delivery status
-      if (event.status && !['fake', 'duplicate'].includes(event.status)) {
+      // Update order delivery status (skipped when owner closed it manually)
+      if (event.status && !['fake', 'duplicate'].includes(event.status) && !manualClosed) {
         const terminalStatuses = ['failed', 'returned'];
         let statusUpdate = '';
         if (terminalStatuses.includes(event.status)) {
@@ -689,7 +697,8 @@ export class DeliveryService {
       }
 
       // Send customer bot notification (fire-and-forget, gated to 4 customer steps)
-      if (customerPhone) {
+      // Skipped when owner closed the order manually — no courier noise after that.
+      if (customerPhone && !manualClosed) {
         sendDeliveryStatusNotification({
           orderId,
           clientId,
@@ -705,6 +714,7 @@ export class DeliveryService {
       }
 
       // Send store owner notification about delivery status update
+      if (!manualClosed) {
       try {
         const { OWNER_STATUS_LABEL, toOwnerStatus } = await import('../utils/tracking-status');
         await pool.query(
@@ -714,6 +724,7 @@ export class DeliveryService {
         );
       } catch (ownerNotifyErr) {
         console.error('[Webhook] Store owner notification failed:', ownerNotifyErr);
+      }
       }
 
       console.log(`[Webhook] Event processed for order ${orderId}: ${event.event_type} → ${event.status}`);

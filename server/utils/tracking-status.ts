@@ -75,9 +75,50 @@ export function toOwnerStatus(raw: string | null | undefined): OwnerTrackStatus 
   if (s === 'in_transit' || s === 'at_hub' || s === 'at_warehouse' || s === 'ready_for_pickup' || s === 'in_delivery' || s === 'out_for_delivery' || s === 'out_delivery') return 'in_transit';
   if (s === 'delivered' || s === 'completed') return 'delivered';
   if (s === 'failed') return 'failed';
-  if (s === 'returned' || s === 'cancelled' || s === 'canceled' || s === 'fake' || s === 'duplicate') return 'attention';
+  if (s === 'returned' || s === 'cancelled' || s === 'canceled' || s === 'fake' || s === 'duplicate' || s === 'delivery_failed' || s === 'refunded') return 'attention';
   return 'in_transit'; // unrecognized → neutral in-progress bucket
 }
+
+// ─── Manual status → courier bucket sync ────────────────────────
+// Owner manual edits must win: changing order.status also syncs
+// delivery_status so the tracking page/AI/notifications agree.
+// Returns the delivery_status to write, or null to leave untouched
+// (call-attempt statuses like no_answer_* are pre-shipment outcomes).
+export function manualStatusToDelivery(status: string | null | undefined): string | null {
+  const s = String(status || '').toLowerCase().trim();
+  switch (s) {
+    case 'delivered':
+    case 'completed':
+      return 'delivered';
+    case 'cancelled':
+    case 'fake':
+    case 'duplicate':
+      return 'cancelled';
+    case 'failed':
+      return 'failed';
+    case 'returned':
+    case 'refunded':
+      return 'returned';
+    case 'shipped':
+      return 'shipped';
+    case 'in_delivery':
+    case 'at_delivery':
+      return 'in_transit';
+    case 'pending':
+    case 'confirmed':
+    case 'processing':
+      return 'pending';
+    default:
+      return null; // no_answer_*, waiting_callback, postponed, line_closed, custom…
+  }
+}
+
+// Order statuses after which courier auto-updates must NOT overwrite
+// (owner closed the order manually — machine stays quiet).
+export const TERMINAL_ORDER_STATUSES = new Set([
+  'cancelled', 'delivered', 'completed', 'returned', 'refunded',
+  'failed', 'fake', 'duplicate', 'delivery_failed',
+]);
 
 // ─── Notification gate ──────────────────────────────────────────
 // Customer gets max 3 messages per order: confirmed, delivered, failed.

@@ -58,7 +58,7 @@ async function fetchPollableOrders(): Promise<PollableOrder[]> {
     WHERE so.tracking_number IS NOT NULL
       AND so.tracking_number != ''
       AND dc.features->>'supports_webhooks' = 'false'
-      AND so.status NOT IN ('cancelled', 'returned', 'delivered', 'completed')
+      AND so.status NOT IN ('cancelled', 'returned', 'delivered', 'completed', 'refunded', 'failed', 'fake', 'duplicate', 'delivery_failed')
       AND so.delivery_status NOT IN ('delivered', 'returned', 'cancelled', 'failed')
   `);
   return result.rows;
