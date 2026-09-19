@@ -221,6 +221,7 @@ export default function Profile() {
   const subStatus = access?.status || profile?.subscription?.status || 'unknown';
   const isFrozen = subStatus === 'paused';
   const isActivePaid = subStatus === 'active';
+  const isTrial = subStatus === 'trial';
   const frozenDays = isFrozen
     ? (access?.frozenDays ?? (profile?.subscription?.paused_at
         ? Math.max(0, Math.floor((Date.now() - new Date(profile.subscription.paused_at).getTime()) / 86400000))
