@@ -35,7 +35,7 @@ function isLightBg(color: string): boolean {
     return luminance > 0.5;
 }
 
-function AnnouncementBar({ settings, canManage, handleTextEdit }: any) {
+function AnnouncementBar({ settings, canManage, handleTextEdit, headerBg, headerInk }: any) {
     const slides = String(settings?.template_announcement || "🚚 توصيل سريع لـ 58 ولاية | الدفع عند الاستلام 💵").split('|').map((s: string) => s.trim()).filter(Boolean);
     const [idx, setIdx] = useState(0);
     useEffect(() => {
@@ -44,7 +44,7 @@ function AnnouncementBar({ settings, canManage, handleTextEdit }: any) {
         return () => clearInterval(t);
     }, [slides.length]);
     return (
-        <div className="bg-[#1c1c1c] text-white text-center text-[11px] sm:text-xs font-bold tracking-wide px-10 py-2 relative">
+        <div className="text-center text-[11px] sm:text-xs font-bold tracking-wide px-10 py-2 relative" style={{ backgroundColor: headerBg, color: headerInk }}>
             <span key={idx} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_announcement" onBlur={handleTextEdit('template_announcement')}>
                 {slides[idx % slides.length]}
             </span>
@@ -208,6 +208,19 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
     const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#2563eb');
     const accentColor = settings?.template_accent_color || primaryColor;
     const secondaryColor = settings?.secondary_color || '#8b5cf6';
+    // Editor colors: لون الهيدر / لون الزر / text colors — everything below follows them
+    const headerBg = settings?.iyco_header_color || '#ffffff';
+    const isDarkHex = (hex: string) => {
+      const h = String(hex || '').replace('#', '');
+      const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+      const n = parseInt(full.slice(0, 6), 16);
+      if (Number.isNaN(n)) return false;
+      const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      return (0.299 * r + 0.587 * g + 0.114 * b) < 150;
+    };
+    const headerInk = isDarkHex(headerBg) ? '#ffffff' : '#111111';
+    const cardInk = settings?.template_text_color || '#1c1c1c';
+    const cardMuted = settings?.template_muted_color || '#767676';
 
     // Adaptive colors: detect if background is light, dark, or an image
     const bgColor = settings?.template_bg_color || '#f3f4f6';
@@ -441,15 +454,15 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
             {/* Header — Aya style: dark rotating announcement + centered logo + category nav */}
             {showStoreGrid && (
             <>
-            <AnnouncementBar settings={settings} canManage={canManage} handleTextEdit={handleTextEdit} accentColor={accentColor} secondaryColor={secondaryColor} />
-            <header className="sticky top-0 z-50 bg-white/95 border-b border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-transform duration-300" style={{ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', transform: atTop ? 'translateY(0)' : 'translateY(-110%)' }}>
+            <AnnouncementBar settings={settings} canManage={canManage} handleTextEdit={handleTextEdit} headerBg={headerBg} headerInk={headerInk} />
+            <header className="sticky top-0 z-50 border-b border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-transform duration-300" style={{ backgroundColor: headerBg, color: headerInk, backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', transform: atTop ? 'translateY(0)' : 'translateY(-110%)' }}>
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 h-[64px] max-w-7xl mx-auto">
                     <div className="flex items-center gap-1 justify-start">
                         <button onClick={() => setMobileSearch(v => !v)} className="md:hidden w-10 h-10 flex items-center justify-center" aria-label="القائمة">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="1.7" strokeLinecap="square"><path d="M1 6h22M1 12h22M1 18h22"/></svg>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="square"><path d="M1 6h22M1 12h22M1 18h22"/></svg>
                         </button>
                         <button onClick={() => setMobileSearch(v => !v)} className="w-10 h-10 hidden sm:flex items-center justify-center" aria-label="بحث">
-                            <i className="ph ph-magnifying-glass text-[22px] text-[#111]"></i>
+                            <i className="ph ph-magnifying-glass text-[22px] inherit"></i>
                         </button>
                     </div>
                     <button onClick={() => { setSearchQuery?.(''); setCategoryFilter?.(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex flex-col items-center leading-none px-2">
@@ -460,24 +473,24 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                             loading="eager" decoding="async"
                             onLoad={() => setImgLoaded(prev => ({...prev, 'header-logo': true}))} />
                         ) : null}
-                        <span className="font-black text-[#111] tracking-[0.12em] uppercase" style={{ fontSize: settings?.store_logo ? 11 : 17 }}>{settings?.store_name || "متجري"}</span>
+                        <span className="font-black inherit tracking-[0.12em] uppercase" style={{ fontSize: settings?.store_logo ? 11 : 17 }}>{settings?.store_name || "متجري"}</span>
                     </button>
                     <div className="flex items-center gap-1 justify-end">
                         {settings?.show_search_bar !== false && (
                             <button onClick={() => setMobileSearch(v => !v)} className="sm:hidden w-10 h-10 flex items-center justify-center" aria-label="بحث">
-                                <i className="ph ph-magnifying-glass text-[22px] text-[#111]"></i>
+                                <i className="ph ph-magnifying-glass text-[22px] inherit"></i>
                             </button>
                         )}
                         <button onClick={scrollToGrid} className="w-10 h-10 hidden sm:flex items-center justify-center" aria-label="المنتجات">
-                            <i className="ph ph-bag text-[22px] text-[#111]"></i>
+                            <i className="ph ph-bag text-[22px] inherit"></i>
                         </button>
                     </div>
                 </div>
                 {activeCats.length > 0 && (
-                    <nav className="hidden md:flex items-center justify-center gap-7 px-4 pb-3 text-[12px] font-bold tracking-[0.14em] uppercase text-[#111]">
-                        <button onClick={() => { setCategoryFilter?.(''); scrollToGrid(); }} className={!categoryFilter ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>All</button>
+                    <nav className="hidden md:flex items-center justify-center gap-7 px-4 pb-3 text-[12px] font-bold tracking-[0.14em] uppercase inherit">
+                        <button onClick={() => { setCategoryFilter?.(''); scrollToGrid(); }} style={!categoryFilter ? { textDecorationColor: accentColor } : undefined} className={!categoryFilter ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>All</button>
                         {activeCats.slice(0, 8).map((cat: string) => (
-                            <button key={cat} onClick={() => { setCategoryFilter?.(cat); scrollToGrid(); }}
+                            <button key={cat} onClick={() => { setCategoryFilter?.(cat); scrollToGrid(); }} style={categoryFilter === cat ? { textDecorationColor: accentColor } : undefined}
                                 className={categoryFilter === cat ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>{cat}</button>
                         ))}
                     </nav>
@@ -488,14 +501,14 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                             <div className="flex items-center gap-2 h-11 px-4 bg-black/[0.04] border border-black/10 rounded-none">
                                 <i className="ph ph-magnifying-glass text-lg opacity-50"></i>
                                 <input autoFocus value={searchQuery || ''} onChange={e => setSearchQuery?.(e.target.value)} placeholder="ابحث عن منتج..."
-                                    className="bg-transparent outline-none text-sm w-full font-medium text-[#111]" />
+                                    className="bg-transparent outline-none text-sm w-full font-medium inherit" />
                                 {!!searchQuery && <button onClick={() => setSearchQuery?.('')} className="opacity-50 text-base leading-none">✕</button>}
                             </div>
                         ) : (
                             <div className="flex flex-col gap-1 py-1">
-                                <button onClick={() => { setCategoryFilter?.(''); setMobileSearch(false); scrollToGrid(); }} className="text-start px-2 py-2.5 text-sm font-bold text-[#111] border-b border-black/5">الكل</button>
+                                <button onClick={() => { setCategoryFilter?.(''); setMobileSearch(false); scrollToGrid(); }} className="text-start px-2 py-2.5 text-sm font-bold inherit border-b border-black/5">الكل</button>
                                 {activeCats.slice(0, 10).map((cat: string) => (
-                                    <button key={cat} onClick={() => { setCategoryFilter?.(cat); setMobileSearch(false); scrollToGrid(); }} className="text-start px-2 py-2.5 text-sm font-bold text-[#111] border-b border-black/5">{cat}</button>
+                                    <button key={cat} onClick={() => { setCategoryFilter?.(cat); setMobileSearch(false); scrollToGrid(); }} className="text-start px-2 py-2.5 text-sm font-bold inherit border-b border-black/5">{cat}</button>
                                 ))}
                             </div>
                         )}
@@ -514,13 +527,13 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                 <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: 'transparent' }}>
                   <button onClick={() => setCategoryFilter?.('')}
                     className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all"
-                    style={!categoryFilter ? { backgroundColor: '#1c1c1c', color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
+                    style={!categoryFilter ? { backgroundColor: accentColor, color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                     الكل
                   </button>
                   {activeCats.slice(0, 8).map((cat: string) => (
                     <button key={cat} onClick={() => setCategoryFilter?.(cat)}
                       className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all"
-                      style={categoryFilter === cat ? { backgroundColor: '#1c1c1c', color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
+                      style={categoryFilter === cat ? { backgroundColor: accentColor, color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                       {cat}
                     </button>
                   ))}
@@ -569,19 +582,19 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                             )}
                           </div>
                           <div className="px-1.5 pt-2 pb-2">
-                            <h3 className="text-[13px] font-semibold leading-snug mb-1 line-clamp-2 min-h-[2.2em]" style={{ color: '#1c1c1c' }}>
+                            <h3 className="text-[13px] font-semibold leading-snug mb-1 line-clamp-2 min-h-[2.2em]" style={{ color: cardInk }}>
                               {p.title || 'منتج'}
                             </h3>
                             <div className="flex items-center justify-between">
                               <div className="flex items-baseline gap-1.5">
-                                <span className="font-extrabold text-[15px]" style={{ color: '#1c1c1c' }}>
+                                <span className="font-extrabold text-[15px]" style={{ color: cardInk }}>
                                   {Math.round(price).toLocaleString()}
                                 </span>
-                                <span className="text-[10px] font-semibold" style={{ color: '#767676' }}>
+                                <span className="text-[10px] font-semibold" style={{ color: cardMuted }}>
                                   {settings?.currency_code || 'دج'}
                                 </span>
                                 {p.original_price && p.original_price > price && (
-                                  <span className="text-[11px] line-through" style={{ color: '#b0b0b0' }}>
+                                  <span className="text-[11px] line-through" style={{ color: cardMuted }}>
                                     {Math.round(p.original_price).toLocaleString()}
                                   </span>
                                 )}
@@ -649,19 +662,19 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                             )}
                           </div>
                           <div className="px-1 pt-2 pb-2">
-                            <h3 className="text-[13px] font-semibold leading-snug mb-1 line-clamp-2 min-h-[2.2em]" style={{ color: '#1c1c1c' }}>
+                            <h3 className="text-[13px] font-semibold leading-snug mb-1 line-clamp-2 min-h-[2.2em]" style={{ color: cardInk }}>
                               {p.title || 'منتج'}
                             </h3>
                             <div className="flex items-center justify-between">
                               <div className="flex items-baseline gap-1.5">
-                                <span className="font-extrabold text-[15px]" style={{ color: '#1c1c1c' }}>
+                                <span className="font-extrabold text-[15px]" style={{ color: cardInk }}>
                                   {Math.round(price).toLocaleString()}
                                 </span>
-                                <span className="text-[10px] font-semibold" style={{ color: '#767676' }}>
+                                <span className="text-[10px] font-semibold" style={{ color: cardMuted }}>
                                   {settings?.currency_code || 'دج'}
                                 </span>
                                 {p.original_price && p.original_price > price && (
-                                  <span className="text-[11px] line-through" style={{ color: '#b0b0b0' }}>
+                                  <span className="text-[11px] line-through" style={{ color: cardMuted }}>
                                     {Math.round(p.original_price).toLocaleString()}
                                   </span>
                                 )}
