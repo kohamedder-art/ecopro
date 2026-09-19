@@ -1233,6 +1233,18 @@ ${urls}
     billingRoutes.checkAccess
   );
 
+  app.post(
+    "/api/billing/freeze",
+    authenticate,
+    billingRoutes.freezeSubscription
+  );
+
+  app.post(
+    "/api/billing/resume",
+    authenticate,
+    billingRoutes.resumeSubscription
+  );
+
   // Admin billing routes
   app.get(
     "/api/billing/admin/subscriptions",

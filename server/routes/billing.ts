@@ -214,6 +214,21 @@ export const checkAccess: RequestHandler = async (req, res) => {
 
     const hasAccess = extensionOk || trialOk || activeOk;
 
+    // Frozen account — paused by owner. Paid days preserved, resume anytime.
+    if (subscription.status === 'paused') {
+      const pausedAt = subscription.paused_at ? new Date(subscription.paused_at) : null;
+      const frozenDays = pausedAt ? Math.floor((now.getTime() - pausedAt.getTime()) / 86400000) : 0;
+      return res.json({
+        hasAccess: false,
+        status: "paused",
+        tier: subscription.tier,
+        frozenDays,
+        pausedAt,
+        code: "SUBSCRIPTION_PAUSED",
+        message: `Account frozen (${frozenDays} day(s)). Resume anytime — paid days are preserved.`
+      });
+    }
+
     // If access is restored (e.g., paid/extended) and the account is payment-locked, auto-unlock.
     if (hasAccess) {
       await clearPaymentLockIfAny(Number(userId), 'Auto unlock: subscription active');
@@ -1047,3 +1062,108 @@ export const reactivateSubscription: RequestHandler = async (req, res) => {
   }
 };
 
+
+/**
+ * Freeze account (pause subscription) — account-level, covers ALL stores.
+ * POST /api/billing/freeze
+ * Only from 'active' (paid). Trial accounts are already free — nothing to freeze.
+ */
+export const freezeSubscription: RequestHandler = async (req, res) => {
+  try {
+    const userId = Number((req.user as any)?.id);
+    if (!userId) return jsonError(res, 401, "Not authenticated");
+
+    const sub = await pool.query(`SELECT * FROM subscriptions WHERE user_id = $1`, [userId]);
+    if (!sub.rows.length) return jsonError(res, 404, "No subscription found");
+    const s = sub.rows[0];
+    if (s.status === 'paused') return jsonError(res, 400, "Account is already frozen");
+    if (s.status !== 'active') return jsonError(res, 400, "Only a paid subscription can be frozen (trial is already free)");
+
+    const db = await pool.connect();
+    try {
+      await db.query('BEGIN');
+      await db.query(
+        `UPDATE subscriptions SET status = 'paused', paused_at = NOW(), updated_at = NOW() WHERE user_id = $1`,
+        [userId]
+      );
+      // Freeze lock (distinct from payment lock) + bots off for the whole account
+      await db.query(
+        `UPDATE clients SET is_locked = true, lock_type = 'frozen',
+             locked_reason = 'Account frozen by owner — resume anytime, paid days are preserved.',
+             locked_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [userId]
+      ).catch(() => null);
+      await db.query(
+        `UPDATE bot_settings SET enabled = false, updated_at = NOW() WHERE client_id = $1`,
+        [userId]
+      ).catch(() => null);
+      await db.query('COMMIT');
+    } catch (e) {
+      await db.query('ROLLBACK');
+      throw e;
+    } finally {
+      db.release();
+    }
+
+    const updated = await pool.query(`SELECT * FROM subscriptions WHERE user_id = $1`, [userId]);
+    res.json({ success: true, message: "Account frozen. Paid days are preserved and resume on unfreeze.", subscription: updated.rows[0] });
+  } catch (error) {
+    console.error("Error freezing subscription:", error);
+    return jsonError(res, 500, "Failed to freeze account");
+  }
+};
+
+/**
+ * Resume a frozen account — extends the paid period day-for-day.
+ * POST /api/billing/resume
+ */
+export const resumeSubscription: RequestHandler = async (req, res) => {
+  try {
+    const userId = Number((req.user as any)?.id);
+    if (!userId) return jsonError(res, 401, "Not authenticated");
+
+    const sub = await pool.query(`SELECT * FROM subscriptions WHERE user_id = $1`, [userId]);
+    if (!sub.rows.length) return jsonError(res, 404, "No subscription found");
+    const s = sub.rows[0];
+    if (s.status !== 'paused') return jsonError(res, 400, "Account is not frozen");
+
+    const pausedAt = s.paused_at ? new Date(s.paused_at) : new Date();
+    const frozenMs = Math.max(0, Date.now() - pausedAt.getTime());
+
+    const db = await pool.connect();
+    try {
+      await db.query('BEGIN');
+      // Day-for-day: paid period shifts forward by the frozen duration
+      await db.query(
+        `UPDATE subscriptions
+         SET status = 'active', paused_at = NULL, updated_at = NOW(),
+             current_period_end = COALESCE(current_period_end, NOW()) + ($1::bigint || ' milliseconds')::interval
+         WHERE user_id = $2`,
+        [String(Math.round(frozenMs)), userId]
+      );
+      await db.query(
+        `UPDATE clients SET is_locked = false, locked_reason = NULL, locked_at = NULL,
+             lock_type = NULL, unlock_reason = 'Resumed from freeze', unlocked_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND lock_type = 'frozen'`,
+        [userId]
+      ).catch(() => null);
+      await db.query(
+        `UPDATE bot_settings SET enabled = true, updated_at = NOW() WHERE client_id = $1`,
+        [userId]
+      ).catch(() => null);
+      await db.query('COMMIT');
+    } catch (e) {
+      await db.query('ROLLBACK');
+      throw e;
+    } finally {
+      db.release();
+    }
+
+    const updated = await pool.query(`SELECT * FROM subscriptions WHERE user_id = $1`, [userId]);
+    const frozenDays = Math.floor(frozenMs / 86400000);
+    res.json({ success: true, message: `Welcome back — ${frozenDays} frozen day(s) added to your subscription.`, subscription: updated.rows[0], frozenDays });
+  } catch (error) {
+    console.error("Error resuming subscription:", error);
+    return jsonError(res, 500, "Failed to resume account");
+  }
+};

@@ -641,6 +641,13 @@ export class DeliveryService {
       if (manualClosed) {
         console.log(`[Webhook] Manual status ${orderStatus} on order ${orderId} — logging event only`);
       }
+      // Frozen account — log the event, change nothing, notify nobody
+      let accountFrozen = false;
+      try {
+        const lz = await pool.query(`SELECT lock_type FROM clients WHERE id = $1`, [clientId]);
+        accountFrozen = lz.rows[0]?.lock_type === 'frozen';
+        if (accountFrozen) console.log(`[Webhook] Account ${clientId} frozen — logging event only for order ${orderId}`);
+      } catch {}
 
       // Verify webhook signature if signature is provided
       let webhookVerified = false;
@@ -681,8 +688,8 @@ export class DeliveryService {
         ]
       );
 
-      // Update order delivery status (skipped when owner closed it manually)
-      if (event.status && !['fake', 'duplicate'].includes(event.status) && !manualClosed) {
+      // Update order delivery status (skipped when owner closed it manually or froze the account)
+      if (event.status && !['fake', 'duplicate'].includes(event.status) && !manualClosed && !accountFrozen) {
         const terminalStatuses = ['failed', 'returned'];
         let statusUpdate = '';
         if (terminalStatuses.includes(event.status)) {
@@ -698,7 +705,7 @@ export class DeliveryService {
 
       // Send customer bot notification (fire-and-forget, gated to 4 customer steps)
       // Skipped when owner closed the order manually — no courier noise after that.
-      if (customerPhone && !manualClosed) {
+      if (customerPhone && !manualClosed && !accountFrozen) {
         sendDeliveryStatusNotification({
           orderId,
           clientId,
@@ -714,7 +721,7 @@ export class DeliveryService {
       }
 
       // Send store owner notification about delivery status update
-      if (!manualClosed) {
+      if (!manualClosed && !accountFrozen) {
       try {
         const { OWNER_STATUS_LABEL, toOwnerStatus } = await import('../utils/tracking-status');
         await pool.query(

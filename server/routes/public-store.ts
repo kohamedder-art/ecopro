@@ -324,6 +324,19 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
     const cacheKey = `settings:${storeSlug}`;
     const cached = getCached(storefrontSettingsCache, cacheKey);
     if (cached) {
+      // Live frozen flag even on cache hits
+      try {
+        const cpool = await ensureConnection();
+        const cfz = await cpool.query(
+          `SELECT s.paused_at FROM subscriptions s
+           JOIN client_store_settings css ON css.client_id = s.user_id
+           WHERE css.store_slug = $1 AND s.status = 'paused' LIMIT 1`,
+          [storeSlug]
+        );
+        if (cfz.rows.length) {
+          return res.json({ ...cached, frozen: true, frozen_since: cfz.rows[0].paused_at });
+        }
+      } catch { /* fall through to cached */ }
       return res.json(cached);
     }
 
@@ -492,6 +505,20 @@ export const getStorefrontSettings: RequestHandler = async (req, res) => {
     storefrontSettingsInFlight.set(cacheKey, promise);
     const value = await promise;
     storefrontSettingsInFlight.delete(cacheKey);
+    // Live frozen flag (uncached — freeze/resume must reflect immediately on all stores)
+    try {
+      const pool = await ensureConnection();
+      const fz = await pool.query(
+        `SELECT s.paused_at FROM subscriptions s
+         JOIN client_store_settings css ON css.client_id = s.user_id
+         WHERE css.store_slug = $1 AND s.status = 'paused' LIMIT 1`,
+        [storeSlug]
+      );
+      if (fz.rows.length) {
+        (value as any).frozen = true;
+        (value as any).frozen_since = fz.rows[0].paused_at;
+      }
+    } catch { /* flag failed open */ }
     return res.json(value);
   } catch (error) {
     console.error('Get storefront settings error:', isProduction ? (error as any)?.message : error);
@@ -821,6 +848,18 @@ export const createPublicStoreOrder: RequestHandler = async (req, res) => {
       res.status(404).json({ error: 'Store not found' });
       return;
     }
+
+    // Frozen account — no checkout on any store while paused
+    try {
+      const fz = await client.query(
+        `SELECT 1 FROM subscriptions WHERE user_id = $1 AND status = 'paused'`,
+        [Number(clientId)]
+      );
+      if (fz.rows.length) {
+        res.status(403).json({ error: 'This store is on pause and not taking orders right now.', code: 'STORE_PAUSED' });
+        return;
+      }
+    } catch { /* check failed open */ }
 
     // Prefer store name in URLs when available; fall back to the incoming identifier.
     // Must stay compatible with server-side resolution (same normalization used in SQL).

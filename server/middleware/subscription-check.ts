@@ -42,6 +42,16 @@ export const requireActiveSubscription: RequestHandler = async (req, res, next) 
             code: "SUBSCRIPTION_EXPIRED"
           });
         }
+        // Frozen by owner (all stores paused) — resume anytime, paid days preserved.
+        if (row.is_locked && lockType === 'frozen') {
+          return res.status(403).json({
+            error: row.locked_reason || "Account frozen. Resume anytime from Billing.",
+            accountLocked: true,
+            frozen: true,
+            paymentRequired: false,
+            code: "SUBSCRIPTION_PAUSED"
+          });
+        }
       }
     } catch {
       // If we cannot validate lock status, fail closed.
@@ -65,6 +75,17 @@ export const requireActiveSubscription: RequestHandler = async (req, res, next) 
 
     const subscription = result.rows[0];
     const now = new Date();
+
+    // Frozen by owner — never convert to a payment lock, just report paused.
+    if (subscription.status === 'paused') {
+      return res.status(403).json({
+        error: "Account frozen. Resume anytime from Billing — paid days are preserved.",
+        accountLocked: true,
+        frozen: true,
+        paymentRequired: false,
+        code: "SUBSCRIPTION_PAUSED"
+      });
+    }
 
     // Check if trial is still active
     if (subscription.status === 'trial') {

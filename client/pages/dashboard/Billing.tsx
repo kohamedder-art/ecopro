@@ -149,6 +149,23 @@ const AdminBilling = () => {
 
   const subscriptionPrice = publicBilling?.subscriptionPrice ?? 3500;
 
+  const doFreezeToggle = async () => {
+    const freezing = !isFrozen;
+    const msg = freezing
+      ? (locale === 'ar' ? 'تجميد الحساب؟ ستتوقف كل متاجرك مؤقتاً (صفحة عطلة + بدون طلبات) وتبقى أيامك المدفوعة محفوظة.' : locale === 'fr' ? 'Geler le compte ? Toutes vos boutiques seront mises en pause, jours payés conservés.' : 'Freeze account? All your stores pause (vacation page, no orders), paid days preserved.')
+      : (locale === 'ar' ? 'استئناف الحساب؟ ستعود كل متاجرك للعمل وتُمدد فترة اشتراكك بأيام التجميد.' : locale === 'fr' ? 'Reprendre ? Vos boutiques rouvrent et la période est prolongée des jours gelés.' : 'Resume? All stores reopen and your period extends by frozen days.');
+    if (!window.confirm(msg)) return;
+    try {
+      const res = await fetch(freezing ? '/api/billing/freeze' : '/api/billing/resume', { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || 'Failed');
+      toast({ title: body?.message || (freezing ? '❄️' : '✅') });
+      refetchSub();
+    } catch (e: any) {
+      toast({ title: e?.message || 'Failed', variant: 'destructive' as any });
+    }
+  };
+
   const { data: paymentData, isLoading: payLoading } = useQuery({
     queryKey: ['billing-payments', activeStore?.id, storeVersion],
     queryFn: async () => {
@@ -160,7 +177,11 @@ const AdminBilling = () => {
 
   const payments: Payment[] = paymentData?.payments || [];
   const isExpired = subscription?.status === 'expired';
+  const isFrozen = subscription?.status === 'paused';
   const isTrial = subscription?.status === 'trial' && new Date(subscription.trial_ends_at) > new Date();
+  const frozenDays = isFrozen && subscription?.paused_at
+    ? Math.max(0, Math.floor((Date.now() - new Date(subscription.paused_at).getTime()) / 86400000))
+    : 0;
 
   const daysLeft = subscription
     ? Math.max(0, Math.ceil(
@@ -204,6 +225,21 @@ const AdminBilling = () => {
               <MessageCircle className="h-3.5 w-3.5" /> {t('admin.billing.contactSupport')}
             </Button>
           </Link>
+        </div>
+      )}
+
+      {/* ─── Frozen banner ──────────────────────────────── */}
+      {isFrozen && (
+        <div className={`${surfaceMuted} p-3 flex items-center gap-3 border-sky-300/50 dark:border-sky-700/50`}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-md flex-shrink-0">
+            <span className="text-white text-base">⏸️</span>
+          </div>
+          <p className="flex-1 text-sm font-bold text-sky-700 dark:text-sky-300">
+            {locale === 'ar' ? `حسابك مجمّد منذ ${frozenDays} يوم — كل متاجرك في عطلة وأيامك المدفوعة محفوظة` : locale === 'fr' ? `Compte gelé depuis ${frozenDays} j — boutiques en pause, jours payés conservés` : `Account frozen for ${frozenDays} day(s) — all stores paused, paid days preserved`}
+          </p>
+          <Button size="sm" className="h-8 rounded-xl text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white gap-1.5" onClick={doFreezeToggle}>
+            {locale === 'ar' ? '▶ استئناف' : locale === 'fr' ? '▶ Reprendre' : '▶ Resume'}
+          </Button>
         </div>
       )}
 
@@ -269,6 +305,11 @@ const AdminBilling = () => {
                     <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
                     {t('admin.billing.activeExpires', { date: periodEnd })}
                   </div>
+                )}
+                {subscription.status === 'active' && (
+                  <Button size="sm" variant="outline" className="h-9 rounded-xl text-xs gap-1.5" onClick={doFreezeToggle}>
+                    ⏸️ {locale === 'ar' ? 'تجميد' : locale === 'fr' ? 'Geler' : 'Freeze'}
+                  </Button>
                 )}
                 {isExpired && (
                   <Link to="/chat" className="flex-1">

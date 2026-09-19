@@ -417,6 +417,25 @@ export default function Storefront() {
     );
   }
 
+  // Frozen account — vacation page on every store. Slug/SEO stay alive, no shopping.
+  if ((storeSettings as any).frozen) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background" dir={document?.dir || undefined}>
+        <div className="text-center space-y-4 p-6 max-w-md">
+          {storeSettings.store_logo ? (
+            <img src={storeSettings.store_logo} alt="" className="w-20 h-20 rounded-2xl object-cover mx-auto shadow-lg" />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mx-auto text-4xl">🌙</div>
+          )}
+          <h2 className="text-2xl font-black">{storeSettings.store_name || 'المتجر'}</h2>
+          <p className="text-sm font-bold text-foreground">في عطلة قصيرة ⏸️</p>
+          <p className="text-muted-foreground text-sm">نعود قريباً إن شاء الله — تابعونا</p>
+          <a href="/" className="inline-block px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition">اكتشف متاجر أخرى</a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <UniversalStyleInjector />

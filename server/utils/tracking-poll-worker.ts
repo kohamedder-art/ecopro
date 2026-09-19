@@ -55,9 +55,11 @@ async function fetchPollableOrders(): Promise<PollableOrder[]> {
       so.customer_name
     FROM store_orders so
     JOIN delivery_companies dc ON dc.id = so.delivery_company_id
+    LEFT JOIN clients c ON c.id = so.client_id
     WHERE so.tracking_number IS NOT NULL
       AND so.tracking_number != ''
       AND dc.features->>'supports_webhooks' = 'false'
+      AND (c.lock_type IS DISTINCT FROM 'frozen')
       AND so.status NOT IN ('cancelled', 'returned', 'delivered', 'completed', 'refunded', 'failed', 'fake', 'duplicate', 'delivery_failed')
       AND so.delivery_status NOT IN ('delivered', 'returned', 'cancelled', 'failed')
   `);
