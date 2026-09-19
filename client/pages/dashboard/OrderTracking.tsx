@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/i18n";
-import { Loader2, Search, RefreshCw, Package, MapPin, Truck, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Loader2, Search, RefreshCw, Package, MapPin, Truck, CheckCircle2, AlertCircle, Clock, XCircle } from "lucide-react";
 
 // Owner pipeline: 4 steps. OFD folds into "in_transit" (couriers flag it for
 // days — false precision). Failed/returned/cancelled land in "attention".
@@ -26,7 +26,8 @@ const STATUS_GROUP: Record<string, string> = {
   in_transit: "transit", in_delivery: "transit", at_warehouse: "transit", at_hub: "transit", ready_for_pickup: "transit",
   out_for_delivery: "transit", out_delivery: "transit",
   delivered: "done", completed: "done",
-  cancelled: "attention", returned: "attention", failed: "attention", fake: "attention", duplicate: "attention",
+  failed: "failed",
+  cancelled: "attention", returned: "attention", fake: "attention", duplicate: "attention",
 };
 
 const GROUP_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -34,7 +35,8 @@ const GROUP_META: Record<string, { label: string; color: string; icon: React.Rea
   confirmed: { label: "مؤكد",          color: "#1c7ed6", icon: <Package className="w-3.5 h-3.5" /> },
   transit:   { label: "في الطريق",     color: "#d97706", icon: <Truck className="w-3.5 h-3.5" /> },
   done:      { label: "تم التسليم",    color: "#059669", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  attention: { label: "يحتاج تدخل",    color: "#dc2626", icon: <AlertCircle className="w-3.5 h-3.5" /> },
+  failed:    { label: "فشل",           color: "#dc2626", icon: <XCircle className="w-3.5 h-3.5" /> },
+  attention: { label: "يحتاج تدخل",    color: "#f59e0b", icon: <AlertCircle className="w-3.5 h-3.5" /> },
 };
 
 interface TrackingOrder {
@@ -212,13 +214,13 @@ export default function OrderTracking() {
 
   useEffect(() => { load(); }, [load]);
 
-  const liveCounts: Record<string, number> = { all: orders.length, new: 0, confirmed: 0, transit: 0, done: 0, attention: 0 };
+  const liveCounts: Record<string, number> = { all: orders.length, new: 0, confirmed: 0, transit: 0, done: 0, failed: 0, attention: 0 };
   for (const o of orders) {
     const g = STATUS_GROUP[getEffectiveStatus(o)] || "new";
     if (liveCounts[g] !== undefined) liveCounts[g]++;
   }
 
-  const PIPELINE_GROUPS = ["all", "new", "confirmed", "transit", "done", "attention"] as const;
+  const PIPELINE_GROUPS = ["all", "new", "confirmed", "transit", "done", "failed", "attention"] as const;
 
   const filtered = orders.filter(o => {
     const g = STATUS_GROUP[getEffectiveStatus(o)] || "new";
@@ -254,8 +256,8 @@ export default function OrderTracking() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-        {(["new","confirmed","transit","done","attention"] as const).map(g => {
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {(["new","confirmed","transit","done","failed","attention"] as const).map(g => {
           const meta = GROUP_META[g];
           const count = liveCounts[g] || 0;
           const active = groupFilter === g;

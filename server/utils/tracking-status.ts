@@ -29,19 +29,21 @@ export const CUSTOMER_STATUS_LABEL: Record<CustomerTrackStatus, string> = {
   failed: 'تعذّر التوصيل ❌',
 };
 
-// ─── Owner: 4 pipeline steps + attention bucket ─────────────────
+// ─── Owner: 4 pipeline steps + failed + attention ───────────────
 export type OwnerTrackStatus =
   | 'new'
   | 'confirmed'
   | 'in_transit' // includes courier OFD — folded, not a separate promise
   | 'delivered'
-  | 'attention'; // failed / returned / cancelled — needs action, not a step
+  | 'failed'     // delivery failed — terminal, needs owner action
+  | 'attention'; // returned / cancelled — needs action, not a step
 
 export const OWNER_TRACK_STEPS: OwnerTrackStatus[] = [
   'new',
   'confirmed',
   'in_transit',
   'delivered',
+  'failed',
 ];
 
 export const OWNER_STATUS_LABEL: Record<OwnerTrackStatus, string> = {
@@ -49,6 +51,7 @@ export const OWNER_STATUS_LABEL: Record<OwnerTrackStatus, string> = {
   confirmed: 'مؤكد',
   in_transit: 'في الطريق',
   delivered: 'تم التسليم',
+  failed: 'فشل التوصيل',
   attention: 'يحتاج تدخل',
 };
 
@@ -71,7 +74,8 @@ export function toOwnerStatus(raw: string | null | undefined): OwnerTrackStatus 
   // Courier OFD folds into in_transit — no false precision for owner either
   if (s === 'in_transit' || s === 'at_hub' || s === 'at_warehouse' || s === 'ready_for_pickup' || s === 'in_delivery' || s === 'out_for_delivery' || s === 'out_delivery') return 'in_transit';
   if (s === 'delivered' || s === 'completed') return 'delivered';
-  if (s === 'failed' || s === 'returned' || s === 'cancelled' || s === 'canceled' || s === 'fake' || s === 'duplicate') return 'attention';
+  if (s === 'failed') return 'failed';
+  if (s === 'returned' || s === 'cancelled' || s === 'canceled' || s === 'fake' || s === 'duplicate') return 'attention';
   return 'in_transit'; // unrecognized → neutral in-progress bucket
 }
 
