@@ -414,6 +414,7 @@ export const getPlatformStats: RequestHandler = async (_req, res) => {
           COUNT(*) as total_subscriptions,
           COUNT(*) FILTER (WHERE status = 'active') as active_subscriptions,
           COUNT(*) FILTER (WHERE status = 'trial') as trial_subscriptions,
+          COUNT(*) FILTER (WHERE status = 'paused') as paused_subscriptions,
           COUNT(*) FILTER (WHERE status = 'expired' OR status = 'cancelled') as expired_subscriptions
         FROM subscriptions s
         WHERE EXISTS (SELECT 1 FROM clients WHERE id = s.user_id)
@@ -441,6 +442,7 @@ export const getPlatformStats: RequestHandler = async (_req, res) => {
       totalAdmins: parseInt(usersResult.rows[0].total_admins),
       lockedAccounts: parseInt(usersResult.rows[0].locked_accounts),
       activeSubscriptions: parseInt(subscriptionsResult.rows[0].active_subscriptions),
+      pausedSubscriptions: parseInt(subscriptionsResult.rows[0].paused_subscriptions || 0),
       trialSubscriptions: parseInt(subscriptionsResult.rows[0].trial_subscriptions),
       expiredSubscriptions: parseInt(subscriptionsResult.rows[0].expired_subscriptions),
       totalCodes: parseInt(codesResult.rows[0].total_codes),

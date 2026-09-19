@@ -1260,6 +1260,13 @@ ${urls}
     billingRoutes.getPaymentMetrics
   );
 
+  app.post(
+    "/api/billing/admin/unfreeze",
+    authenticate,
+    requireAdmin,
+    billingRoutes.adminUnfreeze
+  );
+
   app.get(
     "/api/billing/admin/settings",
     authenticate,

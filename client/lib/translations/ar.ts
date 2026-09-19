@@ -1753,6 +1753,7 @@ export const ar = {
   "platformAdmin.subs.trialActive": "تجريبي نشط",
   "platformAdmin.subs.activePaid": "مدفوع نشط",
   "platformAdmin.subs.expired": "منتهي",
+  "platformAdmin.subs.paused": "مجمّد ⏸️",
   "platformAdmin.subs.unpaid": "غير مدفوع",
   "platformAdmin.subs.churnRate": "معدل الخسارة",
   "platformAdmin.subs.expiredThisMonth": "انتهى هذا الشهر",

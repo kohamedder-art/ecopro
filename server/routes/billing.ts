@@ -291,7 +291,7 @@ export const getAllSubscriptions: RequestHandler = async (req, res) => {
     const result = await pool.query(
       `SELECT 
         s.id, s.user_id, u.email, u.name,
-        s.tier, s.status, s.trial_started_at, s.trial_ends_at,
+        s.tier, s.status, s.paused_at, s.trial_started_at, s.trial_ends_at,
         s.current_period_start, s.current_period_end, s.created_at
       FROM subscriptions s
       JOIN clients u ON s.user_id = u.id
@@ -834,10 +834,12 @@ export const getPaymentMetrics: RequestHandler = async (req, res) => {
       `SELECT
         COUNT(CASE WHEN effective_status = 'active_paid' THEN 1 END) as active_subscriptions,
         COUNT(CASE WHEN effective_status = 'expired' THEN 1 END) as expired_count,
-        COUNT(CASE WHEN effective_status = 'active_trial' THEN 1 END) as trial_count
+        COUNT(CASE WHEN effective_status = 'active_trial' THEN 1 END) as trial_count,
+        COUNT(CASE WHEN effective_status = 'paused' THEN 1 END) as paused_count
        FROM (
         SELECT c.id as client_id,
           CASE
+            WHEN s.status = 'paused' THEN 'paused'
             WHEN s.status = 'active' AND (s.current_period_end IS NULL OR s.current_period_end > NOW()) THEN 'active_paid'
             WHEN s.status = 'trial' AND s.trial_ends_at > NOW() THEN 'active_trial'
             ELSE 'expired'
@@ -916,6 +918,7 @@ export const getPaymentMetrics: RequestHandler = async (req, res) => {
       // Legacy fields for backward compat
       failed_payments: parseInt(codesResult.rows[0]?.expired_codes || 0), // Expired codes = "failed"
       unpaid_count: parseInt(subscriptionResult.rows[0]?.expired_count || 0),
+      paused_count: parseInt(subscriptionResult.rows[0]?.paused_count || 0),
       churn_rate: parseFloat(((parseInt(churnResult.rows[0]?.churn_count || 0) / Math.max(activeCount, 1)) * 100).toFixed(1)),
       new_signups: parseInt(signupsResult.rows[0]?.new_signups || 0),
     };
@@ -1165,5 +1168,59 @@ export const resumeSubscription: RequestHandler = async (req, res) => {
   } catch (error) {
     console.error("Error resuming subscription:", error);
     return jsonError(res, 500, "Failed to resume account");
+  }
+};
+
+/**
+ * Force-resume a frozen account (admin/support only).
+ * POST /api/billing/admin/unfreeze { clientId }
+ * Same day-for-day extension as self-resume.
+ */
+export const adminUnfreeze: RequestHandler = async (req, res) => {
+  try {
+    const adminUser = req.user as any;
+    if (!adminUser || (adminUser.role !== 'admin' && adminUser.user_type !== 'admin')) {
+      return jsonError(res, 403, 'Admin access required');
+    }
+    const clientId = Number(req.body?.clientId);
+    if (!clientId) return jsonError(res, 400, 'Client ID is required');
+
+    const sub = await pool.query(`SELECT * FROM subscriptions WHERE user_id = $1`, [clientId]);
+    if (!sub.rows.length) return jsonError(res, 404, 'No subscription found');
+    const s = sub.rows[0];
+    if (s.status !== 'paused') return jsonError(res, 400, 'Account is not frozen');
+
+    const frozenMs = Math.max(0, Date.now() - new Date(s.paused_at || Date.now()).getTime());
+    const db = await pool.connect();
+    try {
+      await db.query('BEGIN');
+      await db.query(
+        `UPDATE subscriptions
+         SET status = 'active', paused_at = NULL, updated_at = NOW(),
+             current_period_end = COALESCE(current_period_end, NOW()) + ($1::bigint || ' milliseconds')::interval
+         WHERE user_id = $2`,
+        [String(Math.round(frozenMs)), clientId]
+      );
+      await db.query(
+        `UPDATE clients SET is_locked = false, locked_reason = NULL, locked_at = NULL,
+             lock_type = NULL, unlock_reason = 'Resumed by admin', unlocked_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND lock_type = 'frozen'`,
+        [clientId]
+      ).catch(() => null);
+      await db.query(
+        `UPDATE bot_settings SET enabled = true, updated_at = NOW() WHERE client_id = $1`,
+        [clientId]
+      ).catch(() => null);
+      await db.query('COMMIT');
+    } catch (e) {
+      await db.query('ROLLBACK');
+      throw e;
+    } finally {
+      db.release();
+    }
+    res.json({ success: true, message: `Account ${clientId} resumed by admin`, frozenDays: Math.floor(frozenMs / 86400000) });
+  } catch (error) {
+    console.error('Error admin unfreeze:', error);
+    return jsonError(res, 500, 'Failed to resume account');
   }
 };

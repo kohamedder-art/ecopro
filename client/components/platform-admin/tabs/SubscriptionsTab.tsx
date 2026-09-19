@@ -7,17 +7,20 @@ const statusTextColors: Record<string, string> = {
   blue: 'text-blue-400',
   emerald: 'text-emerald-400',
   red: 'text-red-400',
+  sky: 'text-sky-400',
 };
 const statusBgColors: Record<string, string> = {
   blue: 'bg-blue-500',
   emerald: 'bg-emerald-500',
   red: 'bg-red-500',
+  sky: 'bg-sky-500',
 };
 
 interface BillingMetrics {
   mrr: number;
   active_subscriptions: number;
   unpaid_count: number;
+  paused_count: number;
   new_signups: number;
   total_codes_issued: number;
   codes_redeemed: number;
@@ -39,11 +42,12 @@ const COLORS = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b'];
 export default function SubscriptionsTab({ billingMetrics, stats }: Props) {
   const { t } = useTranslation();
   const m = billingMetrics;
-  const total = Math.max((m?.active_subscriptions || 0) + (m?.trial_count || 0) + (m?.expired_count || 0), 1);
+  const total = Math.max((m?.active_subscriptions || 0) + (m?.trial_count || 0) + (m?.expired_count || 0) + (m?.paused_count || 0), 1);
 
   const donutData = useMemo(() => [
     { name: t('platformAdmin.subs.activePaid'), value: m?.active_subscriptions || 0, color: '#10b981' },
     { name: t('platformAdmin.subs.trialActive'), value: m?.trial_count || 0, color: '#3b82f6' },
+    { name: t('platformAdmin.subs.paused') === 'platformAdmin.subs.paused' ? '⏸️ Frozen' : t('platformAdmin.subs.paused'), value: m?.paused_count || 0, color: '#0ea5e9' },
     { name: t('platformAdmin.subs.expired'), value: m?.expired_count || 0, color: '#ef4444' },
     { name: t('platformAdmin.subs.unpaid'), value: m?.unpaid_count || 0, color: '#f59e0b' },
   ], [m]);
@@ -137,10 +141,11 @@ export default function SubscriptionsTab({ billingMetrics, stats }: Props) {
           <CreditCard className="w-4 h-4 text-emerald-400" />
           Status Breakdown
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
           {[
             { label: t('platformAdmin.subs.trialActive'), value: m?.trial_count || 0, color: 'blue' },
             { label: t('platformAdmin.subs.activePaid'), value: m?.active_subscriptions || 0, color: 'emerald' },
+            { label: t('platformAdmin.subs.paused') === 'platformAdmin.subs.paused' ? '⏸️ Frozen' : t('platformAdmin.subs.paused'), value: m?.paused_count || 0, color: 'sky' },
             { label: t('platformAdmin.subs.expired'), value: m?.expired_count || 0, color: 'red' },
           ].map((item, i) => (
             <div key={i} className="space-y-2">
