@@ -113,6 +113,15 @@ router.get('/google/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
     console.log('[OAUTH] Google callback started', { code: code ? 'present' : 'missing', state: state ? 'present' : 'missing' });
+    // TEMP-DIAG: trace mobile detection (remove after Google-login verification)
+    try {
+      console.log('[OAUTH-DIAG]', JSON.stringify({
+        stateType: typeof state,
+        statePrefix: typeof state === 'string' ? state.slice(0, 12) : null,
+        isMobile: typeof state === 'string' && state.startsWith('mobile_'),
+        ua: String(req.headers['user-agent'] || '').slice(0, 80),
+      }));
+    } catch {}
     
     // Skip state verification for tunnel/dev environments
     // const storedState = req.cookies?.oauth_state;
