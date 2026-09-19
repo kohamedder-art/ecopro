@@ -122,7 +122,14 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
 
     useEffect(() => { if (product && onProductView) onProductView(product); }, [product?.id, onProductView]);
 
-    // Header: navbar sticks, announcement scrolls away
+    // Header: visible only at the very top, hidden on any scroll
+    const [atTop, setAtTop] = useState(true);
+    useEffect(() => {
+        const onScroll = () => setAtTop(window.scrollY === 0);
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
     const [mobileSearch, setMobileSearch] = useState(false);
     const scrollToGrid = () => document.getElementById('dz-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -435,7 +442,7 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
             {showStoreGrid && (
             <>
             <AnnouncementBar settings={settings} canManage={canManage} handleTextEdit={handleTextEdit} accentColor={accentColor} secondaryColor={secondaryColor} />
-            <header className="sticky top-0 z-50 bg-white/95 border-b border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.04)]" style={{ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
+            <header className="sticky top-0 z-50 bg-white/95 border-b border-black/10 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-transform duration-300" style={{ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', transform: atTop ? 'translateY(0)' : 'translateY(-110%)' }}>
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 h-[64px] max-w-7xl mx-auto">
                     <div className="flex items-center gap-1 justify-start">
                         <button onClick={() => setMobileSearch(v => !v)} className="md:hidden w-10 h-10 flex items-center justify-center" aria-label="القائمة">
