@@ -20,6 +20,7 @@ interface QuotaStatus {
   limit: number;
   resetDate: Date | null;
   userType: UserType;
+  frozen?: boolean; // account paused — no AI spend while frozen
 }
 
 // ─── Monthly allowances (messages / store / calendar month) ───
@@ -67,6 +68,18 @@ export async function getActivePass(clientId: number): Promise<{ id: number; end
  */
 export async function checkQuota(clientId: number, userType: UserType): Promise<QuotaStatus> {
   const pool = await ensureConnection();
+
+  // Frozen account — no AI spend on any store while paused (fail closed).
+  try {
+    const fz = await pool.query(
+      `SELECT 1 FROM subscriptions WHERE user_id = $1 AND status = 'paused'`,
+      [clientId]
+    );
+    if (fz.rows.length) {
+      return { allowed: false, remaining: 0, limit: 0, resetDate: null, userType, frozen: true };
+    }
+  } catch { /* check failed open */ }
+
   const monthlyLimit = MONTHLY_LIMITS[userType];
   const dailyLimit = DAILY_LIMITS[userType];
 

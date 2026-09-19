@@ -284,6 +284,11 @@ export async function isAiAutoReplyEnabled(clientId: number, platform?: Platform
     console.error('[CustomerAI] auto-reply gate: database unreachable, blocking auto-reply', (err as any)?.message || err);
     return false;
   }
+  // Frozen account — every store paused, AI silent on all platforms
+  try {
+    const fz = await pool.query(`SELECT 1 FROM subscriptions WHERE user_id = $1 AND status = 'paused'`, [clientId]);
+    if (fz.rows.length) return false;
+  } catch { /* check failed open */ }
   try {
     const res = await pool.query(
       `SELECT ai_chat_enabled, storefront_assistant, ai_reply_telegram, ai_reply_messenger, ai_reply_instagram, ai_reply_whatsapp FROM ai_settings WHERE client_id = $1 LIMIT 1`,

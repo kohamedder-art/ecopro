@@ -612,6 +612,12 @@ export async function generateText(
   if (ctx.clientId && ctx.userType) {
     const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
     if (!quotaStatus.allowed) {
+      // Frozen account — resume to re-enable the assistant
+      if ((quotaStatus as any).frozen) {
+        return ctx.userType === 'customer'
+          ? 'المتجر في عطلة قصيرة ⏸️ نعود قريباً إن شاء الله.'
+          : 'الحساب مجمّد ⏸️ — استأنف من صفحة الفوترة ليعمل المساعد من جديد.';
+      }
       // Quota exceeded - return fallback message
       if (ctx.userType === 'customer') {
         return 'عذراً، تم تجاوز الحد الشهري للردود الآلية. يرجى التواصل مع المتجر مباشرة.';
@@ -670,7 +676,11 @@ export async function generateTextWithSearch(
   if (ctx.clientId && ctx.userType) {
     const quotaStatus = await checkQuota(ctx.clientId, ctx.userType);
     if (!quotaStatus.allowed) {
-      const text = ctx.userType === 'customer'
+      const text = (quotaStatus as any).frozen
+        ? (ctx.userType === 'customer'
+            ? 'المتجر في عطلة قصيرة ⏸️ نعود قريباً إن شاء الله.'
+            : 'الحساب مجمّد ⏸️ — استأنف من صفحة الفوترة ليعمل المساعد من جديد.')
+        : ctx.userType === 'customer'
         ? 'عذراً، تم تجاوز الحد الشهري للردود الآلية. يرجى التواصل مع المتجر مباشرة.'
         : 'تم استهلاك الحصة الشهرية للمساعد الذكي. واصل اليوم بـ 200 دج فقط — فعّل اليوم الإضافي من صفحة الذكاء الاصطناعي.';
       return { text, sources: [] };
