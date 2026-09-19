@@ -11,6 +11,7 @@
 import { pool } from './database';
 import { getIntegrationSecrets } from './integration-secrets';
 import { getCourierService } from '../services/courier-service';
+import { OWNER_STATUS_LABEL, toOwnerStatus } from './tracking-status';
 // Importing DeliveryService triggers the courier service registry side effects
 // (registerCourierService calls in delivery.ts populate the lookup map).
 // Without this, getCourierService('ZR Express') returns null.
@@ -19,6 +20,13 @@ import { sendDeliveryStatusNotification } from './bot-messaging';
 
 const POLL_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 let pollWorkerInterval: NodeJS.Timeout | null = null;
+
+// Dead-tracking backoff: couriers return empty/unknown forever for deleted or
+// bad tracking numbers (e.g. ProColis /lire → 200 null). After N consecutive
+// failures the number is muted for the process lifetime to stop log spam.
+const deadTrackFailures = new Map<string, number>();
+const DEAD_TRACK_LIMIT = 20;
+const mutedLogged = new Set<string>();
 
 interface PollableOrder {
   order_id: number;
@@ -88,6 +96,15 @@ async function getCredentials(clientId: number, companyName: string): Promise<{ 
  */
 async function pollOrderStatus(order: PollableOrder): Promise<void> {
   try {
+    // Skip numbers the courier consistently returns nothing for
+    if ((deadTrackFailures.get(order.tracking_number) || 0) >= DEAD_TRACK_LIMIT) {
+      if (!mutedLogged.has(order.tracking_number)) {
+        mutedLogged.add(order.tracking_number);
+        console.log(`[TrackingPoll] Muted dead tracking ${order.tracking_number} (order ${order.order_id}) after ${DEAD_TRACK_LIMIT} empty responses`);
+      }
+      return;
+    }
+
     const service = getCourierService(order.company_name);
     if (!service) {
       console.warn(`[TrackingPoll] No service for company: ${order.company_name}`);
@@ -105,9 +122,11 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
     );
 
     if (statusResponse.error) {
+      deadTrackFailures.set(order.tracking_number, (deadTrackFailures.get(order.tracking_number) || 0) + 1);
       console.warn(`[TrackingPoll] Status error for order ${order.order_id}: ${statusResponse.error}`);
       return;
     }
+    deadTrackFailures.delete(order.tracking_number);
 
     const newStatus = statusResponse.status;
     if (!newStatus || newStatus === 'unknown') return;
@@ -143,7 +162,7 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
       ]
     );
 
-    // Send customer notification (fire-and-forget)
+    // Send customer notification (fire-and-forget, gated to 4 customer steps)
     if (order.customer_phone) {
       sendDeliveryStatusNotification({
         orderId: order.order_id,
@@ -155,6 +174,7 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
         description: statusResponse.description,
         location: statusResponse.location,
         storeId: order.store_id ?? undefined,
+        previousEventType: order.delivery_status,
       }).catch(err => console.error(`[TrackingPoll] Notification failed for order ${order.order_id}:`, err?.message));
     }
 
@@ -168,7 +188,7 @@ async function pollOrderStatus(order: PollableOrder): Promise<void> {
           order.client_id,
           order.store_id || null,
           order.customer_phone || '',
-          `📦 تحديث حالة التتبع — الطلب #${order.order_id}\n\nالحالة: ${newStatus}\n${statusResponse.description || ''}\n${statusResponse.location ? `الموقع: ${statusResponse.location}` : ''}\nرقم التتبع: ${order.tracking_number}`,
+          `📦 تحديث حالة التتبع — الطلب #${order.order_id}\n\nالحالة: ${OWNER_STATUS_LABEL[toOwnerStatus(newStatus)]}\n${statusResponse.description || ''}\n${statusResponse.location ? `الموقع: ${statusResponse.location}` : ''}\nرقم التتبع: ${order.tracking_number}`,
         ]
       );
     } catch (notifyErr) {

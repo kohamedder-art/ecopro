@@ -606,7 +606,7 @@ export class DeliveryService {
 
       // Find order by tracking number first
       let orderResult = await pool.query(
-        'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
+        'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number, delivery_status FROM store_orders WHERE tracking_number = $1',
         [trackingNumber]
       );
 
@@ -614,7 +614,7 @@ export class DeliveryService {
       if (orderResult.rows.length === 0 && data?.id) {
         console.log(`[Webhook] Tracking "${trackingNumber}" not found, trying parcel UUID: ${data.id}`);
         orderResult = await pool.query(
-          'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number FROM store_orders WHERE tracking_number = $1',
+          'SELECT id, client_id, store_id, customer_phone, customer_name, tracking_number, delivery_status FROM store_orders WHERE tracking_number = $1',
           [data.id]
         );
         // Update tracking number to the real one if found by UUID
@@ -632,7 +632,7 @@ export class DeliveryService {
         return { success: true }; // Don't fail, just log
       }
 
-      const { id: orderId, client_id: clientId, store_id: storeId, customer_phone: customerPhone, customer_name: customerName } = orderResult.rows[0];
+      const { id: orderId, client_id: clientId, store_id: storeId, customer_phone: customerPhone, customer_name: customerName, delivery_status: prevDeliveryStatus } = orderResult.rows[0];
 
       // Verify webhook signature if signature is provided
       let webhookVerified = false;
@@ -688,7 +688,7 @@ export class DeliveryService {
         );
       }
 
-      // Send customer bot notification (fire-and-forget)
+      // Send customer bot notification (fire-and-forget, gated to 4 customer steps)
       if (customerPhone) {
         sendDeliveryStatusNotification({
           orderId,
@@ -700,15 +700,17 @@ export class DeliveryService {
           description: event.description,
           location: event.location,
           storeId: storeId ?? undefined,
+          previousEventType: prevDeliveryStatus ?? undefined,
         }).catch(err => console.error('[Webhook] Bot notification failed:', err?.message || err));
       }
 
       // Send store owner notification about delivery status update
       try {
+        const { OWNER_STATUS_LABEL, toOwnerStatus } = await import('../utils/tracking-status');
         await pool.query(
           `INSERT INTO bot_messages (order_id, client_id, store_id, customer_phone, message_type, message_content, send_at)
            VALUES ($1, $2, $3, $4, 'telegram', $5, NOW())`,
-          [orderId, clientId, storeId || null, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحالة: ${event.status}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
+          [orderId, clientId, storeId || null, customerPhone || '', `🚚 تحديث حالة التوصيل للطلب #${orderId}\n\nالحالة: ${OWNER_STATUS_LABEL[toOwnerStatus(event.status)]}\n${event.description || ''}\n${event.location ? `الموقع: ${event.location}` : ''}\nرقم التتبع: ${trackingNumber}`]
         );
       } catch (ownerNotifyErr) {
         console.error('[Webhook] Store owner notification failed:', ownerNotifyErr);

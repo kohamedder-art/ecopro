@@ -24,6 +24,7 @@ import { generateText, GeminiContent } from './gemini';
 import { notifyOrderCreated, sendPushNotification } from './push-notifications';
 import { resolveStore } from './store-scope';
 import { checkRateLimit, checkGlobalRateLimit, getRateLimitResetTime, RATE_LIMITS, getRateLimitMessage } from '../utils/ai-rate-limiter';
+import { toCustomerStatus, CUSTOMER_STATUS_LABEL } from '../utils/tracking-status';
 
 type Platform = 'telegram' | 'messenger' | 'whatsapp' | 'instagram';
 
@@ -1240,10 +1241,10 @@ async function loadOrders(clientId: number, phone: string, storeId?: number): Pr
        WHERE o.client_id = $1 AND o.customer_phone = $2${storeFilter} ORDER BY o.created_at DESC LIMIT 3`, params
     );
     if (!res.rows.length) return '';
-    const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم بالفعل', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
+    // Customer sees 4 tracking steps — same wording as tracking page + notifications
     return res.rows.map((o: any) => {
       let l = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج`;
-      if (o.tracking_number) l += `\n   حالة الشحن: ${labels[o.delivery_status] || 'جاري المتابعة'} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
+      if (o.tracking_number) l += `\n   حالة الشحن: ${CUSTOMER_STATUS_LABEL[toCustomerStatus(o.delivery_status)]} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
       else l += `\n   حالة الشحن: قيد التحضير والتجهيز`;
       if (o.last_event) l += `\n   آخر تحديث: ${o.last_event}`;
       if (o.shipping_address) l += `\n   العنوان المسجل: ${o.shipping_address}`;
@@ -1268,10 +1269,9 @@ async function loadOrdersByOrderNumber(clientId: number, orderId: number, storeI
        WHERE o.client_id = $1 AND o.id = $2${storeFilter} LIMIT 1`, params
     );
     if (!res.rows.length) return '';
-    const labels: Record<string, string> = { pending: 'لم يُشحن بعد', assigned: 'تم تعيين شركة التوصيل', picked_up: 'تم الاستلام', in_transit: 'في الطريق', out_for_delivery: 'خرج للتوصيل', delivered: 'تم التسليم بالفعل', failed: 'فشلت محاولة التوصيل', returned: 'تم الإرجاع' };
     const o = res.rows[0];
     let l = `📦 طلب #${o.id} — ${o.product_title || 'منتج'} (×${o.quantity || 1}) — ${o.total_price} دج`;
-    if (o.tracking_number) l += `\n   حالة الشحن: ${labels[o.delivery_status] || 'جاري المتابعة'} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
+    if (o.tracking_number) l += `\n   حالة الشحن: ${CUSTOMER_STATUS_LABEL[toCustomerStatus(o.delivery_status)]} | رقم التتبع: ${o.tracking_number}${o.delivery_company ? ` (${o.delivery_company})` : ''}`;
     else l += `\n   حالة الشحن: قيد التحضير والتجهيز`;
     if (o.last_event) l += `\n   آخر تحديث: ${o.last_event}`;
     if (o.shipping_address) l += `\n   العنوان المسجل: ${o.shipping_address}`;

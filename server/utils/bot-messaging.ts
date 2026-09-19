@@ -503,14 +503,20 @@ export function replaceTemplateVariables(
   return result;
 }
 
-/* ─── Delivery event labels (Arabic) ─────────────────────────── */
+/* ─── Delivery event labels: customer sees 4 steps only ──── */
+/* Raw courier noise (picked_up/in_transit/at_hub…) maps to one bucket. */
 const DELIVERY_EVENT_LABELS: Record<string, string> = {
-  pickup:            'تم استلام الطرد من البائع',
-  in_transit:        'الطرد في الطريق إليك',
-  out_for_delivery:  'الطرد خرج للتوصيل اليوم',
+  pickup:            'تم تأكيد طلبك وهو عند شركة التوصيل',
+  picked_up:         'تم تأكيد طلبك وهو عند شركة التوصيل',
+  in_transit:        'تم تأكيد طلبك وهو عند شركة التوصيل',
+  shipped:           'تم تأكيد طلبك وهو عند شركة التوصيل',
+  at_hub:            'تم تأكيد طلبك وهو عند شركة التوصيل',
+  ready_for_pickup:  'تم تأكيد طلبك وهو عند شركة التوصيل',
+  out_for_delivery:  'المندوب في الطريق إليك',
   delivered:         'تم التسليم بنجاح ✅',
-  failed:            'محاولة توصيل فاشلة ❌',
-  returned:          'تم إرجاع الطرد',
+  failed:            'تعذّر التوصيل ❌',
+  returned:          'تعذّر التوصيل ❌',
+  cancelled:         'تعذّر التوصيل ❌',
 };
 
 const DEFAULT_DELIVERY_STATUS_TEMPLATE = `🚚 تحديث حالة طلبك
@@ -538,8 +544,19 @@ export async function sendDeliveryStatusNotification(params: {
   description?: string;
   location?: string;
   storeId?: number;
+  /** Previous raw delivery_status — skips re-notify when the customer bucket didn't change. */
+  previousEventType?: string | null;
 }): Promise<void> {
-  const { orderId, clientId, customerPhone, customerName, trackingNumber, eventType, description, location, storeId: providedStoreId } = params;
+  const { orderId, clientId, customerPhone, customerName, trackingNumber, eventType, description, location, storeId: providedStoreId, previousEventType } = params;
+
+  // Customer gets max 4 messages per order — skip courier noise in the same bucket
+  try {
+    const { shouldNotifyCustomer } = await import('./tracking-status');
+    if (!shouldNotifyCustomer(eventType, previousEventType ?? undefined)) {
+      console.log(`[DeliveryBot] Skipped notification for order ${orderId} event=${eventType} (same customer bucket)`);
+      return;
+    }
+  } catch { /* gate failed open — notify */ }
 
   try {
     const pool = await ensureConnection();

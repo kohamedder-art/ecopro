@@ -1641,6 +1641,7 @@ export const fr = {
   "tracking.next": "Suivant →",
   "tracking.deliveryCompany": "Transporteur",
   "tracking.internalDelivery": "Livraison interne",
+  "tracking.stepNew": "Nouvelle commande",
   "tracking.stepConfirmed": "Commande confirmée",
   "tracking.stepPickedUp": "Colis récupéré",
   "tracking.stepInTransit": "En transit",

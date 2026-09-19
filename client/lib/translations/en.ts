@@ -3138,6 +3138,7 @@ export const en = {
   "tracking.next": "Next →",
   "tracking.deliveryCompany": "Delivery Company",
   "tracking.internalDelivery": "Internal Delivery",
+  "tracking.stepNew": "New order",
   "tracking.stepConfirmed": "Order Confirmed",
   "tracking.stepPickedUp": "Package Picked Up",
   "tracking.stepInTransit": "In Transit",
