@@ -138,6 +138,11 @@ export default function MarketingAnalytics() {
   const maxOrders = topWilayas.length ? Math.max(...topWilayas.map((w: any) => w.orders)) : 1;
 
   const [hoveredWilaya, setHoveredWilaya] = useState<any>(null);
+  const [mapMetric, setMapMetric] = useState<'orders' | 'revenue'>('orders');
+
+  const mapVal = (w: any) => mapMetric === 'orders' ? (Number(w?.orders) || 0) : (Number(w?.revenue) || 0);
+  const mapFmt = (v: number) => mapMetric === 'orders' ? fmtNum(v) : fmtCurr(v);
+  const maxMapVal = Math.max(1, ...wilayas.map((w: any) => mapVal(w)));
 
   // ── Loading / Empty ──
   if (loading) {
@@ -329,9 +334,29 @@ export default function MarketingAnalytics() {
 
       {/* ── Row 3: Algeria Map + Top Wilayas ── */}
       <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-emerald-500 to-teal-500" />
-          <span className="text-sm font-bold text-foreground">التوزيع الجغرافي — الولايات</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-emerald-500 to-teal-500" />
+            <span className="text-sm font-bold text-foreground">التوزيع الجغرافي — الولايات</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-emerald-500/40" /> أقل
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> أكثر
+            </div>
+            <div className="bg-muted/40 p-1 rounded-lg border border-border/40">
+              {(['orders', 'revenue'] as const).map(m => (
+                <button key={m} onClick={() => setMapMetric(m)}
+                  className={`px-3 h-7 rounded-md text-xs font-bold transition-all duration-200 ${
+                    mapMetric === m
+                      ? 'bg-primary text-white shadow-sm shadow-primary/30'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background'
+                  }`}>
+                  {m === 'orders' ? 'الطلبات' : 'الإيرادات'}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Map */}
@@ -340,9 +365,9 @@ export default function MarketingAnalytics() {
               <path d={ALGERIA_OUTLINE} fill="hsl(var(--muted))" fillOpacity={0.5} stroke="hsl(var(--border))" strokeWidth={1.5} />
               {Object.entries(WILAYA_COORDS).map(([id, [lat, lng]]) => {
                 const w = wilayaMap.get(Number(id));
-                const orders = w?.orders || 0;
-                if (orders === 0) return null;
-                const intensity = Math.min(orders / maxOrders, 1);
+                const value = mapVal(w);
+                if (value === 0) return null;
+                const intensity = Math.min(value / maxMapVal, 1);
                 const r = 4 + intensity * 8;
                 const [cx, cy] = project(lat, lng);
                 const isHovered = hoveredWilaya?.wilayaId === Number(id);
@@ -351,17 +376,17 @@ export default function MarketingAnalytics() {
                     onMouseEnter={() => w && setHoveredWilaya(w)}
                     onMouseLeave={() => setHoveredWilaya(null)}>
                     <circle cx={cx} cy={cy} r={r + 4}
-                      fill="hsl(var(--foreground))"
-                      fillOpacity={0.08 + intensity * 0.12}
+                      fill="#10b981"
+                      fillOpacity={0.10 + intensity * 0.15}
                       className="transition-all" />
                     <circle cx={cx} cy={cy} r={isHovered ? r + 2 : r}
-                      fill="hsl(var(--foreground))"
-                      fillOpacity={0.5 + intensity * 0.5}
-                      stroke={isHovered ? 'hsl(var(--foreground))' : 'transparent'} strokeWidth={isHovered ? 2 : 0}
+                      fill="#10b981"
+                      fillOpacity={0.35 + intensity * 0.55}
+                      stroke={isHovered ? '#10b981' : 'transparent'} strokeWidth={isHovered ? 2 : 0}
                       className="transition-all" />
-                    {orders > 3 && (
+                    {mapMetric === 'orders' && value > 3 && (
                       <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-                        fill="hsl(var(--background))" className="text-[7px] font-bold pointer-events-none">{orders}</text>
+                        fill="#fff" className="text-[7px] font-bold pointer-events-none">{value}</text>
                     )}
                   </g>
                 );
@@ -380,18 +405,18 @@ export default function MarketingAnalytics() {
           </div>
           {/* Top wilayas list */}
           <div className="lg:w-72 space-y-2 max-h-[320px] overflow-y-auto">
-            {topWilayas.length > 0 ? topWilayas.map((w: any, i: number) => (
+            {topWilayas.length > 0 ? [...topWilayas].sort((a: any, b: any) => mapVal(b) - mapVal(a)).map((w: any, i: number) => (
               <div key={w.wilayaId} className="flex items-center gap-2"
                 onMouseEnter={() => setHoveredWilaya(w)} onMouseLeave={() => setHoveredWilaya(null)}>
                 <span className="w-5 h-5 rounded-lg bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-foreground truncate">{w.wilayaName}</span>
-                    <span className="text-xs font-bold text-foreground tabular-nums mr-2">{fmtNum(w.orders)}</span>
+                    <span className="text-xs font-bold text-foreground tabular-nums mr-2">{mapFmt(mapVal(w))}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-0.5">
                     <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all"
-                      style={{ width: `${(w.orders / maxOrders) * 100}%` }} />
+                      style={{ width: `${(mapVal(w) / maxMapVal) * 100}%` }} />
                   </div>
                 </div>
               </div>
