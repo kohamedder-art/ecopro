@@ -1080,14 +1080,14 @@ export const freezeSubscription: RequestHandler = async (req, res) => {
     if (!sub.rows.length) return jsonError(res, 404, "No subscription found");
     const s = sub.rows[0];
     if (s.status === 'paused') return jsonError(res, 400, "Account is already frozen");
-    if (s.status !== 'active') return jsonError(res, 400, "Only a paid subscription can be frozen (trial is already free)");
+    if (s.status !== 'active' && s.status !== 'trial') return jsonError(res, 400, "Only trial or paid subscriptions can be frozen");
 
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
       await db.query(
-        `UPDATE subscriptions SET status = 'paused', paused_at = NOW(), updated_at = NOW() WHERE user_id = $1`,
-        [userId]
+        `UPDATE subscriptions SET status = 'paused', paused_at = NOW(), paused_from = $2, updated_at = NOW() WHERE user_id = $1`,
+        [userId, s.status]
       );
       // Freeze lock (distinct from payment lock) + bots off for the whole account
       await db.query(
@@ -1132,17 +1132,20 @@ export const resumeSubscription: RequestHandler = async (req, res) => {
 
     const pausedAt = s.paused_at ? new Date(s.paused_at) : new Date();
     const frozenMs = Math.max(0, Date.now() - pausedAt.getTime());
+    // Restore origin status: trial freezes extend the trial, paid freezes extend the period
+    const backTo = s.paused_from === 'trial' ? 'trial' : 'active';
+    const extendCol = backTo === 'trial' ? 'trial_ends_at' : 'current_period_end';
 
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
-      // Day-for-day: paid period shifts forward by the frozen duration
+      // Day-for-day: the right clock shifts forward by the frozen duration
       await db.query(
         `UPDATE subscriptions
-         SET status = 'active', paused_at = NULL, updated_at = NOW(),
-             current_period_end = COALESCE(current_period_end, NOW()) + ($1::bigint || ' milliseconds')::interval
+         SET status = $3, paused_at = NULL, paused_from = NULL, updated_at = NOW(),
+             ${extendCol} = COALESCE(${extendCol}, NOW()) + ($1::bigint || ' milliseconds')::interval
          WHERE user_id = $2`,
-        [String(Math.round(frozenMs)), userId]
+        [String(Math.round(frozenMs)), userId, backTo]
       );
       await db.query(
         `UPDATE clients SET is_locked = false, locked_reason = NULL, locked_at = NULL,
@@ -1191,15 +1194,17 @@ export const adminUnfreeze: RequestHandler = async (req, res) => {
     if (s.status !== 'paused') return jsonError(res, 400, 'Account is not frozen');
 
     const frozenMs = Math.max(0, Date.now() - new Date(s.paused_at || Date.now()).getTime());
+    const backTo = (s as any).paused_from === 'trial' ? 'trial' : 'active';
+    const extendCol = backTo === 'trial' ? 'trial_ends_at' : 'current_period_end';
     const db = await pool.connect();
     try {
       await db.query('BEGIN');
       await db.query(
         `UPDATE subscriptions
-         SET status = 'active', paused_at = NULL, updated_at = NOW(),
-             current_period_end = COALESCE(current_period_end, NOW()) + ($1::bigint || ' milliseconds')::interval
+         SET status = $3, paused_at = NULL, paused_from = NULL, updated_at = NOW(),
+             ${extendCol} = COALESCE(${extendCol}, NOW()) + ($1::bigint || ' milliseconds')::interval
          WHERE user_id = $2`,
-        [String(Math.round(frozenMs)), clientId]
+        [String(Math.round(frozenMs)), clientId, backTo]
       );
       await db.query(
         `UPDATE clients SET is_locked = false, locked_reason = NULL, locked_at = NULL,

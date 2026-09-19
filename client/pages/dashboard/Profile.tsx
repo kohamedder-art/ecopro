@@ -274,6 +274,65 @@ export default function Profile() {
         </span>
       </div>
 
+      {/* ── Freeze account (first, full width) ── */}
+      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-sky-500 to-indigo-500" />
+          <span className="text-sm font-bold text-foreground">
+            {lang === 'ar' ? '❄️ تجميد الحساب' : lang === 'fr' ? '❄️ Geler le compte' : '❄️ Freeze account'}
+          </span>
+          {isFrozen && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600">
+              {lang === 'ar' ? `مجمّد منذ ${frozenDays} يوم` : lang === 'fr' ? `Gelé depuis ${frozenDays} j` : `Frozen ${frozenDays}d`}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          <div className="rounded-lg bg-muted/40 border border-border/40 p-3">
+            <p className="text-[11px] font-black text-foreground mb-1.5">
+              {lang === 'ar' ? 'ماذا يتوقف؟' : lang === 'fr' ? 'Quoi en pause ?' : 'What pauses?'}
+            </p>
+            <ul className="space-y-1 text-[11px] text-muted-foreground font-medium">
+              {(lang === 'ar' ? ['كل متاجرك: صفحة عطلة + بدون طلبات جديدة', 'البوتات والرد الآلي على كل المنصات', 'المساعد الذكي (لا استهلاك)', 'تحديثات شركات التوصيل'] : lang === 'fr' ? ['Toutes vos boutiques : page vacances, sans commandes', 'Bots et réponses auto sur toutes les plateformes', 'Assistant IA (zéro consommation)', 'Suivi des transporteurs'] : ['All your stores: vacation page, no new orders', 'Bots and auto-replies on every platform', 'AI assistant (zero usage)', 'Courier tracking updates']).map((x, i) => (
+                <li key={i} className="flex items-start gap-1.5"><span className="text-sky-500 font-black">⏸</span>{x}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3">
+            <p className="text-[11px] font-black text-foreground mb-1.5">
+              {lang === 'ar' ? 'ماذا يبقى محفوظاً؟' : lang === 'fr' ? 'Quoi conservé ?' : 'What is kept?'}
+            </p>
+            <ul className="space-y-1 text-[11px] text-muted-foreground font-medium">
+              {(lang === 'ar' ? ['منتجاتك وإعداداتك وبياناتك — لا يُحذف شيء', 'أيامك المدفوعة: تُمدد فترة اشتراكك بها', 'روابط متاجرك تبقى شغالة (صفحة عطلة)', 'بدون مدة قصوى — استأنف متى شئت'] : lang === 'fr' ? ['Produits, réglages, données — rien supprimé', 'Jours payés : période prolongée d’autant', 'Liens conservés (page vacances)', 'Sans limite — reprenez quand vous voulez'] : ['Products, settings, data — nothing deleted', 'Paid days: period extended day-for-day', 'Store links stay alive (vacation page)', 'No time limit — resume anytime']).map((x, i) => (
+                <li key={i} className="flex items-start gap-1.5"><span className="text-emerald-500 font-black">✓</span>{x}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {(isActivePaid || isTrial) && !isFrozen && (
+          <button onClick={doFreezeToggle} disabled={freezeLoading}
+            className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold border border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
+            {freezeLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Snowflake className="w-3.5 h-3.5" />}
+            {lang === 'ar' ? 'تجميد الحساب' : lang === 'fr' ? 'Geler le compte' : 'Freeze account'}
+          </button>
+        )}
+        {isFrozen && (
+          <button onClick={doFreezeToggle} disabled={freezeLoading}
+            className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md">
+            {freezeLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+            {lang === 'ar' ? 'استئناف الحساب' : lang === 'fr' ? 'Reprendre' : 'Resume account'}
+          </button>
+        )}
+        {!isActivePaid && !isTrial && !isFrozen && (
+          <p className="text-[11px] text-muted-foreground font-medium">
+            {lang === 'ar' ? 'التجميد متاح للحسابات التجريبية والمدفوعة.' : lang === 'fr' ? 'Pause disponible pour essais et abonnements.' : 'Freezing is available for trial and paid accounts.'}
+          </p>
+        )}
+      </div>
+
+
       {/* ── Row 1: Account Info + Security ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
@@ -515,64 +574,6 @@ export default function Profile() {
             <span className="shrink-0 text-[10px] text-muted-foreground font-bold">{t('profile.comingSoon')}</span>
           )}
         </div>
-      </div>
-
-      {/* ── Row 4: Freeze account (full width) ── */}
-      <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="inline-block w-1 h-4 rounded-full bg-gradient-to-b from-sky-500 to-indigo-500" />
-          <span className="text-sm font-bold text-foreground">
-            {lang === 'ar' ? '❄️ تجميد الحساب' : lang === 'fr' ? '❄️ Geler le compte' : '❄️ Freeze account'}
-          </span>
-          {isFrozen && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600">
-              {lang === 'ar' ? `مجمّد منذ ${frozenDays} يوم` : lang === 'fr' ? `Gelé depuis ${frozenDays} j` : `Frozen ${frozenDays}d`}
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-          <div className="rounded-lg bg-muted/40 border border-border/40 p-3">
-            <p className="text-[11px] font-black text-foreground mb-1.5">
-              {lang === 'ar' ? 'ماذا يتوقف؟' : lang === 'fr' ? 'Quoi en pause ?' : 'What pauses?'}
-            </p>
-            <ul className="space-y-1 text-[11px] text-muted-foreground font-medium">
-              {(lang === 'ar' ? ['كل متاجرك: صفحة عطلة + بدون طلبات جديدة', 'البوتات والرد الآلي على كل المنصات', 'المساعد الذكي (لا استهلاك)', 'تحديثات شركات التوصيل'] : lang === 'fr' ? ['Toutes vos boutiques : page vacances, sans commandes', 'Bots et réponses auto sur toutes les plateformes', 'Assistant IA (zéro consommation)', 'Suivi des transporteurs'] : ['All your stores: vacation page, no new orders', 'Bots and auto-replies on every platform', 'AI assistant (zero usage)', 'Courier tracking updates']).map((x, i) => (
-                <li key={i} className="flex items-start gap-1.5"><span className="text-sky-500 font-black">⏸</span>{x}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3">
-            <p className="text-[11px] font-black text-foreground mb-1.5">
-              {lang === 'ar' ? 'ماذا يبقى محفوظاً؟' : lang === 'fr' ? 'Quoi conservé ?' : 'What is kept?'}
-            </p>
-            <ul className="space-y-1 text-[11px] text-muted-foreground font-medium">
-              {(lang === 'ar' ? ['منتجاتك وإعداداتك وبياناتك — لا يُحذف شيء', 'أيامك المدفوعة: تُمدد فترة اشتراكك بها', 'روابط متاجرك تبقى شغالة (صفحة عطلة)', 'بدون مدة قصوى — استأنف متى شئت'] : lang === 'fr' ? ['Produits, réglages, données — rien supprimé', 'Jours payés : période prolongée d’autant', 'Liens conservés (page vacances)', 'Sans limite — reprenez quand vous voulez'] : ['Products, settings, data — nothing deleted', 'Paid days: period extended day-for-day', 'Store links stay alive (vacation page)', 'No time limit — resume anytime']).map((x, i) => (
-                <li key={i} className="flex items-start gap-1.5"><span className="text-emerald-500 font-black">✓</span>{x}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {isActivePaid && !isFrozen && (
-          <button onClick={doFreezeToggle} disabled={freezeLoading}
-            className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold border border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
-            {freezeLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Snowflake className="w-3.5 h-3.5" />}
-            {lang === 'ar' ? 'تجميد الحساب' : lang === 'fr' ? 'Geler le compte' : 'Freeze account'}
-          </button>
-        )}
-        {isFrozen && (
-          <button onClick={doFreezeToggle} disabled={freezeLoading}
-            className="w-full sm:w-auto h-10 px-6 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md">
-            {freezeLoading ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-            {lang === 'ar' ? 'استئناف الحساب' : lang === 'fr' ? 'Reprendre' : 'Resume account'}
-          </button>
-        )}
-        {!isActivePaid && !isFrozen && (
-          <p className="text-[11px] text-muted-foreground font-medium">
-            {lang === 'ar' ? 'التجميد متاح للاشتراكات المدفوعة (الفترة التجريبية مجانية أصلاً).' : lang === 'fr' ? 'Pause réservée aux abonnements payés (l’essai est déjà gratuit).' : 'Freezing is for paid subscriptions (trial is already free).'}
-          </p>
-        )}
       </div>
 
     </div>

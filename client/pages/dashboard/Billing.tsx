@@ -306,7 +306,7 @@ const AdminBilling = () => {
                     {t('admin.billing.activeExpires', { date: periodEnd })}
                   </div>
                 )}
-                {subscription.status === 'active' && (
+                {(subscription.status === 'active' || subscription.status === 'trial') && (
                   <Button size="sm" variant="outline" className="h-9 rounded-xl text-xs gap-1.5" onClick={doFreezeToggle}>
                     ⏸️ {locale === 'ar' ? 'تجميد' : locale === 'fr' ? 'Geler' : 'Freeze'}
                   </Button>
