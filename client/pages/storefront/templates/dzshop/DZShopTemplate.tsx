@@ -1092,6 +1092,30 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                                 الدفع عند الاستلام بعد معاينة المنتج
                             </p>
                         </form>
+
+                        {/* Trust badges — right under the buy button where they convert */}
+                        {(showTrustBadges || canManage) && (
+                        <div className="grid grid-cols-3 gap-2 mt-3 rounded-xl px-2 py-3" style={{ backgroundColor: priceBarBg, backdropFilter: 'blur(4px)' }} data-edit-path="trust-badges">
+                            <div className="flex flex-col items-center gap-1 text-center">
+                                <i className="ph ph-truck text-xl text-orange-500"></i>
+                                <p className="text-[10px] font-bold" style={{ color: tx }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_1" onBlur={handleTextEdit('template_badge_1')}>
+                                    {settings?.template_badge_1 || "توصيل سريع"}
+                                </p>
+                            </div>
+                            <div className="flex flex-col items-center gap-1 text-center">
+                                <i className="ph ph-hand-coins text-xl text-green-500"></i>
+                                <p className="text-[10px] font-bold" style={{ color: tx }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_2" onBlur={handleTextEdit('template_badge_2')}>
+                                    {settings?.template_badge_2 || "الدفع عند الاستلام"}
+                                </p>
+                            </div>
+                            <div className="flex flex-col items-center gap-1 text-center">
+                                <i className="ph ph-shield-check text-xl" style={{ color: 'var(--dz-primary)' }}></i>
+                                <p className="text-[10px] font-bold" style={{ color: tx }} contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_badge_3" onBlur={handleTextEdit('template_badge_3')}>
+                                    {settings?.template_badge_3 || "ضمان الجودة"}
+                                </p>
+                            </div>
+                        </div>
+                        )}
                     </div>
                 )}
 
@@ -1159,8 +1183,8 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                     </div>
                     </div>
 
-                {/* Trust Badges (Full Width Below Grid) */}
-                {(showTrustBadges || canManage) && (
+                {/* Trust Badges (home grid only — product page has them under the buy button) */}
+                {showStoreGrid && (showTrustBadges || canManage) && (
                 <div className="grid grid-cols-3 gap-3 py-4 relative overflow-visible w-full" style={{ borderTop: `1px solid ${cardBorder}` }} data-edit-path="trust-badges">
                     {canManage && (
                         <div className="absolute bottom-1.5 left-4 flex items-center gap-1 bg-violet-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
