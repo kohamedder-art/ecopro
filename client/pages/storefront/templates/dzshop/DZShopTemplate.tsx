@@ -468,26 +468,6 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
                     </div>
                 )}
             </header>
-            {/* Hero */}
-            {!searchQuery && (
-                settings?.banner_url ? (
-                    <div className="relative overflow-hidden">
-                        <img src={settings.banner_url} alt="" className="w-full max-h-[300px] sm:max-h-[380px] object-cover" loading="eager" decoding="async" />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-2 px-4" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.55))' }}>
-                            <h1 className="text-white text-xl sm:text-3xl font-black drop-shadow-lg">{settings?.store_name || "متجري"}</h1>
-                            {settings?.store_description && <p className="text-white/85 text-xs sm:text-sm font-medium max-w-md">{settings.store_description}</p>}
-                            <button onClick={scrollToGrid} className="mt-1 px-6 h-10 rounded-full text-white text-[13px] font-black shadow-lg hover:scale-105 active:scale-95 transition-transform" style={{ background: `linear-gradient(90deg, ${accentColor || 'var(--dz-primary)'}, ${secondaryColor || '#8b5cf6'})` }}>
-                                تسوّق الآن ↓
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-center px-4 pt-8 pb-6" style={{ background: `linear-gradient(135deg, ${accentColor || 'var(--dz-primary)'}14, ${secondaryColor || '#8b5cf6'}14)` }}>
-                        <h1 className="text-xl sm:text-2xl font-black" style={{ color: 'var(--dz-ink, #111)' }}>{settings?.store_name || "متجري"}</h1>
-                        {settings?.store_description && <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">{settings.store_description}</p>}
-                    </div>
-                )
-            )}
             </>
             )}
 
