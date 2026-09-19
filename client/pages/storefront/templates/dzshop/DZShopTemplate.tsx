@@ -35,7 +35,7 @@ function isLightBg(color: string): boolean {
     return luminance > 0.5;
 }
 
-export default function DZShopTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate, onProductView }: TemplateProps) {
+export default function DZShopTemplate({ settings, products, canManage, storeSlug, initialProductSlug, navigate, onProductView, searchQuery, setSearchQuery }: TemplateProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
@@ -97,15 +97,9 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     useEffect(() => { if (product && onProductView) onProductView(product); }, [product?.id, onProductView]);
 
-    // Header: visible only at the very top of the page, hidden when scrolled
-    const [headerVisible, setHeaderVisible] = useState(true);
-    useEffect(() => {
-        const handleScroll = () => {
-            setHeaderVisible(window.scrollY === 0);
-        };
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    // Header: navbar sticks, announcement scrolls away
+    const [mobileSearch, setMobileSearch] = useState(false);
+    const scrollToGrid = () => document.getElementById('dz-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     const baseDeliveryFee = selectedWilaya
       ? (selectedDeliveryType === 'home' ? (selectedWilaya.homePrice ?? 0) : (selectedWilaya.deskPrice ?? selectedWilaya.homePrice ?? 0))
@@ -181,6 +175,7 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
 
     const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#2563eb');
     const accentColor = settings?.template_accent_color || primaryColor;
+    const secondaryColor = settings?.secondary_color || '#8b5cf6';
 
     // Adaptive colors: detect if background is light, dark, or an image
     const bgColor = settings?.template_bg_color || '#f3f4f6';
@@ -414,40 +409,93 @@ export default function DZShopTemplate({ settings, products, canManage, storeSlu
             <PixelScripts storeSlug={storeSlug} />
             <style dangerouslySetInnerHTML={{ __html: cssVariables }} />
 
-            {/* Header — only on grid home page */}
+            {/* Header — Shopify style: announcement + sticky glass navbar + hero */}
             {showStoreGrid && (
-            <header className={`fixed top-0 left-0 right-0 z-50 px-3 h-[48px] flex justify-between items-center shadow-sm transition-transform duration-300 overflow-hidden`} style={{ backgroundColor: (accentColor || 'var(--dz-primary)'), backdropFilter: 'none', WebkitBackdropFilter: 'none', transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)' }}>
-                <div className="flex items-center gap-2 shrink-0">
-                    {settings?.store_logo ? (
-                      <img 
-                        src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo} 
-                        alt={settings?.store_name || "متجري"} 
-                        className="rounded-full object-cover border shadow-sm"
-                        style={{ width: 38, height: 38, borderColor: 'rgba(255,255,255,0.3)', filter: imgLoaded['header-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
-                        loading="lazy"
-                        decoding="async"
-                        width="38"
-                        height="38"
-                        onLoad={() => setImgLoaded(prev => ({...prev, 'header-logo': true}))}
-                      />
-                    ) : (
-                        <div className="rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ width: 38, height: 38, backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                            {(settings?.store_name || 'م').charAt(0)}
+            <>
+            <div className="text-center text-[11px] sm:text-xs font-bold text-white px-3 py-2" style={{ background: `linear-gradient(90deg, ${accentColor || 'var(--dz-primary)'}, ${secondaryColor || '#8b5cf6'})` }}>
+                <span contentEditable={canManage} suppressContentEditableWarning data-setting-key="template_announcement" onBlur={handleTextEdit('template_announcement')}>
+                    {settings?.template_announcement || "🚚 توصيل سريع لـ 58 ولاية | الدفع عند الاستلام 💵"}
+                </span>
+            </div>
+            <header className="sticky top-0 z-50 border-b border-black/5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.25)]" style={{ backgroundColor: 'color-mix(in srgb, var(--dz-header, #ffffff) 88%, transparent)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
+                <div className="px-3 sm:px-5 h-[60px] flex items-center gap-2 sm:gap-4 max-w-7xl mx-auto">
+                    <button onClick={() => { setSearchQuery?.(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex items-center gap-2 shrink-0">
+                        {settings?.store_logo ? (
+                          <img
+                            src={settings.store_logo?.includes('cloudinary.com') && !settings.store_logo.includes('?tr=') ? `${settings.store_logo}?tr=w_100,q_auto,f_auto,c_limit` : settings.store_logo}
+                            alt={settings?.store_name || "متجري"}
+                            className="rounded-full object-cover border shadow-sm"
+                            style={{ width: 40, height: 40, borderColor: 'rgba(0,0,0,0.08)', filter: imgLoaded['header-logo'] ? 'none' : 'blur(10px)', transition: 'filter 0.5s' }}
+                            loading="eager"
+                            decoding="async"
+                            width="40"
+                            height="40"
+                            onLoad={() => setImgLoaded(prev => ({...prev, 'header-logo': true}))}
+                          />
+                        ) : (
+                            <div className="rounded-full flex items-center justify-center text-white font-black text-base shadow-sm" style={{ width: 40, height: 40, background: `linear-gradient(135deg, ${accentColor || 'var(--dz-primary)'}, ${secondaryColor || '#8b5cf6'})` }}>
+                                {(settings?.store_name || 'م').charAt(0)}
+                            </div>
+                        )}
+                        <span className="text-base sm:text-lg font-black tracking-tight" style={{ color: 'var(--dz-ink, #111)' }}>{settings?.store_name || "متجري"}</span>
+                    </button>
+                    <nav className="hidden md:flex items-center gap-5 text-[13px] font-bold" style={{ color: 'var(--dz-ink, #333)' }}>
+                        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:opacity-60 transition-opacity">الرئيسية</button>
+                        <button onClick={scrollToGrid} className="hover:opacity-60 transition-opacity">المنتجات</button>
+                    </nav>
+                    <div className="flex-1" />
+                    {settings?.show_search_bar !== false && (
+                        <div className="hidden sm:flex items-center gap-2 rounded-full px-3 h-10 w-56 lg:w-72 border border-black/10 bg-black/[0.04] focus-within:border-black/25 focus-within:bg-white transition-all">
+                            <i className="ph ph-magnifying-glass text-base opacity-50"></i>
+                            <input value={searchQuery || ''} onChange={e => setSearchQuery?.(e.target.value)} placeholder="ابحث عن منتج..."
+                                className="bg-transparent outline-none text-[13px] w-full font-medium" style={{ color: 'var(--dz-ink, #111)' }} />
+                            {!!searchQuery && <button onClick={() => setSearchQuery?.('')} className="opacity-50 hover:opacity-100 text-sm leading-none">✕</button>}
                         </div>
                     )}
-                    <span className="text-lg font-bold text-white">{settings?.store_name || "متجري"}</span>
+                    {settings?.show_search_bar !== false && (
+                        <button onClick={() => setMobileSearch(v => !v)} className="sm:hidden w-10 h-10 rounded-full flex items-center justify-center border border-black/10 bg-black/[0.04]" aria-label="بحث">
+                            <i className="ph ph-magnifying-glass text-lg" style={{ color: 'var(--dz-ink, #111)' }}></i>
+                        </button>
+                    )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    <i className="ph ph-shopping-cart text-lg text-white"></i>
-                </div>
+                {mobileSearch && settings?.show_search_bar !== false && (
+                    <div className="sm:hidden px-3 pb-3">
+                        <div className="flex items-center gap-2 rounded-full px-3 h-10 border border-black/10 bg-black/[0.04]">
+                            <i className="ph ph-magnifying-glass text-base opacity-50"></i>
+                            <input autoFocus value={searchQuery || ''} onChange={e => setSearchQuery?.(e.target.value)} placeholder="ابحث عن منتج..."
+                                className="bg-transparent outline-none text-[13px] w-full font-medium" style={{ color: 'var(--dz-ink, #111)' }} />
+                        </div>
+                    </div>
+                )}
             </header>
+            {/* Hero */}
+            {!searchQuery && (
+                settings?.banner_url ? (
+                    <div className="relative overflow-hidden">
+                        <img src={settings.banner_url} alt="" className="w-full max-h-[300px] sm:max-h-[380px] object-cover" loading="eager" decoding="async" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-2 px-4" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.55))' }}>
+                            <h1 className="text-white text-xl sm:text-3xl font-black drop-shadow-lg">{settings?.store_name || "متجري"}</h1>
+                            {settings?.store_description && <p className="text-white/85 text-xs sm:text-sm font-medium max-w-md">{settings.store_description}</p>}
+                            <button onClick={scrollToGrid} className="mt-1 px-6 h-10 rounded-full text-white text-[13px] font-black shadow-lg hover:scale-105 active:scale-95 transition-transform" style={{ background: `linear-gradient(90deg, ${accentColor || 'var(--dz-primary)'}, ${secondaryColor || '#8b5cf6'})` }}>
+                                تسوّق الآن ↓
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center px-4 pt-8 pb-6" style={{ background: `linear-gradient(135deg, ${accentColor || 'var(--dz-primary)'}14, ${secondaryColor || '#8b5cf6'}14)` }}>
+                        <h1 className="text-xl sm:text-2xl font-black" style={{ color: 'var(--dz-ink, #111)' }}>{settings?.store_name || "متجري"}</h1>
+                        {settings?.store_description && <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-1">{settings.store_description}</p>}
+                    </div>
+                )
+            )}
+            </>
             )}
 
             {/* ═══════════════════════════════════════════════════════════
                 TEMU-STYLE PRODUCT GRID (Home Page)
                ═══════════════════════════════════════════════════════════ */}
             {showStoreGrid ? (
-                <div className="relative z-10 pt-[56px]">
+                <div id="dz-grid" className="relative z-10 pt-2 scroll-mt-20">
                 {/* Category Pills */}
                 <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: 'transparent' }}>
                   <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold text-white transition-all" style={{ backgroundColor: accentColor }}>
