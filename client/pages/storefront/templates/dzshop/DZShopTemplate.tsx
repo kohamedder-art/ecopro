@@ -208,6 +208,8 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
     const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#2563eb');
     const accentColor = settings?.template_accent_color || primaryColor;
     const secondaryColor = settings?.secondary_color || '#8b5cf6';
+    // Split jobs: PRIMARY = brand surfaces (announcement accents, pills, nav, logo fallback)
+    // ACCENT = actions only (buy buttons, prices, totals, selections, glows)
     // Editor colors: لون الهيدر / لون الزر / text colors — everything below follows them
     const headerBg = settings?.iyco_header_color || '#ffffff';
     const isDarkHex = (hex: string) => {
@@ -219,6 +221,7 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
       return (0.299 * r + 0.587 * g + 0.114 * b) < 150;
     };
     const headerInk = isDarkHex(headerBg) ? '#ffffff' : '#111111';
+    const primaryInk = isDarkHex(primaryColor) ? '#ffffff' : '#111111';
     const cardInk = settings?.template_text_color || '#1c1c1c';
     const cardMuted = settings?.template_muted_color || '#767676';
 
@@ -488,9 +491,9 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                 </div>
                 {activeCats.length > 0 && (
                     <nav className="hidden md:flex items-center justify-center gap-7 px-4 pb-3 text-[12px] font-bold tracking-[0.14em] uppercase inherit">
-                        <button onClick={() => { setCategoryFilter?.(''); scrollToGrid(); }} style={!categoryFilter ? { textDecorationColor: accentColor } : undefined} className={!categoryFilter ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>All</button>
+                        <button onClick={() => { setCategoryFilter?.(''); scrollToGrid(); }} style={!categoryFilter ? { textDecorationColor: primaryColor } : undefined} className={!categoryFilter ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>All</button>
                         {activeCats.slice(0, 8).map((cat: string) => (
-                            <button key={cat} onClick={() => { setCategoryFilter?.(cat); scrollToGrid(); }} style={categoryFilter === cat ? { textDecorationColor: accentColor } : undefined}
+                            <button key={cat} onClick={() => { setCategoryFilter?.(cat); scrollToGrid(); }} style={categoryFilter === cat ? { textDecorationColor: primaryColor } : undefined}
                                 className={categoryFilter === cat ? 'underline underline-offset-8 decoration-2' : 'opacity-60 hover:opacity-100 transition-opacity'}>{cat}</button>
                         ))}
                     </nav>
@@ -527,13 +530,13 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                 <div className="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar" style={{ backgroundColor: 'transparent' }}>
                   <button onClick={() => setCategoryFilter?.('')}
                     className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all"
-                    style={!categoryFilter ? { backgroundColor: accentColor, color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
+                    style={!categoryFilter ? { backgroundColor: primaryColor, color: primaryInk } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                     الكل
                   </button>
                   {activeCats.slice(0, 8).map((cat: string) => (
                     <button key={cat} onClick={() => setCategoryFilter?.(cat)}
                       className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all"
-                      style={categoryFilter === cat ? { backgroundColor: accentColor, color: '#fff' } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
+                      style={categoryFilter === cat ? { backgroundColor: primaryColor, color: primaryInk } : { backgroundColor: 'rgba(0,0,0,0.06)', color: '#555' }}>
                       {cat}
                     </button>
                   ))}
