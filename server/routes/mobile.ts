@@ -29,8 +29,7 @@ const getStats: RequestHandler = async (req, res) => {  try {
     const clientId = (req as any).user?.id;
     if (!clientId) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const [statsRes, pendingRes, lowStockRes] = await Promise.all([
+    const [statsRes, pendingRes, lowStockRes, statusRes] = await Promise.all([
       pool.query(
         `SELECT COALESCE(SUM(total_price), 0) as revenue, COUNT(*)::int as orders
          FROM store_orders WHERE client_id = $1
@@ -48,12 +47,24 @@ const getStats: RequestHandler = async (req, res) => {  try {
          WHERE client_id = $1 AND status = 'active' AND quantity <= reorder_level`,
         [clientId]
       ),
+      pool.query(
+        `SELECT status, COUNT(*)::int as count FROM store_orders
+         WHERE client_id = $1 AND deleted_at IS NULL
+         GROUP BY status`,
+        [clientId]
+      ),
     ]);
+
+    const byStatus: Record<string, number> = {};
+    for (const r of statusRes.rows) byStatus[r.status] = r.count;
 
     res.json({
       today_revenue: parseFloat(statsRes.rows[0]?.revenue || '0'),
       today_orders: statsRes.rows[0]?.orders || 0,
       pending_count: pendingRes.rows[0]?.count || 0,
+      confirmed_count: byStatus['confirmed'] || 0,
+      delivered_count: byStatus['delivered'] || 0,
+      cancelled_count: (byStatus['cancelled'] || 0) + (byStatus['returned'] || 0) + (byStatus['fake'] || 0),
       low_stock: lowStockRes.rows[0]?.count || 0,
     });
   } catch (error) {
