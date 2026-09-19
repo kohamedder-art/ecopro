@@ -61,6 +61,17 @@ function AnnouncementBar({ settings, canManage, handleTextEdit, headerBg, header
 export default function DZShopTemplate({ settings, products, filtered, categories, categoryFilter, setCategoryFilter, canManage, storeSlug, initialProductSlug, navigate, onProductView, searchQuery, setSearchQuery }: TemplateProps) {
     const visibleProducts = (filtered && filtered.length) || searchQuery || categoryFilter ? (filtered || []) : (products || []);
     const activeCats = categories && categories.length ? categories : (settings?.categories || []);
+    // Single-product store → landing mode extras (FAQ + reviews fill the page)
+    const isSingle = (products?.length || 0) === 1;
+    const parseJsonArr = (v: any): any[] => {
+      try {
+        const a = typeof v === 'string' ? JSON.parse(v) : v;
+        return Array.isArray(a) ? a.filter(Boolean) : [];
+      } catch { return []; }
+    };
+    const faqItems = (settings?.show_faq !== false) ? parseJsonArr(settings?.faq_items) : [];
+    const testimonials = (settings?.show_testimonials !== false) ? parseJsonArr(settings?.testimonials) : [];
+    const [openFaq, setOpenFaq] = useState<number | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [orderSuccess, setOrderSuccess] = React.useState(false);
@@ -1224,6 +1235,50 @@ export default function DZShopTemplate({ settings, products, filtered, categorie
                 </div>
                 )}
             </main>
+
+            {/* ═══ Single-product extras: FAQ + reviews ═══ */}
+            {isSingle && !showStoreGrid && faqItems.length > 0 && (
+            <div className="w-full px-3 py-6 max-w-3xl mx-auto" data-edit-path="faq">
+              <h3 className="text-lg font-black mb-3 text-center" style={{ color: tx }}>أسئلة شائعة</h3>
+              <div className="space-y-2">
+                {faqItems.slice(0, 6).map((f: any, i: number) => {
+                  const q = f.q || f.question || f.title || '';
+                  const a = f.a || f.answer || f.text || '';
+                  if (!q) return null;
+                  const open = openFaq === i;
+                  return (
+                    <div key={i} className="rounded-xl border overflow-hidden" style={{ borderColor: cardBorder, backgroundColor: cardBgSolid }}>
+                      <button onClick={() => setOpenFaq(open ? null : i)} className="w-full flex items-center justify-between gap-2 px-4 py-3 text-start">
+                        <span className="text-[13px] font-bold" style={{ color: tx }}>{q}</span>
+                        <span className="text-lg leading-none shrink-0" style={{ color: accentColor }}>{open ? '−' : '+'}</span>
+                      </button>
+                      {open && <p className="px-4 pb-3 text-xs leading-relaxed" style={{ color: txSec }}>{a}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            )}
+            {isSingle && !showStoreGrid && testimonials.length > 0 && (
+            <div className="w-full px-3 py-6" style={{ borderTop: `1px solid ${cardBorder}` }} data-edit-path="testimonials">
+              <h3 className="text-lg font-black mb-3 text-center" style={{ color: tx }}>آراء زبائننا ⭐</h3>
+              <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1 max-w-5xl mx-auto">
+                {testimonials.slice(0, 8).map((t: any, i: number) => {
+                  const name = t.name || t.n || 'زبون';
+                  const text = t.text || t.t || t.review || '';
+                  const stars = Math.max(0, Math.min(5, Number(t.rating || t.stars || 5)));
+                  if (!text) return null;
+                  return (
+                    <div key={i} className="shrink-0 w-64 rounded-xl border p-3" style={{ borderColor: cardBorder, backgroundColor: cardBgSolid }}>
+                      <div className="text-xs mb-1.5" style={{ color: '#f59e0b' }}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</div>
+                      <p className="text-xs leading-relaxed mb-2 line-clamp-4" style={{ color: tx }}>{text}</p>
+                      <p className="text-[11px] font-bold" style={{ color: txSec }}>— {name}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            )}
 
             {/* ═══ Similar Products (Temu-style, full width) ═══ */}
             {!showStoreGrid && otherProducts.length > 0 && (
